@@ -1,0 +1,15 @@
+HarnessHub
+Copyright 2026 The HarnessHub Authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE),
+except for the contents of the ee/ directory, which are licensed separately
+(see ee/LICENSE).
+
+The product name is provisional and may change. Names and logos are not
+licensed under the Apache License; see docs/licensing.md.
+
+Third-party components
+----------------------
+None yet. When third-party code is added, list each component here with its
+name, version or commit, license, and copyright notice, as required by its
+license.
