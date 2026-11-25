@@ -1777,6 +1777,9 @@ type Id = string
 
 // IdentityProvider defines model for IdentityProvider.
 type IdentityProvider struct {
+	// CallbackUrl The address to register at the identity provider as the redirect URI. Not set for local accounts.
+	CallbackUrl *string `json:"callback_url,omitempty"`
+
 	// Config The non-secret settings, shaped by the kind's `config_schema`.
 	Config  map[string]any `json:"config"`
 	Enabled bool           `json:"enabled"`
@@ -1807,6 +1810,16 @@ type IdentityProviderKindList struct {
 // IdentityProviderList defines model for IdentityProviderList.
 type IdentityProviderList struct {
 	Items []IdentityProvider `json:"items"`
+}
+
+// IdentityProviderTestResult defines model for IdentityProviderTestResult.
+type IdentityProviderTestResult struct {
+	// Detail What went wrong, in English as the provider or the network said it, with the client secret masked.
+	Detail *string `json:"detail,omitempty"`
+	Ok     bool    `json:"ok"`
+
+	// Step Which check failed: `config`, the settings; `discovery`, the provider's address (discovery document, key set, token endpoint); `client`, the client ID and secret. More steps may be added.
+	Step *string `json:"step,omitempty"`
 }
 
 // Impact defines model for Impact.
@@ -3634,6 +3647,16 @@ type ClientInterface interface {
 	// `/login?error=<code>`. A known identity signs in; an unknown one with
 	// a verified e-mail address that matches an account is linked to it; anyone
 	// else gets a new account in status `pending` and lands on `/apply`.
+	// A disabled account is refused, however it was found.
+	//
+	// The codes: `auth.provider_unavailable` (no such method, or it is
+	// off), `auth.state_invalid` (the sign-in expired after 10 minutes,
+	// or was started in another browser; start again), `auth.declined`
+	// (the person declined at the provider), `auth.provider_failed` (the
+	// provider failed or its answer could not be trusted; the server log
+	// has the cause), `auth.email_conflict` (several accounts have the
+	// verified address; an administrator has to sort it out),
+	// `user.disabled`.
 	//
 	// Corresponds with GET /api/v1/auth/providers/{provider_id}/callback (the `FinishProviderLogin` operationId).
 	FinishProviderLogin(ctx context.Context, providerId ProviderId, params *FinishProviderLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3936,7 +3959,7 @@ type ClientInterface interface {
 
 	// DeleteIdentityProvider Remove a sign-in method
 	//
-	// Accounts linked to it keep existing and can still use other methods. The local method cannot be removed, only turned off.
+	// Accounts linked to it keep existing and can still use other methods. The local method cannot be removed, only turned off (`409 identity.local_fixed`); removing the last enabled method is refused (`409 identity.last_method`).
 	//
 	// Corresponds with DELETE /api/v1/identity-providers/{provider_id} (the `DeleteIdentityProvider` operationId).
 	DeleteIdentityProvider(ctx context.Context, providerId ProviderId, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3948,8 +3971,10 @@ type ClientInterface interface {
 
 	// UpdateIdentityProviderWithBody Change a sign-in method
 	//
-	// A new `client_secret` replaces the old one. Turning off the last
-	// enabled method is refused (`409 identity.last_method`). Only from the
+	// A new `client_secret` replaces the old one; an empty one removes it.
+	// `config` replaces all the settings. Turning off the last enabled
+	// method is refused (`409 identity.last_method`). Local accounts can
+	// only be turned on and off (`409 identity.local_fixed`). Only from the
 	// browser.
 	//
 	// Takes any type of body and a specified content type.
@@ -3959,14 +3984,29 @@ type ClientInterface interface {
 
 	// UpdateIdentityProvider Change a sign-in method
 	//
-	// A new `client_secret` replaces the old one. Turning off the last
-	// enabled method is refused (`409 identity.last_method`). Only from the
+	// A new `client_secret` replaces the old one; an empty one removes it.
+	// `config` replaces all the settings. Turning off the last enabled
+	// method is refused (`409 identity.last_method`). Local accounts can
+	// only be turned on and off (`409 identity.local_fixed`). Only from the
 	// browser.
 	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PATCH /api/v1/identity-providers/{provider_id} (the `UpdateIdentityProvider` operationId).
 	UpdateIdentityProvider(ctx context.Context, providerId ProviderId, params *UpdateIdentityProviderParams, body UpdateIdentityProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TestIdentityProvider Check that a sign-in method works
+	//
+	// Without anyone signing in: fetches the provider's discovery document
+	// and key set, and has its token endpoint judge the client ID and
+	// secret with a code that cannot be valid (a provider refusing the
+	// code accepted the client; one refusing the client did not). The
+	// secret goes to the provider's own address only. A failed check is a
+	// `200` with `ok: false`, naming the step that failed. Only from the
+	// browser; recorded in the audit log.
+	//
+	// Corresponds with POST /api/v1/identity-providers/{provider_id}/test (the `TestIdentityProvider` operationId).
+	TestIdentityProvider(ctx context.Context, providerId ProviderId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetInstallsSummary How far the organisation has connected
 	//
@@ -5057,6 +5097,16 @@ func (c *Client) Logout(ctx context.Context, reqEditors ...RequestEditorFn) (*ht
 // `/login?error=<code>`. A known identity signs in; an unknown one with
 // a verified e-mail address that matches an account is linked to it; anyone
 // else gets a new account in status `pending` and lands on `/apply`.
+// A disabled account is refused, however it was found.
+//
+// The codes: `auth.provider_unavailable` (no such method, or it is
+// off), `auth.state_invalid` (the sign-in expired after 10 minutes,
+// or was started in another browser; start again), `auth.declined`
+// (the person declined at the provider), `auth.provider_failed` (the
+// provider failed or its answer could not be trusted; the server log
+// has the cause), `auth.email_conflict` (several accounts have the
+// verified address; an administrator has to sort it out),
+// `user.disabled`.
 //
 // Corresponds with GET /api/v1/auth/providers/{provider_id}/callback (the `FinishProviderLogin` operationId).
 func (c *Client) FinishProviderLogin(ctx context.Context, providerId ProviderId, params *FinishProviderLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5699,7 +5749,7 @@ func (c *Client) ListIdentityProviderKinds(ctx context.Context, reqEditors ...Re
 
 // DeleteIdentityProvider Remove a sign-in method
 //
-// Accounts linked to it keep existing and can still use other methods. The local method cannot be removed, only turned off.
+// Accounts linked to it keep existing and can still use other methods. The local method cannot be removed, only turned off (`409 identity.local_fixed`); removing the last enabled method is refused (`409 identity.last_method`).
 //
 // Corresponds with DELETE /api/v1/identity-providers/{provider_id} (the `DeleteIdentityProvider` operationId).
 func (c *Client) DeleteIdentityProvider(ctx context.Context, providerId ProviderId, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5731,8 +5781,10 @@ func (c *Client) GetIdentityProvider(ctx context.Context, providerId ProviderId,
 
 // UpdateIdentityProviderWithBody Change a sign-in method
 //
-// A new `client_secret` replaces the old one. Turning off the last
-// enabled method is refused (`409 identity.last_method`). Only from the
+// A new `client_secret` replaces the old one; an empty one removes it.
+// `config` replaces all the settings. Turning off the last enabled
+// method is refused (`409 identity.last_method`). Local accounts can
+// only be turned on and off (`409 identity.local_fixed`). Only from the
 // browser.
 //
 // Takes any type of body and a specified content type.
@@ -5752,8 +5804,10 @@ func (c *Client) UpdateIdentityProviderWithBody(ctx context.Context, providerId 
 
 // UpdateIdentityProvider Change a sign-in method
 //
-// A new `client_secret` replaces the old one. Turning off the last
-// enabled method is refused (`409 identity.last_method`). Only from the
+// A new `client_secret` replaces the old one; an empty one removes it.
+// `config` replaces all the settings. Turning off the last enabled
+// method is refused (`409 identity.last_method`). Local accounts can
+// only be turned on and off (`409 identity.local_fixed`). Only from the
 // browser.
 //
 // Takes a body of the `application/json` content type.
@@ -5761,6 +5815,29 @@ func (c *Client) UpdateIdentityProviderWithBody(ctx context.Context, providerId 
 // Corresponds with PATCH /api/v1/identity-providers/{provider_id} (the `UpdateIdentityProvider` operationId).
 func (c *Client) UpdateIdentityProvider(ctx context.Context, providerId ProviderId, params *UpdateIdentityProviderParams, body UpdateIdentityProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateIdentityProviderRequest(c.Server, providerId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TestIdentityProvider Check that a sign-in method works
+//
+// Without anyone signing in: fetches the provider's discovery document
+// and key set, and has its token endpoint judge the client ID and
+// secret with a code that cannot be valid (a provider refusing the
+// code accepted the client; one refusing the client did not). The
+// secret goes to the provider's own address only. A failed check is a
+// `200` with `ok: false`, naming the step that failed. Only from the
+// browser; recorded in the audit log.
+//
+// Corresponds with POST /api/v1/identity-providers/{provider_id}/test (the `TestIdentityProvider` operationId).
+func (c *Client) TestIdentityProvider(ctx context.Context, providerId ProviderId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTestIdentityProviderRequest(c.Server, providerId)
 	if err != nil {
 		return nil, err
 	}
@@ -9480,6 +9557,40 @@ func NewUpdateIdentityProviderRequestWithBody(server string, providerId Provider
 	return req, nil
 }
 
+// NewTestIdentityProviderRequest constructs an http.Request for the TestIdentityProvider method
+func NewTestIdentityProviderRequest(server string, providerId ProviderId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "provider_id", providerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := "/api/v1/identity-providers/" + pathParam0 + "/test"
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetInstallsSummaryRequest constructs an http.Request for the GetInstallsSummary method
 func NewGetInstallsSummaryRequest(server string, params *GetInstallsSummaryParams) (*http.Request, error) {
 	var err error
@@ -12805,6 +12916,16 @@ type ClientWithResponsesInterface interface {
 	// `/login?error=<code>`. A known identity signs in; an unknown one with
 	// a verified e-mail address that matches an account is linked to it; anyone
 	// else gets a new account in status `pending` and lands on `/apply`.
+	// A disabled account is refused, however it was found.
+	//
+	// The codes: `auth.provider_unavailable` (no such method, or it is
+	// off), `auth.state_invalid` (the sign-in expired after 10 minutes,
+	// or was started in another browser; start again), `auth.declined`
+	// (the person declined at the provider), `auth.provider_failed` (the
+	// provider failed or its answer could not be trusted; the server log
+	// has the cause), `auth.email_conflict` (several accounts have the
+	// verified address; an administrator has to sort it out),
+	// `user.disabled`.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -13139,7 +13260,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteIdentityProviderWithResponse Remove a sign-in method
 	//
-	// Accounts linked to it keep existing and can still use other methods. The local method cannot be removed, only turned off.
+	// Accounts linked to it keep existing and can still use other methods. The local method cannot be removed, only turned off (`409 identity.local_fixed`); removing the last enabled method is refused (`409 identity.last_method`).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -13155,8 +13276,10 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateIdentityProviderWithBodyWithResponse Change a sign-in method
 	//
-	// A new `client_secret` replaces the old one. Turning off the last
-	// enabled method is refused (`409 identity.last_method`). Only from the
+	// A new `client_secret` replaces the old one; an empty one removes it.
+	// `config` replaces all the settings. Turning off the last enabled
+	// method is refused (`409 identity.last_method`). Local accounts can
+	// only be turned on and off (`409 identity.local_fixed`). Only from the
 	// browser.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -13166,14 +13289,31 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateIdentityProviderWithResponse Change a sign-in method
 	//
-	// A new `client_secret` replaces the old one. Turning off the last
-	// enabled method is refused (`409 identity.last_method`). Only from the
+	// A new `client_secret` replaces the old one; an empty one removes it.
+	// `config` replaces all the settings. Turning off the last enabled
+	// method is refused (`409 identity.last_method`). Local accounts can
+	// only be turned on and off (`409 identity.local_fixed`). Only from the
 	// browser.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PATCH /api/v1/identity-providers/{provider_id} (the `UpdateIdentityProvider` operationId).
 	UpdateIdentityProviderWithResponse(ctx context.Context, providerId ProviderId, params *UpdateIdentityProviderParams, body UpdateIdentityProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateIdentityProviderResponse, error)
+
+	// TestIdentityProviderWithResponse Check that a sign-in method works
+	//
+	// Without anyone signing in: fetches the provider's discovery document
+	// and key set, and has its token endpoint judge the client ID and
+	// secret with a code that cannot be valid (a provider refusing the
+	// code accepted the client; one refusing the client did not). The
+	// secret goes to the provider's own address only. A failed check is a
+	// `200` with `ok: false`, naming the step that failed. Only from the
+	// browser; recorded in the audit log.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/identity-providers/{provider_id}/test (the `TestIdentityProvider` operationId).
+	TestIdentityProviderWithResponse(ctx context.Context, providerId ProviderId, reqEditors ...RequestEditorFn) (*TestIdentityProviderResponse, error)
 
 	// GetInstallsSummaryWithResponse How far the organisation has connected
 	//
@@ -15905,6 +16045,54 @@ func (r UpdateIdentityProviderResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateIdentityProviderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type TestIdentityProviderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IdentityProviderTestResult
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r TestIdentityProviderResponse) GetJSON200() *IdentityProviderTestResult {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r TestIdentityProviderResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r TestIdentityProviderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TestIdentityProviderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TestIdentityProviderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TestIdentityProviderResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19898,6 +20086,16 @@ func (c *ClientWithResponses) LogoutWithResponse(ctx context.Context, reqEditors
 // `/login?error=<code>`. A known identity signs in; an unknown one with
 // a verified e-mail address that matches an account is linked to it; anyone
 // else gets a new account in status `pending` and lands on `/apply`.
+// A disabled account is refused, however it was found.
+//
+// The codes: `auth.provider_unavailable` (no such method, or it is
+// off), `auth.state_invalid` (the sign-in expired after 10 minutes,
+// or was started in another browser; start again), `auth.declined`
+// (the person declined at the provider), `auth.provider_failed` (the
+// provider failed or its answer could not be trusted; the server log
+// has the cause), `auth.email_conflict` (several accounts have the
+// verified address; an administrator has to sort it out),
+// `user.disabled`.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -20436,7 +20634,7 @@ func (c *ClientWithResponses) ListIdentityProviderKindsWithResponse(ctx context.
 
 // DeleteIdentityProviderWithResponse Remove a sign-in method
 //
-// Accounts linked to it keep existing and can still use other methods. The local method cannot be removed, only turned off.
+// Accounts linked to it keep existing and can still use other methods. The local method cannot be removed, only turned off (`409 identity.local_fixed`); removing the last enabled method is refused (`409 identity.last_method`).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -20464,8 +20662,10 @@ func (c *ClientWithResponses) GetIdentityProviderWithResponse(ctx context.Contex
 
 // UpdateIdentityProviderWithBodyWithResponse Change a sign-in method
 //
-// A new `client_secret` replaces the old one. Turning off the last
-// enabled method is refused (`409 identity.last_method`). Only from the
+// A new `client_secret` replaces the old one; an empty one removes it.
+// `config` replaces all the settings. Turning off the last enabled
+// method is refused (`409 identity.last_method`). Local accounts can
+// only be turned on and off (`409 identity.local_fixed`). Only from the
 // browser.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -20481,8 +20681,10 @@ func (c *ClientWithResponses) UpdateIdentityProviderWithBodyWithResponse(ctx con
 
 // UpdateIdentityProviderWithResponse Change a sign-in method
 //
-// A new `client_secret` replaces the old one. Turning off the last
-// enabled method is refused (`409 identity.last_method`). Only from the
+// A new `client_secret` replaces the old one; an empty one removes it.
+// `config` replaces all the settings. Turning off the last enabled
+// method is refused (`409 identity.last_method`). Local accounts can
+// only be turned on and off (`409 identity.local_fixed`). Only from the
 // browser.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -20494,6 +20696,27 @@ func (c *ClientWithResponses) UpdateIdentityProviderWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseUpdateIdentityProviderResponse(rsp)
+}
+
+// TestIdentityProviderWithResponse Check that a sign-in method works
+//
+// Without anyone signing in: fetches the provider's discovery document
+// and key set, and has its token endpoint judge the client ID and
+// secret with a code that cannot be valid (a provider refusing the
+// code accepted the client; one refusing the client did not). The
+// secret goes to the provider's own address only. A failed check is a
+// `200` with `ok: false`, naming the step that failed. Only from the
+// browser; recorded in the audit log.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/identity-providers/{provider_id}/test (the `TestIdentityProvider` operationId).
+func (c *ClientWithResponses) TestIdentityProviderWithResponse(ctx context.Context, providerId ProviderId, reqEditors ...RequestEditorFn) (*TestIdentityProviderResponse, error) {
+	rsp, err := c.TestIdentityProvider(ctx, providerId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTestIdentityProviderResponse(rsp)
 }
 
 // GetInstallsSummaryWithResponse How far the organisation has connected
@@ -23370,6 +23593,39 @@ func ParseUpdateIdentityProviderResponse(rsp *http.Response) (*UpdateIdentityPro
 			headers.ETag = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseTestIdentityProviderResponse parses an HTTP response from a TestIdentityProviderWithResponse call
+func ParseTestIdentityProviderResponse(rsp *http.Response) (*TestIdentityProviderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TestIdentityProviderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IdentityProviderTestResult
+		if err := runtime.JSONUnmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := runtime.JSONUnmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
 	}
 
 	return response, nil

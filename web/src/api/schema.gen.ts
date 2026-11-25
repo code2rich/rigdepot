@@ -177,6 +177,16 @@ export interface paths {
          *     `/login?error=<code>`. A known identity signs in; an unknown one with
          *     a verified e-mail address that matches an account is linked to it; anyone
          *     else gets a new account in status `pending` and lands on `/apply`.
+         *     A disabled account is refused, however it was found.
+         *
+         *     The codes: `auth.provider_unavailable` (no such method, or it is
+         *     off), `auth.state_invalid` (the sign-in expired after 10 minutes,
+         *     or was started in another browser; start again), `auth.declined`
+         *     (the person declined at the provider), `auth.provider_failed` (the
+         *     provider failed or its answer could not be trusted; the server log
+         *     has the cause), `auth.email_conflict` (several accounts have the
+         *     verified address; an administrator has to sort it out),
+         *     `user.disabled`.
          */
         get: operations["finishProviderLogin"];
         put?: never;
@@ -1437,6 +1447,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/identity-providers/{provider_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check that a sign-in method works
+         * @description Without anyone signing in: fetches the provider's discovery document
+         *     and key set, and has its token endpoint judge the client ID and
+         *     secret with a code that cannot be valid (a provider refusing the
+         *     code accepted the client; one refusing the client did not). The
+         *     secret goes to the provider's own address only. A failed check is a
+         *     `200` with `ok: false`, naming the step that failed. Only from the
+         *     browser; recorded in the audit log.
+         */
+        post: operations["testIdentityProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/identity-providers/{provider_id}": {
         parameters: {
             query?: never;
@@ -1450,15 +1486,17 @@ export interface paths {
         post?: never;
         /**
          * Remove a sign-in method
-         * @description Accounts linked to it keep existing and can still use other methods. The local method cannot be removed, only turned off.
+         * @description Accounts linked to it keep existing and can still use other methods. The local method cannot be removed, only turned off (`409 identity.local_fixed`); removing the last enabled method is refused (`409 identity.last_method`).
          */
         delete: operations["deleteIdentityProvider"];
         options?: never;
         head?: never;
         /**
          * Change a sign-in method
-         * @description A new `client_secret` replaces the old one. Turning off the last
-         *     enabled method is refused (`409 identity.last_method`). Only from the
+         * @description A new `client_secret` replaces the old one; an empty one removes it.
+         *     `config` replaces all the settings. Turning off the last enabled
+         *     method is refused (`409 identity.last_method`). Local accounts can
+         *     only be turned on and off (`409 identity.local_fixed`). Only from the
          *     browser.
          */
         patch: operations["updateIdentityProvider"];
@@ -2876,6 +2914,11 @@ export interface components {
                 [key: string]: unknown;
             };
             has_client_secret: boolean;
+            /**
+             * Format: uri
+             * @description The address to register at the identity provider as the redirect URI. Not set for local accounts.
+             */
+            callback_url?: string;
             etag: components["schemas"]["Etag"];
         };
         IdentityProviderList: {
@@ -2891,6 +2934,13 @@ export interface components {
         };
         IdentityProviderKindList: {
             items: components["schemas"]["IdentityProviderKind"][];
+        };
+        IdentityProviderTestResult: {
+            ok: boolean;
+            /** @description Which check failed: `config`, the settings; `discovery`, the provider's address (discovery document, key set, token endpoint); `client`, the client ID and secret. More steps may be added. */
+            step?: string;
+            /** @description What went wrong, in English as the provider or the network said it, with the client secret masked. */
+            detail?: string;
         };
         CreateIdentityProviderRequest: {
             kind: string;
@@ -6983,6 +7033,37 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["IdentityProviderKindList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    testIdentityProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description `local`, or the id of a configured identity provider. */
+                provider_id: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The outcome. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "ok": false,
+                     *       "step": "client",
+                     *       "detail": "the token endpoint refused (401 Unauthorized): invalid_client"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IdentityProviderTestResult"];
                 };
             };
             default: components["responses"]["Problem"];
