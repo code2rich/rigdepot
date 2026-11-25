@@ -32,7 +32,7 @@ var tasks = map[string]task{
 	"release-files":    {"write the completions and third-party notices the release archives carry", runReleaseFiles},
 	"web-deps":         {"install the web console's dependencies (needs Node, pnpm and the network)", runWebDeps},
 	"web":              {"build the web console into web/dist for go build -tags webdist", runWeb},
-	"load":             {"load-test rgd-server in a container limited to 2 CPUs and 2 GB (needs Docker): load [flags]", runLoad},
+	"load":             {"load-test the server in a container limited to 2 CPUs and 2 GB (needs Docker): load [flags]", runLoad},
 }
 
 func main() {

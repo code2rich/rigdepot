@@ -182,14 +182,8 @@ type result struct {
 	stdout, stderr string
 }
 
-// run runs the program with args in this world. Standard input is empty and not a terminal, as
-// in a script.
-func (w *world) run(args ...string) result {
-	w.t.Helper()
-	return w.runInput("", args...)
-}
-
-// runInput runs the program with stdin as its standard input.
+// runInput runs the program with args in this world, with stdin as its standard input, which is
+// not a terminal, as in a script.
 func (w *world) runInput(stdin string, args ...string) result {
 	w.t.Helper()
 	cmd := exec.Command(w.rgd, args...)
