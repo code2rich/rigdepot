@@ -65,11 +65,44 @@ type Entry struct {
 	Undo       []string `json:"undo,omitempty"`
 	SharedWith []string `json:"sharedWith,omitempty"`
 	// Created lists the directories made to hold the target, outermost first, in the same
-	// form as Path. Undoing the entry removes them again if they are empty.
-	Created []string  `json:"created,omitempty"`
-	At      time.Time `json:"at"`
+	// form as Path. Undoing the entry removes them again if they are empty. For a key, it also
+	// lists the configuration file itself when the file did not exist before.
+	Created []string `json:"created,omitempty"`
+	// Edit is how to take a key out of its file again byte for byte. Only for a key that was
+	// added; see KeyEdit.
+	Edit *KeyEdit  `json:"edit,omitempty"`
+	At   time.Time `json:"at"`
 
 	extra map[string]json.RawMessage
+}
+
+// KeyEdit records the one run of bytes that adding a key changed in a configuration file
+// (internal/configedit.Edit, without the format and key the entry has already). Undoing the
+// entry puts Old back in place of New while New is still there, and otherwise removes the key
+// by its meaning.
+type KeyEdit struct {
+	// Offset is where New starts in the file, in bytes, counting a byte order mark.
+	Offset int `json:"offset"`
+	// Old is the bytes New replaced; empty when the edit only inserted text.
+	Old []byte `json:"old"`
+	// New is the bytes the edit wrote.
+	New []byte `json:"new"`
+	// Created is how many trailing elements of the key did not exist before: 1 for the key
+	// alone, 2 when its parent was created too, and so on.
+	Created int `json:"created"`
+}
+
+type keyEditJSON KeyEdit
+
+// MarshalJSON writes an empty Old as "" rather than null, which the schema does not allow.
+func (k KeyEdit) MarshalJSON() ([]byte, error) {
+	if k.Old == nil {
+		k.Old = []byte{}
+	}
+	if k.New == nil {
+		k.New = []byte{}
+	}
+	return json.Marshal(keyEditJSON(k))
 }
 
 // EntryID returns the identifier of the entry for a target: tool, operation and place, and for

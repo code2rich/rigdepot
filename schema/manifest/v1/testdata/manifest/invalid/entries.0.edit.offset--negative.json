@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "rgd": "0.4.0",
+  "entries": [
+    { "id": "claude-code:key:~/.claude.json#mcpServers.rgd-jira",
+      "tool": "claude-code", "resource": "jira",
+      "op": "key", "path": "~/.claude.json", "format": "json", "key": ["mcpServers", "rgd-jira"],
+      "digest": "sha256:1e32847769dc4a1588004a1dfdf10041407a3494ae910bc76783917fffea7789",
+      "created": ["~/.claude.json"],
+      "edit": { "offset": -1, "old": "", "new": "ewogICJtY3BTZXJ2ZXJzIjoge30KfQo=", "created": 2 },
+      "at": "2026-11-24T10:02:12Z" }
+  ]
+}
