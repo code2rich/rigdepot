@@ -114,6 +114,75 @@ archives:
       group: root
       mtime: "{{ .CommitDate }}"
 
+# The server as Debian and RPM packages, one per architecture: rgd-server, the
+# systemd unit, a system user and its data directory, the startup
+# configuration, and the six rgd archives of this release for the server to
+# hand out on the internal network (docs: 08-deployment). The packages come
+# after the archives in goreleaser's pipeline, so the archives are in dist/.
+nfpms:
+  - id: rigdepot-server
+    ids: [rgd-server]
+    package_name: rigdepot-server
+    # rigdepot-server_0.4.0_amd64.deb, rigdepot-server-0.4.0-1.x86_64.rpm
+    file_name_template: "{{ .ConventionalFileName }}"
+    formats: [deb, rpm]
+    vendor: The Rigdepot Authors
+    homepage: https://github.com/code2rich/rigdepot
+    maintainer: The Rigdepot Authors <rigdepot@code2rich.com>
+    description: |-
+      Rigdepot server.
+      One depot for your team's AI coding rig: the catalogue, the web console
+      and the command line it hands out to the team's computers.
+    license: Apache-2.0
+    section: net
+    priority: optional
+    bindir: /usr/bin
+    # Fixed time stamps: a package must not depend on when it was built.
+    mtime: "{{ .CommitDate }}"
+    # git fetches the resource repositories; useradd makes the system user.
+    dependencies: [git]
+    overrides:
+      deb:
+        dependencies: [git, passwd]
+        recommends: [openssh-client, ca-certificates]
+      rpm:
+        dependencies: [git, shadow-utils]
+        recommends: [openssh-clients, ca-certificates]
+    contents:
+      - src: deploy/systemd/rigdepot-server.service
+        dst: /usr/lib/systemd/system/rigdepot-server.service
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+      - dst: /etc/rigdepot
+        type: dir
+        file_info: { mode: 0755, mtime: "{{ .CommitDate }}" }
+      - src: deploy/packaging/server.env
+        dst: /etc/rigdepot/server.env
+        type: config|noreplace
+        file_info: { mode: 0600, mtime: "{{ .CommitDate }}" }
+      - dst: /var/lib/rigdepot
+        type: dir
+        file_info: { mode: 0700, mtime: "{{ .CommitDate }}" }
+      - src: "dist/rgd_{{ .Version }}_*.tar.gz"
+        dst: /usr/share/rigdepot/cli/
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+      - src: "dist/rgd_{{ .Version }}_*.zip"
+        dst: /usr/share/rigdepot/cli/
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+      - src: LICENSE
+        dst: /usr/share/doc/rigdepot-server/LICENSE
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+      - src: NOTICE
+        dst: /usr/share/doc/rigdepot-server/NOTICE
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+      - src: .dev/release/THIRD_PARTY_NOTICES
+        dst: /usr/share/doc/rigdepot-server/THIRD_PARTY_NOTICES
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+    scripts:
+      preinstall: deploy/packaging/preinstall.sh
+      postinstall: deploy/packaging/postinstall.sh
+      preremove: deploy/packaging/preremove.sh
+      postremove: deploy/packaging/postremove.sh
+
 checksum:
   name_template: checksums.txt
   algorithm: sha256
