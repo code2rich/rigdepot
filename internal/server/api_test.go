@@ -15,15 +15,21 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/ext/module"
+	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/logging"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
+	"github.com/code2rich/rigdepot/internal/server/authn"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/dbx/dbxtest"
 	"github.com/code2rich/rigdepot/internal/server/httpapi"
+	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/migrations"
 	"github.com/code2rich/rigdepot/internal/server/settings"
@@ -32,8 +38,25 @@ import (
 const (
 	testAdmin  = "0193a4b2-6c1e-7a00-8000-000000000001"
 	testMember = "0193a4b2-6c1e-7a00-8000-000000000011"
-	testUser   = "X-Test-User" // the header the test's stand-in for sign-in reads
+	testDevice = "0193a4b2-6c1e-7a00-8000-000000000201"
+	testUser   = "X-Test-User" // the header newAPI turns into the user's session cookie
 )
+
+// testDevices stands in for the device code flow (M1-22): one device token,
+// the administrator's.
+type testDevices struct{ token string }
+
+func (d testDevices) VerifyDeviceToken(_ context.Context, token string) (string, string, error) {
+	if token != d.token {
+		return "", "", authn.ErrUnauthenticated
+	}
+	return testAdmin, testDevice, nil
+}
+
+func (testDevices) SignOutDevices(context.Context, *dbx.Tx, string) (int, error) { return 0, nil }
+
+// testSession is the session cookie newAPI gives a user.
+func testSession(userID string) string { return "test-session-of-" + userID }
 
 // fakeFirstAdmin stands in for authn (M1-20), which owns passwords and
 // sessions: it makes the users row a platform administrator and "signs in"
@@ -56,19 +79,41 @@ func (fakeFirstAdmin) SignIn(_ context.Context, userID string) (string, httpapi.
 type apiFixture struct {
 	app *App
 	h   http.Handler
+	// deviceToken is the administrator's device token.
+	deviceToken string
 }
 
 // newAPI assembles the server around a fresh database like serve does, with
-// the real access package, an administrator and a member, and a sign-in
-// stand-in that takes the caller from a header. withHooks adds the
-// stand-in for creating the first administrator.
+// the real access and authn packages, an administrator and a member, each
+// with a session the X-Test-User header picks, and a device token for the
+// administrator. withHooks adds the stand-in for creating the first
+// administrator.
 func newAPI(t *testing.T, withHooks bool) *apiFixture {
 	t.Helper()
-	return newAPIWith(t, withHooks, nil)
+	return newAPIWith(t, fixtureOptions{hooks: withHooks})
 }
 
-// newAPIWith is newAPI with setup run on the app before its services are opened.
-func newAPIWith(t *testing.T, withHooks bool, setup func(*App)) *apiFixture {
+// fixtureOptions choose what newAPIWith assembles besides the API.
+type fixtureOptions struct {
+	hooks bool // the stand-in for creating the first administrator
+	// background makes and starts the event bus, the jobs, the outbox and
+	// the module host the way serve does; they stop when the test ends.
+	background bool
+	// channels stands in for the notification channel registry.
+	channels func(id string) (extnotify.Channel, bool)
+	// modules stand in for the modules compiled in; locked are the ones
+	// the deployment disabled.
+	modules []module.Module
+	locked  []string
+	// adapters stand in for the tool adapters compiled in; version for the
+	// server's version.
+	adapters []adapter.Adapter
+	version  string
+	// setup runs on the app before its services are opened.
+	setup func(*App)
+}
+
+func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
 	t.Helper()
 	dir := t.TempDir()
 	cfg, err := config.Load(config.Options{LookupEnv: func(k string) (string, bool) {
@@ -97,25 +142,46 @@ func newAPIWith(t *testing.T, withHooks bool, setup func(*App)) *apiFixture {
 			t.Fatal(err)
 		}
 	}
+	now := dbx.Millis(time.Now())
+	for _, id := range []string{testAdmin, testMember} {
+		if _, err := db.ExecContext(ctx, `INSERT INTO sessions (id, user_id, token_digest, created_at, last_seen_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)`,
+			dbx.NewID(), id, authn.TokenDigest(testSession(id)), now, now, now+dbx.Millis(time.Unix(0, 0).Add(authn.SessionMax))); err != nil {
+			t.Fatal(err)
+		}
+	}
 	app := NewApp(cfg, logging.Discard(), db, Mounts{})
-	if withHooks {
+	if o.hooks {
 		app.hooks.firstAdmin = fakeFirstAdmin{}
 	}
-	if setup != nil {
-		setup(app)
+	devices := testDevices{token: authn.NewToken(authn.DeviceTokenPrefix)}
+	app.hooks.devices = devices
+	app.mailChannels, app.modules, app.adapters, app.version = o.channels, o.modules, o.adapters, o.version
+	cfg.ModulesDisabled = o.locked
+	if o.background {
+		app.bg = newBackground(app)
+	}
+	if o.setup != nil {
+		o.setup(app)
 	}
 	if err := app.openServices(ctx); err != nil {
 		t.Fatal(err)
+	}
+	if o.background {
+		stop, err := startBackground(ctx, app)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(stop)
 	}
 	app.mounts = apiMounts(app)
 	api := app.mounts.API
 	app.mounts.API = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if u := r.Header.Get(testUser); u != "" {
-			r = r.WithContext(access.WithActor(r.Context(), access.Actor{UserID: u, Origin: access.OriginWeb}))
+			r.AddCookie(&http.Cookie{Name: authnapi.SessionCookie, Value: testSession(u)})
 		}
 		api.ServeHTTP(w, r)
 	})
-	return &apiFixture{app: app, h: app.Handler()}
+	return &apiFixture{app: app, h: app.Handler(), deviceToken: devices.token}
 }
 
 func (f *apiFixture) do(t *testing.T, method, path, user, body string, header map[string]string) (*httptest.ResponseRecorder, httpapi.Problem) {
@@ -213,12 +279,8 @@ func TestSettingsAPI(t *testing.T) {
 
 func TestSettingsChangeOnlyInTheBrowser(t *testing.T) {
 	f := newAPI(t, true)
-	cli := f.app.mounts.API
-	f.app.mounts.API = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cli.ServeHTTP(w, r.WithContext(access.WithActor(r.Context(), access.Actor{UserID: testAdmin, Origin: access.OriginCLI, ViaTool: "claude-code"})))
-	})
-	f.h = f.app.Handler()
-	rec, p := f.do(t, http.MethodPatch, "/api/v1/settings", "", `{"organization":{"name":"x"}}`, map[string]string{"If-Match": `"x"`})
+	rec, p := f.do(t, http.MethodPatch, "/api/v1/settings", "", `{"organization":{"name":"x"}}`,
+		map[string]string{"If-Match": `"x"`, "Authorization": "Bearer " + f.deviceToken, "X-Via-Tool": "claude-code"})
 	if rec.Code != http.StatusForbidden || p.Code != "access.denied" {
 		t.Errorf("from the command line: %d %+v", rec.Code, p)
 	}
@@ -273,12 +335,64 @@ func TestSetupAPI(t *testing.T) {
 	}
 }
 
-func TestSetupWithoutAccountsYetIs501(t *testing.T) {
+// The setup wizard's first administrator is a real local account (authn)
+// and is signed in with a real session.
+func TestSetupCreatesTheFirstAdministrator(t *testing.T) {
 	f := newAPI(t, false)
 	token, _, _ := f.app.settings.SetupToken(context.Background())
-	rec, p := f.do(t, http.MethodPost, "/api/v1/setup/admin", "", `{"username":"admin","password":"<placeholder: at least 12>"}`, map[string]string{"X-Setup-Token": token})
-	if rec.Code != http.StatusNotImplemented || p.Code != httpapi.CodeNotImplemented {
-		t.Errorf("%d %+v", rec.Code, p)
+	setup := map[string]string{"X-Setup-Token": token}
+	if rec, p := f.do(t, http.MethodPost, "/api/v1/setup/admin", "", `{"username":"root","password":"short"}`, setup); rec.Code != http.StatusBadRequest ||
+		p.Errors == nil || (*p.Errors)[0] != (httpapi.FieldError{Field: "password", Code: "too_short"}) {
+		t.Fatalf("weak password: %d %+v", rec.Code, p)
+	}
+	const pw = "<placeholder: root password>"
+	rec, _ := f.do(t, http.MethodPost, "/api/v1/setup/admin", "", `{"username":"root","password":"`+pw+`"}`, setup)
+	cookie := rec.Header().Get("Set-Cookie")
+	if rec.Code != http.StatusCreated || !strings.HasPrefix(cookie, authnapi.SessionCookie+"=") || !strings.Contains(cookie, "HttpOnly") ||
+		!strings.Contains(cookie, "SameSite=Lax") || strings.Contains(cookie, "Secure") || !strings.Contains(rec.Body.String(), `"platform_admin":true`) {
+		t.Fatalf("create: %d %q %s", rec.Code, cookie, rec.Body)
+	}
+	session := strings.SplitN(cookie, ";", 2)[0]
+	if rec, _ := f.do(t, http.MethodGet, "/api/v1/me", "", "", map[string]string{"Cookie": session}); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"username":"root"`) {
+		t.Errorf("signed in as the new administrator: %d %s", rec.Code, rec.Body)
+	}
+	if rec, _ := f.do(t, http.MethodPost, "/api/v1/auth/login", "", `{"username":"root","password":"`+pw+`"}`, nil); rec.Code != http.StatusOK {
+		t.Errorf("login with the chosen password: %d %s", rec.Code, rec.Body)
+	}
+	// The wizard's last step runs as that administrator.
+	if rec, _ := f.do(t, http.MethodPost, "/api/v1/setup/complete", "", "", map[string]string{"Cookie": session}); rec.Code != http.StatusNoContent {
+		t.Errorf("complete: %d %s", rec.Code, rec.Body)
+	}
+}
+
+// Every request reads the account: disabling it refuses the next one, and a
+// cross-site form cannot use the session.
+func TestSignInIsCheckedOnEveryRequest(t *testing.T) {
+	f := newAPI(t, false)
+	if rec, _ := f.do(t, http.MethodGet, "/api/v1/me", testMember, "", nil); rec.Code != http.StatusOK {
+		t.Fatalf("member: %d %s", rec.Code, rec.Body)
+	}
+	if rec, _ := f.do(t, http.MethodPatch, "/api/v1/users/"+testMember, testAdmin, `{"status":"disabled"}`, nil); rec.Code != http.StatusOK {
+		t.Fatalf("disable: %d %s", rec.Code, rec.Body)
+	}
+	if rec, p := f.do(t, http.MethodGet, "/api/v1/me", testMember, "", nil); rec.Code != http.StatusUnauthorized || p.Code != "auth.required" {
+		t.Errorf("disabled member: %d %+v", rec.Code, p)
+	}
+	cross := map[string]string{"Sec-Fetch-Site": "cross-site", "Origin": "https://evil.example.com"}
+	if rec, p := f.do(t, http.MethodPost, "/api/v1/auth/logout", testAdmin, "", cross); rec.Code != http.StatusForbidden || p.Code != "access.denied" {
+		t.Errorf("cross-site logout: %d %+v", rec.Code, p)
+	}
+	same := map[string]string{"Sec-Fetch-Site": "same-origin", "Origin": "http://127.0.0.1:8080"}
+	if rec, _ := f.do(t, http.MethodPost, "/api/v1/auth/logout", testAdmin, "", same); rec.Code != http.StatusNoContent {
+		t.Errorf("logout: %d %s", rec.Code, rec.Body)
+	}
+	if rec, _ := f.do(t, http.MethodGet, "/api/v1/me", testAdmin, "", nil); rec.Code != http.StatusUnauthorized {
+		t.Errorf("after logout: %d", rec.Code)
+	}
+	// The device token still works, and goes into the audit log as the
+	// command line.
+	if rec, _ := f.do(t, http.MethodGet, "/api/v1/me", "", "", map[string]string{"Authorization": "Bearer " + f.deviceToken}); rec.Code != http.StatusOK {
+		t.Errorf("device token: %d %s", rec.Code, rec.Body)
 	}
 }
 

@@ -24,7 +24,7 @@
 // # Versions are never changed
 //
 // resource_versions is insert-only, and the database refuses UPDATE and DELETE on it (migration
-// 0012). A rollback (Rollback) publishes an earlier version's content again as a new version
+// 0013). A rollback (Rollback) publishes an earlier version's content again as a new version
 // that names it in RollbackOf. Bundles are stored once per address in blobs: the deterministic
 // tar of bundle.Pack, addressed by the SHA-256 of its bytes.
 //

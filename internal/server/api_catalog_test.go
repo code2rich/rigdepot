@@ -11,45 +11,22 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
-	"github.com/getkin/kin-openapi/routers"
-	legacyrouter "github.com/getkin/kin-openapi/routers/legacy"
 
-	contractspec "github.com/code2rich/rigdepot/api"
+	"github.com/code2rich/rigdepot/internal/server/authn"
 	"github.com/code2rich/rigdepot/internal/server/catalog/catalogtest"
+	"github.com/code2rich/rigdepot/internal/server/dbx"
+	"github.com/code2rich/rigdepot/internal/server/events"
 	"github.com/code2rich/rigdepot/internal/server/httpapi"
 )
 
 const testMaintainer = "0193a4b2-6c1e-7a00-8000-000000000021"
-
-var (
-	contractOnce   sync.Once
-	contractRouter routers.Router
-	contractErr    error
-)
-
-// contract returns a router over api/openapi.yaml, loaded once.
-func contract(t *testing.T) routers.Router {
-	t.Helper()
-	contractOnce.Do(func() {
-		doc, err := openapi3.NewLoader().LoadFromData(contractspec.Spec)
-		if err != nil {
-			contractErr = err
-			return
-		}
-		doc.Servers = nil
-		contractRouter, contractErr = legacyrouter.NewRouter(doc)
-	})
-	if contractErr != nil {
-		t.Fatal(contractErr)
-	}
-	return contractRouter
-}
 
 // catalogFixture is the assembled server with the test kinds and rules, an administrator, a
 // member (jdoe) and a maintainer who is in no product.
@@ -59,12 +36,18 @@ type catalogFixture struct {
 }
 
 func newCatalogAPI(t *testing.T) *catalogFixture {
-	f := newAPIWith(t, false, func(app *App) {
+	f := newAPIWith(t, fixtureOptions{setup: func(app *App) {
 		app.catalogOptions.Kinds, app.catalogOptions.Rules = catalogtest.Kinds(), catalogtest.Rules()
 		app.cfg.MaxBundleMB = 1
-	})
-	if _, err := f.app.db.ExecContext(context.Background(), `INSERT INTO users (id, username, display_name, status, is_admin, created_at, updated_at)
+	}})
+	ctx := context.Background()
+	if _, err := f.app.db.ExecContext(ctx, `INSERT INTO users (id, username, display_name, status, is_admin, created_at, updated_at)
 		VALUES (?, 'maint', 'Name of maint', 'active', FALSE, 1, 1)`, testMaintainer); err != nil {
+		t.Fatal(err)
+	}
+	now := dbx.Millis(time.Now())
+	if _, err := f.app.db.ExecContext(ctx, `INSERT INTO sessions (id, user_id, token_digest, created_at, last_seen_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		dbx.NewID(), testMaintainer, authn.TokenDigest(testSession(testMaintainer)), now, now, now+dbx.Millis(time.Unix(0, 0).Add(authn.SessionMax))); err != nil {
 		t.Fatal(err)
 	}
 	return &catalogFixture{apiFixture: f, t: t}
@@ -304,4 +287,33 @@ func TestRegisterMCPOverHTTP(t *testing.T) {
 	f.call("PUT", put, testAdmin, body("Bearer ${secret:JIRA_TOKEN}"), map[string]string{"If-Match": d.Etag}, http.StatusOK)
 	f.call("DELETE", put, testAdmin, nil, map[string]string{"If-Match": d.Etag}, http.StatusNoContent)
 	f.call("GET", "/api/v1/resources/jira", testAdmin, nil, nil, http.StatusNotFound)
+}
+
+// TestCatalogEventsReachTheBus: the catalog publishes on the bus serve makes, once the change
+// has committed.
+func TestCatalogEventsReachTheBus(t *testing.T) {
+	f := newAPIWith(t, fixtureOptions{background: true, setup: func(app *App) {
+		app.catalogOptions.Kinds, app.catalogOptions.Rules = catalogtest.Kinds(), catalogtest.Rules()
+	}})
+	var mu sync.Mutex
+	var got []string
+	f.app.bg.Events.Subscribe("test", nil, func(_ context.Context, ev events.Event) error {
+		mu.Lock()
+		defer mu.Unlock()
+		got = append(got, ev.Name)
+		return nil
+	})
+	cf := &catalogFixture{apiFixture: f, t: t}
+	cf.call("PUT", "/api/v1/resources/unit-testing/draft/bundle?kind=skill", testAdmin, skillZip(t, "Steps.\n"),
+		map[string]string{"Content-Type": "application/octet-stream"}, http.StatusCreated)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := f.app.bg.Events.Drain(ctx); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !slices.Contains(got, events.ResourceDraftUpdated{}.EventName()) {
+		t.Errorf("events on the bus: %v", got)
+	}
 }

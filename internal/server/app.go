@@ -15,12 +15,16 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/ext/module"
+	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
+	"github.com/code2rich/rigdepot/internal/server/authn"
 	"github.com/code2rich/rigdepot/internal/server/catalog"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
-	"github.com/code2rich/rigdepot/internal/server/events"
+	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/migrations"
 	"github.com/code2rich/rigdepot/internal/server/settings"
@@ -44,6 +48,7 @@ type App struct {
 	db     *dbx.DB
 	mounts Mounts
 	// bg runs events, jobs, the mail outbox and modules; nil outside serve.
+	// It exists before openServices, which hands its bus to the services.
 	bg *Background
 
 	// The domain services (openServices) and what other packages provide
@@ -51,18 +56,32 @@ type App struct {
 	keys     *masterkey.Keyring
 	audit    *audit.Log
 	access   *access.Service
+	authn    *authn.Service
+	authnOps *authnapi.Ops // the sign-in operations and middleware
 	settings *settings.Service
 	catalog  *catalog.Service
 	hooks    hooks
 	// catalogOptions are the kinds and the rule set the catalog uses; the zero value is the
 	// program's registries (builtin/all). Tests, which cannot import builtin, set their own.
 	catalogOptions catalog.Options
-	// events forwards the domain services' events to the bus once the background parts run
-	// (serve); until then, and outside serve, events are dropped.
-	events lateEvents
+
+	// mailChannels finds a notification channel by ID; nil means the
+	// registry (ext/notify). Tests put a fake channel here.
+	mailChannels func(id string) (extnotify.Channel, bool)
+	// modules are the optional modules compiled in; nil means the registry
+	// (ext/module). Tests put fake modules here.
+	modules []module.Module
+	// adapters are the tool adapters compiled in; nil means the registry
+	// (ext/adapter). Tests put adapters made from profiles here.
+	adapters []adapter.Adapter
+	// version is this server's version; "" means the build's (buildinfo).
+	version string
 
 	checks   []ReadyCheck
 	draining atomic.Bool
+
+	// requests counts the requests for the metrics (M1-41).
+	requests *requestMetrics
 }
 
 // ReadyCheck is one item of /readyz. A failing critical check makes the
@@ -78,7 +97,7 @@ type ReadyCheck struct {
 
 // NewApp assembles the server around an open, migrated database.
 func NewApp(cfg *config.Config, log *slog.Logger, db *dbx.DB, mounts Mounts) *App {
-	a := &App{cfg: cfg, log: log, db: db, mounts: mounts}
+	a := &App{cfg: cfg, log: log, db: db, mounts: mounts, requests: newRequestMetrics()}
 	a.AddReadyCheck(ReadyCheck{Name: "database", Critical: true, Check: db.Ping})
 	a.AddReadyCheck(ReadyCheck{Name: "migrations", Critical: true, Check: func(ctx context.Context) error {
 		pending, err := migrations.Pending(ctx, db)
@@ -92,17 +111,6 @@ func NewApp(cfg *config.Config, log *slog.Logger, db *dbx.DB, mounts Mounts) *Ap
 	}})
 	// "master_key" joins in openServices, which loads it.
 	return a
-}
-
-// lateEvents is events.Bus for services built before the bus: openServices runs before
-// startBackground.
-type lateEvents struct{ bus atomic.Pointer[events.Bus] }
-
-// Publish implements catalog.Events.
-func (l *lateEvents) Publish(tx events.Tx, p events.Payload) {
-	if b := l.bus.Load(); b != nil {
-		b.Publish(tx, p)
-	}
 }
 
 // Background returns the events, jobs, outbox and modules of a serving app, for apiMounts to

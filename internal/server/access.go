@@ -60,7 +60,8 @@ func (a accessAuditor) Append(ctx context.Context, tx *dbx.Tx, e access.AuditEnt
 
 // accessAuthorizer answers hooks.authorize with access's rules. The actions
 // of settings and the audit page map onto access's: everything about
-// settings, the wizard and modules is settings.manage on the platform;
+// settings, the wizard, modules, the tool switches and the minimum
+// command-line version is settings.manage on the platform;
 // reading the whole audit log is audit.read on the platform.
 //
 // The log of one resource (object kind "resource", id its code, as package catalog records
@@ -73,7 +74,8 @@ func accessAuthorizer(svc *access.Service, resourceTarget func(ctx context.Conte
 		target := access.TargetPlatform()
 		switch action {
 		case settings.ActionSettingsRead, settings.ActionSettingsUpdate, settings.ActionSetupComplete,
-			settings.ActionModuleEnable, settings.ActionModuleDisable:
+			settings.ActionModuleEnable, settings.ActionModuleDisable,
+			settings.ActionAdapterEnable, settings.ActionAdapterDisable, settings.ActionCLIPolicyUpdate:
 			act = access.ActionSettingsManage
 		case actionAuditRead:
 			switch {
@@ -96,8 +98,8 @@ func accessAuthorizer(svc *access.Service, resourceTarget func(ctx context.Conte
 	}
 }
 
-// accessNames is auditNames from the users access keeps. Devices belong to
-// authn (M1-20): until then their ids stand in.
+// accessNames is auditNames from the users access keeps. Devices come with
+// the device code flow (authn, M1-22): until then their ids stand in.
 type accessNames struct{ svc *access.Service }
 
 func (n accessNames) User(ctx context.Context, id string) (string, string, bool) {

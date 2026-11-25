@@ -8,6 +8,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/code2rich/rigdepot/ext/module"
 	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/server/events"
 	"github.com/code2rich/rigdepot/internal/server/jobs"
@@ -24,32 +25,74 @@ type Background struct {
 	JobCounters *jobs.Counters // job outcomes, for the metrics endpoint (M1-41)
 	Notify      *notify.Service
 	Modules     *modhost.Host
+
+	// text renders the server's messages in its default language.
+	text *i18n.Printer
 }
 
 // backgroundShutdown is how long jobs, event handlers and modules get to stop.
 const backgroundShutdown = 15 * time.Second
 
-// startBackground assembles and starts the background parts. The returned function stops them.
-//
-// Still to connect once their domain packages exist: the settings store (M1-10) for the mail
-// settings (notify.Options.Config, then the readiness item "mail" from Notify.Check) and for
-// modules.enabled (modhost.Deps.Settings); the audit log (M1-10) and permissions (M1-12) for
-// modules (modhost.Deps.Audit, Authz); the module routes (Modules.Handler) under /api/v1/x/ in
-// apiMounts. Until then mail waits in the outbox and no module is on.
-func startBackground(ctx context.Context, app *App) (*Background, func(), error) {
+// newBackground makes the parts the domain services publish to and schedule on, the event bus
+// and the job scheduler, without starting anything: openServices hands them to the domain
+// services, and startBackground adds what needs those services and starts it all.
+func newBackground(app *App) *Background {
 	b := &Background{Events: events.New(app.log), JobCounters: jobs.NewCounters()}
 	b.Jobs = jobs.New(app.db, jobs.Options{Log: app.log, Metrics: b.JobCounters})
+	return b
+}
+
+// startBackground assembles the rest of the background parts on app.bg, which newBackground
+// made and openServices has handed to the domain services, and starts them. The returned
+// function stops them.
+//
+// The outbox takes the mail server from the platform settings (mailSettings) and adds the
+// readiness item "mail"; the settings page's test mail goes through notify too. The module host
+// keeps its switches and the modules' settings in the settings package, writes the modules'
+// audit entries into the audit log and asks access for their permissions (modules.go); apiMounts
+// mounts its routes under /api/v1/x/. The daily check of the audit chain is a job too
+// (auditcheck.go).
+func startBackground(ctx context.Context, app *App) (func(), error) {
+	b := app.bg
 	cat, err := i18n.Load(locales.FS, "server")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	b.Notify, err = notify.New(notify.Options{DB: app.db, Jobs: b.Jobs, Catalog: cat, DefaultLocale: app.cfg.DefaultLocale, Log: app.log})
+	b.Notify, err = notify.New(notify.Options{DB: app.db, Jobs: b.Jobs, Config: mailSettings{app.settings}, Channels: app.mailChannels,
+		Catalog: cat, DefaultLocale: app.cfg.DefaultLocale, Log: app.log})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	b.Modules, err = modhost.New(modhost.Deps{DB: app.db, Events: b.Events, Jobs: b.Jobs, Log: app.log, Locked: app.cfg.ModulesDisabled})
+	// Mail that does not work degrades the server; it still serves.
+	app.AddReadyCheck(ReadyCheck{Name: "mail", Check: b.Notify.Check})
+	if app.hooks.sendTestMail == nil {
+		app.hooks.sendTestMail = testMailSender(app, cat, app.mailChannels)
+	}
+	b.text = cat.Printer(cat.Match(app.cfg.DefaultLocale))
+	label := func(id string) string {
+		if m, ok := b.moduleInfo(id); ok && m.Name != "" {
+			return b.text.T(m.Name)
+		}
+		return id
+	}
+	b.Modules, err = modhost.New(modhost.Deps{
+		DB: app.db, Events: b.Events, Jobs: b.Jobs, Log: app.log,
+		Settings: moduleSettings{settings: app.settings, label: label},
+		Audit:    moduleAuditor{app.audit},
+		Authz:    moduleAuthz{app.access},
+		Locked:   app.cfg.ModulesDisabled,
+		Modules:  app.modules,
+	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	if err := app.addAuditCheck(); err != nil {
+		return nil, err
+	}
+	if app.authn != nil {
+		if err := b.Jobs.Add(jobs.Job{Name: "sessions-purge", Every: time.Hour, Timeout: time.Minute, Run: app.authn.PurgeSessions}); err != nil {
+			return nil, err
+		}
 	}
 	b.Jobs.Start()
 	if err := b.Modules.Start(ctx); err != nil {
@@ -59,10 +102,27 @@ func startBackground(ctx context.Context, app *App) (*Background, func(), error)
 		sctx, cancel := context.WithTimeout(context.Background(), backgroundShutdown)
 		defer cancel()
 		b.Modules.Stop(sctx)
-		err := errors.Join(b.Jobs.Stop(sctx), b.Events.Close(sctx))
-		if err != nil {
-			app.log.Warn("background work still running at shutdown", "err", err)
+		b.stop(sctx, app)
+	}
+	return stop, nil
+}
+
+// stop stops the jobs and the event bus.
+func (b *Background) stop(ctx context.Context, app *App) {
+	if err := errors.Join(b.Jobs.Stop(ctx), b.Events.Close(ctx)); err != nil {
+		app.log.Warn("background work still running at shutdown", "err", err)
+	}
+}
+
+// moduleInfo describes a module compiled in.
+func (b *Background) moduleInfo(id string) (module.Info, bool) {
+	if b.Modules == nil {
+		return module.Info{}, false
+	}
+	for _, s := range b.Modules.Modules() {
+		if s.ID == id {
+			return s.Info, true
 		}
 	}
-	return b, stop, nil
+	return module.Info{}, false
 }

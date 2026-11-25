@@ -6,13 +6,17 @@ package server
 import (
 	"context"
 	"net/http"
+	"strings"
 
+	"github.com/code2rich/rigdepot/internal/buildinfo"
 	"github.com/code2rich/rigdepot/internal/i18n"
-	"github.com/code2rich/rigdepot/internal/logging"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
+	"github.com/code2rich/rigdepot/internal/server/authn"
 	"github.com/code2rich/rigdepot/internal/server/httpapi"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/accessapi"
+	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
+	"github.com/code2rich/rigdepot/internal/server/modhost"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 	"github.com/code2rich/rigdepot/locales"
 )
@@ -37,9 +41,12 @@ import (
 type api struct {
 	fallback
 	*accessapi.Handlers
+	*authnapi.Ops
 	*settingsAPI
 	*setupAPI
 	*auditAPI
+	*modulesAPI
+	*toolsAPI
 	*catalogAPI
 }
 
@@ -59,16 +66,25 @@ type hooks struct {
 	// protected operation.
 	authorize func(ctx context.Context, actor audit.Actor, action string, object audit.Object) (bool, error)
 	// firstAdmin creates the setup wizard's first administrator and signs
-	// them in (access and authn, M1-12 and M1-20). Nil: createSetupAdmin
+	// them in: openServices sets it to authnapi.Ops. Nil: createSetupAdmin
 	// answers 501.
 	firstAdmin firstAdminCreator
 	// names turns user and device ids into names for the audit log's
 	// entries. openServices sets it to read users from access; device
-	// names come with authn (M1-20). Nil: the ids stand in for the names.
+	// names come with the device table (authn, M1-22). Nil: the ids stand
+	// in for the names.
 	names auditNames
+	// devices verifies the command-line program's device tokens (the device
+	// code flow, M1-22). Nil: every device token is refused.
+	devices authn.DeviceTokens
 	// sendTestMail sends a test message with the given mail server
 	// (notify, M1-18). Nil: sendTestMail answers 501.
 	sendTestMail func(ctx context.Context, server settings.MailConfig, to string) error
+	// toolUsage counts people by tool and by command-line version, from
+	// the devices (authn, M1-20) and the install reports (delivery). Nil:
+	// the tool adapters page shows no counts (0 people, an empty
+	// distribution).
+	toolUsage toolUsage
 	// delivery tells the catalog pages what people turned on or off and where resources are
 	// installed (delivery, M1-27). Nil: everything is on by its policy and installed nowhere.
 	delivery catalogDelivery
@@ -83,43 +99,64 @@ type hooks struct {
 //
 // The API handler receives the full path (/api/v1/…), with the base URL's
 // path already removed, and a request context that carries a
-// logging.Request. Signing in (authn, M1-20) goes around it as middleware
-// that puts the caller into the context with access.WithActor.
+// logging.Request. Signing in (authnapi.Ops.Middleware) goes around it: it
+// checks the credential each operation's security list asks for and puts
+// the caller into the context with access.WithActor.
 func apiMounts(app *App) Mounts {
 	texts, err := i18n.Load(locales.FS, "check")
 	if err != nil {
 		panic(err) // the catalogues are embedded and checked by tools/dev check
 	}
 	impl := api{
-		Handlers:    accessapi.New(app.access, accessapi.Options{BaseURL: app.cfg.BaseURL, ResourceCounts: app.catalog.ResourceCounts}),
+		Handlers: accessapi.New(app.access, accessapi.Options{
+			BaseURL:        app.cfg.BaseURL,
+			SignIns:        authnapi.SignIns(app.authn),
+			ResourceCounts: app.catalog.ResourceCounts,
+		}),
+		Ops:         app.authnOps,
 		settingsAPI: &settingsAPI{settings: app.settings, hooks: &app.hooks},
 		setupAPI:    &setupAPI{settings: app.settings, hooks: &app.hooks},
 		auditAPI:    &auditAPI{log: app.audit, hooks: &app.hooks},
+		modulesAPI:  &modulesAPI{settings: app.settings},
+		toolsAPI:    &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
 		catalogAPI:  &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
+	}
+	if impl.toolsAPI.version == "" {
+		impl.toolsAPI.version = buildinfo.Get().Version
+	}
+	// The routes of the optional modules that are on, under /api/v1/x/<id>/;
+	// they log their own route templates.
+	var modules http.Handler
+	if bg := app.bg; bg != nil && bg.Modules != nil {
+		impl.modulesAPI.host = bg.Modules
+		impl.modulesAPI.text = bg.text
+		modules = bg.Modules.Handler(http.HandlerFunc(notFound))
 	}
 	uploadLimit := int64(app.cfg.MaxBundleMB) << 20
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", notFound) // paths the contract does not have
 	h := httpapi.NewHandler(impl, mux)
-	return Mounts{API: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Module routes sit behind the same sign-in middleware as the contract's
+	// operations. The middleware logs the pattern of the operation (GET
+	// /api/v1/settings) instead of the real path.
+	return Mounts{API: app.authnOps.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if modules != nil && strings.HasPrefix(r.URL.Path, modhost.RoutePrefix) {
+			modules.ServeHTTP(w, r)
+			return
+		}
+		// An upload over the limit is refused before its body is read.
 		if !limitUpload(w, r, uploadLimit) {
 			return
 		}
-		r = withAcceptLanguage(r)
-		h.ServeHTTP(w, r)
-		// The mux has set the pattern it matched (GET /api/v1/settings) on
-		// r; log that instead of the real path.
-		if r.Pattern != "" {
-			logging.SetRoute(r.Context(), r.Pattern)
-		}
-	})}
+		h.ServeHTTP(w, withAcceptLanguage(r))
+	}))}
 }
 
 // callerFrom returns who sends the request, as the audit log records it;
-// false when nobody is signed in. The sign-in middleware (authn, M1-20)
-// puts the caller into the context with access.WithActor once it has
-// checked the session or token, with the origin (web or cli), the device and
-// X-Via-Tool. The server itself (access.System) never calls the API.
+// false when nobody is signed in. The sign-in middleware
+// (authnapi.Ops.Middleware) puts the caller into the context with
+// access.WithActor once it has checked the session or token, with the
+// origin (web or cli), the device and X-Via-Tool. The server itself (access.System) never calls the API.
 func callerFrom(ctx context.Context) (audit.Actor, bool) {
 	a, ok := access.ActorFrom(ctx)
 	if !ok || a.UserID == "" {

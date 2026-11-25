@@ -11,10 +11,12 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/buildinfo"
@@ -47,6 +49,8 @@ type env struct {
 	// listening, when set, receives the address serve listens on once it
 	// does. Tests use it to find a server started on port 0.
 	listening chan<- string
+	// metricsListening is listening for the metrics listener.
+	metricsListening chan<- string
 	// mounts are the handlers serve mounts; see apiHandler.
 	mounts func(*App) Mounts
 }
@@ -230,16 +234,22 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 	}
 
 	app := NewApp(cfg, log, db, Mounts{})
-	if err := app.openServices(ctx); err != nil {
-		return err
-	}
-	bg, stopBackground, err := startBackground(ctx, app)
+	// The event bus and the scheduler come first: the domain services
+	// publish and schedule on them.
+	app.bg = newBackground(app)
+	stopBackground, err := func() (func(), error) {
+		if err := app.openServices(ctx); err != nil {
+			return nil, err
+		}
+		return startBackground(ctx, app)
+	}()
 	if err != nil {
+		sctx, cancel := context.WithTimeout(context.Background(), backgroundShutdown)
+		defer cancel()
+		app.bg.stop(sctx, app)
 		return err
 	}
 	defer stopBackground()
-	app.bg = bg
-	app.events.bus.Store(bg.Events)
 	mounts := apiMounts
 	if e.mounts != nil {
 		mounts = e.mounts
@@ -249,6 +259,14 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 		if app.mounts.Web, err = app.webMount(); err != nil {
 			return err
 		}
+	}
+
+	if cfg.MetricsAddr != "" {
+		stopMetrics, err := serveMetrics(app, e)
+		if err != nil {
+			return err
+		}
+		defer stopMetrics()
 	}
 
 	ln, err := net.Listen("tcp", cfg.Listen)
@@ -261,12 +279,34 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 	return app.Serve(ctx, ln)
 }
 
+// serveMetrics serves GET /metrics on its own listener, metrics_addr, apart from the public
+// port. The returned function stops it.
+func serveMetrics(app *App, e *env) (func(), error) {
+	ln, err := net.Listen("tcp", app.cfg.MetricsAddr)
+	if err != nil {
+		return nil, fmt.Errorf("listen %s (metrics): %w", app.cfg.MetricsAddr, err)
+	}
+	if e.metricsListening != nil {
+		e.metricsListening <- ln.Addr().String()
+	}
+	srv := &http.Server{Handler: app.metricsHandler(), ReadHeaderTimeout: 10 * time.Second,
+		ErrorLog: slog.NewLogLogger(app.log.Handler(), slog.LevelWarn)}
+	go func() {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			app.log.Error("metrics listener stopped", "err", err)
+		}
+	}()
+	app.log.Info("serving metrics", "listen", ln.Addr().String(), "path", "/metrics")
+	return func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		srv.Shutdown(ctx)
+	}, nil
+}
+
 // warnNotYet logs the settings this version reads but does not act on yet,
 // so that nobody thinks they are in effect.
 func warnNotYet(cfg *config.Config, log *slog.Logger) {
-	if cfg.MetricsAddr != "" {
-		log.Warn("metrics are not implemented in this version yet; metrics_addr is ignored")
-	}
 	if cfg.BackupDir != "" {
 		log.Warn("the built-in daily backup is not implemented in this version yet; backup.dir is ignored")
 	}

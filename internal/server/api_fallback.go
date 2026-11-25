@@ -224,6 +224,10 @@ func (notImplemented) MarkMyNotificationsRead(context.Context, httpapi.MarkMyNot
 	return nil, httpapi.ErrNotImplemented
 }
 
+func (notImplemented) ChangeMyPassword(context.Context, httpapi.ChangeMyPasswordRequestObject) (httpapi.ChangeMyPasswordResponseObject, error) {
+	return nil, httpapi.ErrNotImplemented
+}
+
 func (notImplemented) ListMySecrets(context.Context, httpapi.ListMySecretsRequestObject) (httpapi.ListMySecretsResponseObject, error) {
 	return nil, httpapi.ErrNotImplemented
 }

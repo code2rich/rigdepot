@@ -12,17 +12,23 @@ import (
 	"github.com/code2rich/rigdepot/internal/buildinfo"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
+	"github.com/code2rich/rigdepot/internal/server/authn"
 	"github.com/code2rich/rigdepot/internal/server/catalog"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
+	"github.com/code2rich/rigdepot/internal/server/events"
+	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
+	"github.com/code2rich/rigdepot/internal/server/modhost"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
 
 // openServices builds the domain services on the open, migrated database:
-// the master key, the audit log, access and the settings, then gets the
+// the master key, the audit log, access, the settings and signing in, then gets the
 // setup wizard ready. Other domains add theirs here, and set what they provide in
-// a.hooks.
+// a.hooks. When the app has background parts (a.bg, made by newBackground),
+// the services publish their events on its bus; without them (tests of the
+// API alone) events are dropped.
 func (a *App) openServices(ctx context.Context) error {
 	keys, err := loadKeys(ctx, a.cfg, a.db, true)
 	if err != nil {
@@ -45,8 +51,13 @@ func (a *App) openServices(ctx context.Context) error {
 		return err
 	}
 	a.keys, a.audit = keys, log
-	// Events stay nil until package events (M1-14) provides the Publisher.
-	a.access = access.New(a.db, access.Options{Auditor: accessAuditor{log}})
+	accessOpts := access.Options{Auditor: accessAuditor{log}}
+	if a.bg != nil {
+		// Access publishes after its own commit; the bus hands its events
+		// to notify and the modules.
+		accessOpts.Events = events.Publisher[access.Event]{Bus: a.bg.Events}
+	}
+	a.access = access.New(a.db, accessOpts)
 	if a.hooks.authorize == nil {
 		a.hooks.authorize = accessAuthorizer(a.access, func(ctx context.Context, code string) (access.Target, bool, error) {
 			return a.catalog.Target(ctx, code)
@@ -56,8 +67,20 @@ func (a *App) openServices(ctx context.Context) error {
 		a.hooks.names = accessNames{a.access}
 	}
 	a.settings = settings.New(a.db, keys, log, settings.Options{Authorize: a.hooks.settingsAuthorizer(), SetupToken: a.cfg.SetupToken})
+	// Device tokens are refused until the device code flow (M1-22) sets
+	// hooks.devices.
+	a.authn = authn.New(a.db, authn.Options{Access: a.access, Audit: log, Devices: a.hooks.devices})
+	if a.authnOps, err = authnapi.New(a.authn, authnapi.Options{BaseURL: a.cfg.BaseURL, TrustedProxies: a.cfg.TrustedProxies, Log: a.log, Protected: []string{modhost.RoutePrefix}}); err != nil {
+		return err
+	}
+	if a.hooks.firstAdmin == nil {
+		a.hooks.firstAdmin = a.authnOps
+	}
 	co := a.catalogOptions
-	co.Auditor, co.Events, co.Version = log, &a.events, buildinfo.Version
+	co.Auditor, co.Version = log, buildinfo.Version
+	if a.bg != nil {
+		co.Events = a.bg.Events
+	}
 	if a.catalog, err = catalog.New(a.db, a.access, co); err != nil {
 		return err
 	}
