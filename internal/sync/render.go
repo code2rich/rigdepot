@@ -45,7 +45,7 @@ func render(resources []desired.Resource, caps adapter.Capabilities) rendered {
 			if !f.Needs.SatisfiedBy(caps) || f.Render == nil {
 				continue
 			}
-			arts, err := f.Render(r.Spec, caps, kind.RenderOptions{Prefix: brand.Prefix})
+			arts, err := f.Render(r.Spec, caps, kind.RenderOptions{Prefix: brand.Prefix, CLI: brand.CLI})
 			if errors.Is(err, kind.ErrNotApplicable) {
 				continue
 			}
