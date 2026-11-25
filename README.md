@@ -1,8 +1,8 @@
-# HarnessHub
+# Rigdepot
 
 **团队 AI 编码资源的中台：把好用的 Skill、MCP、工作流和环境资源统一登记，按研发环节下发到每个人手里的任何 AI 编码工具，再把用得好不好带回来。**
 
-> 状态：**设计阶段。** 仓库里是设计文档、可点击原型和产品站；服务端和命令行还没有实现。名字是暂定的。
+> 状态：**设计阶段。** 仓库里是设计文档、可点击原型和产品站；服务端和命令行还没有实现。
 
 ![落地页](docs/screenshots/site-landing-light.png)
 
@@ -21,26 +21,26 @@
 
 ## 你的电脑是你的
 
-- **写之前可预览**：`hh sync --plan` 列出要写的每个文件、每处配置。
-- **写过的都可撤**：每一处写入记在本机清单里，`hh uninstall` 按清单干净撤销，清单以外的不碰。
+- **写之前可预览**：`rgd sync --plan` 列出要写的每个文件、每处配置。
+- **写过的都可撤**：每一处写入记在本机清单里，`rgd uninstall` 按清单干净撤销，清单以外的不碰。
 - **不静默改全局配置**：只增删带前缀的条目，改之前先备份、先问你；你自己设的值永不覆盖。
 - **平台不看内容**：不采提问、代码、调用参数和返回内容；不读其他工具的凭证来认人。
 
 ```text
-$ hh sync --plan
+$ rgd sync --plan
   将要写入（共 31 处，什么都还没改）
-  + ~/.claude/skills/hh-unit-testing/          新目录
-  + ~/.zcode/skills/hh-task-to-submit/         工作流以 Skill 下发（Zcode 没有斜杠命令）
+  + ~/.claude/skills/rgd-unit-testing/         新目录
+  + ~/.zcode/skills/rgd-task-to-submit/        工作流以 Skill 下发（Zcode 没有斜杠命令）
   需要你同意：修改全局配置
-  ~ ~/.claude.json   mcpServers 新增 1 项：harnesshub（单一入口，密钥在本机注入）
+  ~ ~/.claude.json   mcpServers 新增 1 项：rigdepot（单一入口，密钥在本机注入）
 ```
 
-没有服务端也能用：开源命令行可以直接从一个 Git 仓库同步（`hh sync --repo <地址>`）。服务端增加产品范围、个人密钥、审核、审计和洞察。
+没有服务端也能用：开源命令行可以直接从一个 Git 仓库同步（`rgd sync --repo <地址>`）。服务端增加产品范围、个人密钥、审核、审计和洞察。
 
 ## 看一看
 
 - **在线演示**：浏览器打开 [`prototype/index.html`](prototype/README.md)，顶部可以切换三种身份（平台管理员 / 产品负责人 / 成员）和三种场景（已接入 / 新成员未接入 / 刚部署没有资源）。演示数据全部虚构。
-- **产品站**：打开 [`site/index.html`](site/README.md)；完整预览（含文档页）运行 `sh site/build.sh && cd dist && python3 -m http.server`。演示站暂定 `https://harnesshub.code2rich.com`。
+- **产品站**：打开 [`site/index.html`](site/README.md)；完整预览（含文档页）运行 `sh site/build.sh && cd dist && python3 -m http.server`。演示站 `https://rigdepot.code2rich.com`。
 - **截图**：[docs/screenshots/](docs/screenshots/)。
 
 ## 设计文档
@@ -69,4 +69,4 @@ $ hh sync --plan
 
 ## 协议
 
-`ee/` 以外的内容采用 [Apache-2.0](LICENSE)；`ee/` 采用[单独的商业许可](ee/LICENSE)（占位文本，需正式法律文本）。贡献需要签 CLA。产品名可能更换，名称和标识不在协议授权范围内。
+`ee/` 以外的内容采用 [Apache-2.0](LICENSE)；`ee/` 采用[单独的商业许可](ee/LICENSE)（占位文本，需正式法律文本）。贡献需要签 CLA。产品名称和标识不在协议授权范围内。
