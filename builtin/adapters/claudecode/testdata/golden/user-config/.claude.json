@@ -1,0 +1,84 @@
+{
+  "numStartups": 57,
+  "installMethod": "global",
+  "autoUpdates": true,
+  "theme": "dark",
+  "firstStartTime": "2026-10-02T08:14:03.512Z",
+  "firstStartVersion": "2.1.301",
+  "machineID": "<占位：机器标识>",
+  "userID": "<占位：用户标识>",
+  "opusProMigrationComplete": true,
+  "seenNotifications": {},
+  "hasResetAutoModeOptInForDefaultOffer": true,
+  "migrationVersion": 15,
+  "tipsHistory": {
+    "new-user-warmup": 3,
+    "shift-tab": 12
+  },
+  "customApiKeyResponses": {
+    "approved": [],
+    "rejected": []
+  },
+  "lastReleaseNotesSeen": null,
+  "projects": {
+    "/Users/example/src/app": {
+      "allowedTools": [],
+      "mcpServers": {
+        "rgd-contract-stdio": {
+          "type": "stdio",
+          "command": "project-local",
+          "args": [],
+          "env": {}
+        }
+      },
+      "hasTrustDialogAccepted": true,
+      "lastCost": 0.42
+    }
+  },
+  "mcpServers": {
+    "notes": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "notes-mcp@1.4.0"
+      ],
+      "env": {
+        "NOTES_DIR": "/Users/example/notes"
+      }
+    },
+    "issues": {
+      "type": "http",
+      "url": "https://issues.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ISSUES_TOKEN}"
+      }
+    },
+    "rgd-contract-stdio": {
+      "args": [
+        "--stdio",
+        "--log-level",
+        "info"
+      ],
+      "command": "contract-mcp",
+      "env": {
+        "CONTRACT_MODE": "read-only"
+      },
+      "type": "stdio"
+    },
+    "rgd-contract-http": {
+      "headers": {
+        "X-Contract": "yes"
+      },
+      "type": "http",
+      "url": "https://mcp.example.com/contract"
+    },
+    "rgd-contract-secret": {
+      "headers": {
+        "Authorization": "Bearer ${CONTRACT_TOKEN}"
+      },
+      "type": "http",
+      "url": "https://secret.example.com/mcp"
+    }
+  }
+}

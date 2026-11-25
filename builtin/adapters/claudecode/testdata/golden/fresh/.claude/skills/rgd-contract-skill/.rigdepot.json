@@ -1,0 +1,6 @@
+{
+  "digest": "sha256:c15ccf6bdb95c875f1425f707ba50d600cfbb70fc640d30b1001954255376bd7",
+  "note": "managed-by: Rigdepot",
+  "resource": "skill/contract-skill@3",
+  "tool": "claude-code"
+}
