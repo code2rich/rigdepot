@@ -373,5 +373,44 @@ func TestModules(t *testing.T) {
 		if err := f.s.SetModuleEnabled(ctx, member, "insights", "insights", true); !errors.Is(err, settings.ErrDenied) {
 			t.Errorf("a member: %v", err)
 		}
+		if err := f.s.AuthorizeModule(ctx, admin, "insights", "insights", true); err != nil {
+			t.Errorf("AuthorizeModule for the administrator: %v", err)
+		}
+		before := len(f.entries(t, "module."))
+		if err := f.s.AuthorizeModule(ctx, member, "insights", "insights", false); !errors.Is(err, settings.ErrDenied) {
+			t.Errorf("AuthorizeModule for a member: %v", err)
+		}
+		if got := f.entries(t, "module."); len(got) != before+1 || got[0].Result != audit.ResultDenied || got[0].Action != settings.ActionModuleDisable {
+			t.Errorf("the refusal is not recorded: %+v", got)
+		}
+	})
+}
+
+func TestModuleValues(t *testing.T) {
+	dbxtest.Each(t, func(t *testing.T, db *dbx.DB) {
+		f := setup(t, db, settings.Options{})
+		ctx := context.Background()
+		if _, found, err := f.s.ModuleValue(ctx, "modules.insights.retention"); found || err != nil {
+			t.Fatalf("never set: %v %v", found, err)
+		}
+		for _, v := range []string{`{"days":180}`, `90`} {
+			if err := f.s.SetModuleValue(ctx, "modules.insights.retention", []byte(v)); err != nil {
+				t.Fatal(err)
+			}
+			if got, found, err := f.s.ModuleValue(ctx, "modules.insights.retention"); !found || err != nil || string(got) != v {
+				t.Errorf("read back %s: %s %v %v", v, got, found, err)
+			}
+		}
+		for _, key := range []string{"modules.enabled", "mail", "modules.insights", "modules..x", "audit.key"} {
+			if err := f.s.SetModuleValue(ctx, key, []byte(`1`)); !errors.Is(err, settings.ErrNotModuleKey) {
+				t.Errorf("SetModuleValue(%q): %v", key, err)
+			}
+			if _, _, err := f.s.ModuleValue(ctx, key); !errors.Is(err, settings.ErrNotModuleKey) {
+				t.Errorf("ModuleValue(%q): %v", key, err)
+			}
+		}
+		if err := f.s.SetModuleValue(ctx, "modules.insights.x", []byte(`{`)); err == nil {
+			t.Error("a value that is not JSON was saved")
+		}
 	})
 }

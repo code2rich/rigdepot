@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/code2rich/rigdepot/ext/module"
 	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
@@ -57,6 +58,9 @@ type App struct {
 	// mailChannels finds a notification channel by ID; nil means the
 	// registry (ext/notify). Tests put a fake channel here.
 	mailChannels func(id string) (extnotify.Channel, bool)
+	// modules are the optional modules compiled in; nil means the registry
+	// (ext/module). Tests put fake modules here.
+	modules []module.Module
 
 	checks   []ReadyCheck
 	draining atomic.Bool

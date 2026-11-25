@@ -6,12 +6,14 @@ package server
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/code2rich/rigdepot/internal/logging"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/httpapi"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/accessapi"
+	"github.com/code2rich/rigdepot/internal/server/modhost"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
 
@@ -38,6 +40,7 @@ type api struct {
 	*settingsAPI
 	*setupAPI
 	*auditAPI
+	*modulesAPI
 }
 
 // fallback puts notImplemented's methods one embedding level below the
@@ -82,11 +85,24 @@ func apiMounts(app *App) Mounts {
 		settingsAPI: &settingsAPI{settings: app.settings, hooks: &app.hooks},
 		setupAPI:    &setupAPI{settings: app.settings, hooks: &app.hooks},
 		auditAPI:    &auditAPI{log: app.audit, hooks: &app.hooks},
+		modulesAPI:  &modulesAPI{settings: app.settings},
+	}
+	// The routes of the optional modules that are on, under /api/v1/x/<id>/;
+	// they log their own route templates.
+	var modules http.Handler
+	if bg := app.bg; bg != nil && bg.Modules != nil {
+		impl.modulesAPI.host = bg.Modules
+		impl.modulesAPI.text = bg.text
+		modules = bg.Modules.Handler(http.HandlerFunc(notFound))
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", notFound) // paths the contract does not have
 	h := httpapi.NewHandler(impl, mux)
 	return Mounts{API: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if modules != nil && strings.HasPrefix(r.URL.Path, modhost.RoutePrefix) {
+			modules.ServeHTTP(w, r)
+			return
+		}
 		h.ServeHTTP(w, r)
 		// The mux has set the pattern it matched (GET /api/v1/settings) on
 		// r; log that instead of the real path.

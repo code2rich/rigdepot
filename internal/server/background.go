@@ -8,6 +8,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/code2rich/rigdepot/ext/module"
 	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/server/events"
 	"github.com/code2rich/rigdepot/internal/server/jobs"
@@ -24,6 +25,9 @@ type Background struct {
 	JobCounters *jobs.Counters // job outcomes, for the metrics endpoint (M1-41)
 	Notify      *notify.Service
 	Modules     *modhost.Host
+
+	// text renders the server's messages in its default language.
+	text *i18n.Printer
 }
 
 // backgroundShutdown is how long jobs, event handlers and modules get to stop.
@@ -43,11 +47,10 @@ func newBackground(app *App) *Background {
 // function stops them.
 //
 // The outbox takes the mail server from the platform settings (mailSettings) and adds the
-// readiness item "mail"; the settings page's test mail goes through notify too.
-//
-// Still to connect: the settings store for modules.enabled (modhost.Deps.Settings); the audit
-// log and permissions for modules (modhost.Deps.Audit, Authz); the module routes
-// (Modules.Handler) under /api/v1/x/ in apiMounts. Until then no module is on.
+// readiness item "mail"; the settings page's test mail goes through notify too. The module host
+// keeps its switches and the modules' settings in the settings package, writes the modules'
+// audit entries into the audit log and asks access for their permissions (modules.go); apiMounts
+// mounts its routes under /api/v1/x/.
 func startBackground(ctx context.Context, app *App) (func(), error) {
 	b := app.bg
 	cat, err := i18n.Load(locales.FS, "server")
@@ -64,7 +67,21 @@ func startBackground(ctx context.Context, app *App) (func(), error) {
 	if app.hooks.sendTestMail == nil {
 		app.hooks.sendTestMail = testMailSender(app, cat, app.mailChannels)
 	}
-	b.Modules, err = modhost.New(modhost.Deps{DB: app.db, Events: b.Events, Jobs: b.Jobs, Log: app.log, Locked: app.cfg.ModulesDisabled})
+	b.text = cat.Printer(cat.Match(app.cfg.DefaultLocale))
+	label := func(id string) string {
+		if m, ok := b.moduleInfo(id); ok && m.Name != "" {
+			return b.text.T(m.Name)
+		}
+		return id
+	}
+	b.Modules, err = modhost.New(modhost.Deps{
+		DB: app.db, Events: b.Events, Jobs: b.Jobs, Log: app.log,
+		Settings: moduleSettings{settings: app.settings, label: label},
+		Audit:    moduleAuditor{app.audit},
+		Authz:    moduleAuthz{app.access},
+		Locked:   app.cfg.ModulesDisabled,
+		Modules:  app.modules,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -86,4 +103,17 @@ func (b *Background) stop(ctx context.Context, app *App) {
 	if err := errors.Join(b.Jobs.Stop(ctx), b.Events.Close(ctx)); err != nil {
 		app.log.Warn("background work still running at shutdown", "err", err)
 	}
+}
+
+// moduleInfo describes a module compiled in.
+func (b *Background) moduleInfo(id string) (module.Info, bool) {
+	if b.Modules == nil {
+		return module.Info{}, false
+	}
+	for _, s := range b.Modules.Modules() {
+		if s.ID == id {
+			return s.Info, true
+		}
+	}
+	return module.Info{}, false
 }

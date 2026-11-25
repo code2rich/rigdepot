@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/code2rich/rigdepot/ext/module"
 	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/logging"
@@ -76,6 +77,10 @@ type fixtureOptions struct {
 	background bool
 	// channels stands in for the notification channel registry.
 	channels func(id string) (extnotify.Channel, bool)
+	// modules stand in for the modules compiled in; locked are the ones
+	// the deployment disabled.
+	modules []module.Module
+	locked  []string
 }
 
 func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
@@ -111,7 +116,8 @@ func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
 	if o.hooks {
 		app.hooks.firstAdmin = fakeFirstAdmin{}
 	}
-	app.mailChannels = o.channels
+	app.mailChannels, app.modules = o.channels, o.modules
+	cfg.ModulesDisabled = o.locked
 	if o.background {
 		app.bg = newBackground(app)
 	}
