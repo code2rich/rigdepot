@@ -10,7 +10,8 @@ import (
 
 func TestClassifyLicense(t *testing.T) {
 	const (
-		mit    = "MIT License\n\nPermission is hereby granted, free of charge, to any person obtaining a copy"
+		mit    = "MIT License\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files"
+		ofl    = "SIL OPEN FONT LICENSE Version 1.1\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of the Font Software"
 		apache = "                                 Apache License\n                           Version 2.0, January 2004"
 		bsd    = "Redistribution and use in source and binary forms, with or without\nmodification, are permitted"
 		isc    = "Permission to use, copy, modify, and/or distribute this software for any\npurpose with or without fee is hereby granted"
@@ -26,6 +27,7 @@ func TestClassifyLicense(t *testing.T) {
 		{"Apache", apache, []string{"Apache-2.0"}, nil},
 		{"BSD across a line break", bsd, []string{"BSD"}, nil},
 		{"ISC", isc, []string{"ISC"}, nil},
+		{"OFL is not also MIT", ofl, []string{"OFL-1.1"}, nil},
 		{"GPL", gpl, nil, []string{"GPL"}},
 		{"AGPL", agpl, nil, []string{"AGPL"}},
 		{"two licenses in one file, one forbidden", mit + "\n\n" + gpl, []string{"MIT"}, []string{"GPL"}},

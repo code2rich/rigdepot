@@ -96,7 +96,13 @@ func stepWeb(s *sandbox) (string, error) {
 			return "", fmt.Errorf("the built index.html lacks %s, which the server fills in; keep it in web/index.html", m)
 		}
 	}
-	return strings.Join(ran, ", ") + "; built index.html has the server's markers", nil
+	// The licenses of what the build bundles; release-files writes the same into the notices.
+	notices, err := webNotices(s.root)
+	if err != nil {
+		return "", err
+	}
+	return strings.Join(ran, ", ") + "; built index.html has the server's markers; " +
+		fmt.Sprintf("licenses of the %d bundled packages and fonts allowed", strings.Count(string(notices), "\nLicense: ")), nil
 }
 
 // runWebDeps installs the console's dependencies from the lock file. Like
@@ -125,6 +131,10 @@ func runWeb(root string, args []string) error {
 	if err := pnpm(root, nil, "build").Run(); err != nil {
 		return err
 	}
+	if err := writeWebNotices(root); err != nil {
+		return err
+	}
+	fmt.Printf("wrote web/dist/%s\n", webNoticesFile)
 	fmt.Println("\nweb/dist is ready. Build the server with the console in it:\n  go build -tags webdist ./cmd/...")
 	return nil
 }
