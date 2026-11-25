@@ -4,6 +4,9 @@
 # Release configuration. Run it through the development entry point, which
 # uses the goreleaser version pinned in tools/release.mod:
 #
+#   go run ./tools/dev release             publish the version tag on HEAD: GitHub release,
+#                                          ghcr.io image, Homebrew and Scoop (see tools/dev/
+#                                          releasepublish.go); --dry-run publishes nothing
 #   go run ./tools/dev release-snapshot    build everything into dist/, publish nothing,
 #                                          build again elsewhere and compare the checksums,
 #                                          install from dist/ with scripts/install.sh, export
@@ -326,6 +329,13 @@ release:
   # A tag such as v0.4.0-rc.1 is published as a pre-release and never becomes
   # "latest".
   prerelease: auto
+  # goreleaser leaves the release a draft. tools/dev release then adds the
+  # image exports (pulled back from ghcr.io and docker save'd, which
+  # goreleaser does not do) and the checksums.txt that lists them, checks the
+  # draft against dist/, and publishes it. A draft left by a failed run is
+  # replaced by the next one.
+  draft: true
+  replace_existing_draft: true
   extra_files:
     - glob: scripts/install.sh
     - glob: scripts/install.ps1
