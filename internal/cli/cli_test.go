@@ -323,6 +323,7 @@ func TestUsageErrors(t *testing.T) {
 		{[]string{"sync", "extra"}, []string{"takes no arguments"}},
 		{[]string{"sync", "--repo", "x", "--yes-global", "--skip-global"}, []string{"contradict"}},
 		{[]string{"status", "a", "b"}, []string{"takes at most 1 argument, but got 2"}},
+		{[]string{"enable"}, []string{"takes exactly 1 argument, but got 0"}},
 		{[]string{"confg"}, []string{`Unknown command "confg"`, "Did you mean: config"}},
 		{[]string{"config"}, []string{`"` + brand.CLI + ` config" needs a command`}},
 		{[]string{"config", "remove", "x"}, []string{`Unknown command "remove"`}},

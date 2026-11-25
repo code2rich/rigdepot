@@ -61,6 +61,16 @@ const (
 	ConfigWarnNotInFile = "config.warn.not_in_file"
 	// ConfigWarnUnknownKey (cli.json): Ignoring "{{key}}" in {{origin}}: this version does not know it.
 	ConfigWarnUnknownKey = "config.warn.unknown_key"
+	// DisableAlready (cli.json): {{resource}} is already off on this computer.
+	DisableAlready = "disable.already"
+	// DisableDone (cli.json): Turned off {{resource}} on this computer.
+	DisableDone = "disable.done"
+	// DisableRequired (cli.json): {{resource}} is required by your team and cannot be turned off. Only t…
+	DisableRequired = "disable.required"
+	// DisableShort (cli.json): Turn off a recommended resource on this computer; the next sync remove…
+	DisableShort = "disable.short"
+	// DisableSyncHint (cli.json): Run "{{command}}" to remove it from your AI tools.
+	DisableSyncHint = "disable.sync_hint"
 	// DoctorConfigEnvInvalid (cli.json): The environment variable {{name}} has the value "{{value}}", which is …
 	DoctorConfigEnvInvalid = "doctor.config.env_invalid"
 	// DoctorConfigEnvInvalidHint (cli.json): Change or unset {{name}}.
@@ -209,6 +219,18 @@ const (
 	DoctorToolsUnknownHint = "doctor.tools.unknown_hint"
 	// DoctorToolsUnverified (cli.json): {{tool}} is installed, but its support has not been checked against th…
 	DoctorToolsUnverified = "doctor.tools.unverified"
+	// EnableAlready (cli.json): {{resource}} is already on.
+	EnableAlready = "enable.already"
+	// EnableDone (cli.json): Turned on {{resource}} on this computer.
+	EnableDone = "enable.done"
+	// EnableNotDelivered (cli.json): {{resource}} is still not installed here: {{reason}}.
+	EnableNotDelivered = "enable.not_delivered"
+	// EnableRequired (cli.json): {{resource}} is required: it is always installed.
+	EnableRequired = "enable.required"
+	// EnableShort (cli.json): Turn on an optional resource on this computer; the next sync installs …
+	EnableShort = "enable.short"
+	// EnableSyncHint (cli.json): Run "{{command}}" to install it.
+	EnableSyncHint = "enable.sync_hint"
 	// ErrorArgCount (cli.json): "{{command}}" takes exactly {{count}} arguments, but got {{got}}.
 	ErrorArgCount = "error.arg_count"
 	// ErrorBadFlag (cli.json): Invalid option: {{detail}}
@@ -405,6 +427,22 @@ const (
 	PlanUntouched = "plan.untouched"
 	// RootShort (cli.json): Sync your team's AI coding resources into the AI tools on this compute…
 	RootShort = "root.short"
+	// SelectionNoSuchResource (cli.json): There is no resource {{resource}} in {{url}}.
+	SelectionNoSuchResource = "selection.no_such_resource"
+	// SelectionReasonAudience (cli.json): it is for another audience
+	SelectionReasonAudience = "selection.reason.audience"
+	// SelectionReasonDisabled (cli.json): you turned it off
+	SelectionReasonDisabled = "selection.reason.disabled"
+	// SelectionReasonNotEnabled (cli.json): it is optional and not turned on
+	SelectionReasonNotEnabled = "selection.reason.not_enabled"
+	// SelectionReasonPersonal (cli.json): it is someone's personal resource, which needs a server
+	SelectionReasonPersonal = "selection.reason.personal"
+	// SelectionReasonProduct (cli.json): it belongs to a product you did not choose (--product or repo.products…
+	SelectionReasonProduct = "selection.reason.product"
+	// SelectionUnreadable (cli.json): {{resource}} cannot be read from the repository ({{path}}), so whether…
+	SelectionUnreadable = "selection.unreadable"
+	// SelectionWriteFailed (cli.json): Cannot save what you turned on and off: {{detail}}
+	SelectionWriteFailed = "selection.write_failed"
 	// SourceAddress (cli.json): {{cli}} does not read the repository {{url}}: {{detail}}
 	SourceAddress = "source.address"
 	// SourceIncompatible (cli.json): The resource repository {{url}} needs a newer {{cli}}: {{detail}}. Not…
