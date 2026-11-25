@@ -4,6 +4,7 @@
 package all
 
 import (
+	"github.com/code2rich/rigdepot/builtin/checks/bundledenv"
 	"github.com/code2rich/rigdepot/builtin/checks/dangerous"
 	"github.com/code2rich/rigdepot/builtin/checks/injection"
 	"github.com/code2rich/rigdepot/builtin/checks/secrets"
@@ -22,6 +23,7 @@ func init() {
 	check.SetVersion(rulesetVersion)
 
 	// One line per check rule under builtin/checks, in alphabetical order.
+	check.Register(bundledenv.New())
 	check.Register(dangerous.New())
 	check.Register(injection.New())
 	check.Register(secrets.New())
