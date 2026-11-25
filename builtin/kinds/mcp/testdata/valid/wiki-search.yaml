@@ -1,0 +1,17 @@
+meta:
+  name: Wiki 搜索
+  summary: 在团队 Wiki 里搜索页面
+  when: 要查团队文档、规范或者会议纪要时
+
+server:
+  type: http
+  url: https://wiki.example.com/mcp
+  headers:
+    Authorization: "Bearer ${secret:WIKI_TOKEN}"
+
+delivery: on-demand
+
+tools:
+  - name: search_pages
+    summary: 按关键词搜索页面
+  - name: read_page

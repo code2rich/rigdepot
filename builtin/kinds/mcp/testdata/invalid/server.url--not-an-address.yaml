@@ -1,0 +1,4 @@
+meta: {name: x}
+server:
+  type: http
+  url: jira.example.com/mcp
