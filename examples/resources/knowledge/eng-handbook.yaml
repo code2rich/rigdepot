@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+# yaml-language-server: $schema=https://rigdepot.code2rich.com/schema/repo/v1/kinds/knowledge.schema.json
+# 只存指针。正文由命令行用每个人自己的权限拉到本机目录的 knowledge/eng-handbook/，不经过平台。
+meta:
+  name: 研发规范手册
+  summary: 后端的编码、接口和数据库规范
+  stages: [develop, test]
+  audience: rd
+  policy: optional
+  when: 写后端代码、设计接口或者改表结构时
+  i18n:
+    en:
+      name: Engineering handbook
+      summary: Coding, API and database rules for the backend
+      when: When writing backend code, designing an API or changing a table
+
+source:
+  type: git
+  repo: https://gitlab.example.com/platform/handbook.git
+  branch: main
+  dir: rules/backend
+  category: 研发规范

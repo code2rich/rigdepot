@@ -21,6 +21,11 @@ export interface NavPage {
   label: MessageKey
   icon: IconName
   component: ComponentType
+  /**
+   * The route pattern when the page also answers sub-paths, such as "/catalog/:code?" for a resource's
+   * details. One pattern keeps the page mounted while the sub-path changes (a drawer opens over it).
+   */
+  route?: string
 }
 
 export interface NavGroup {
@@ -41,15 +46,29 @@ export const NAV: readonly NavGroup[] = [
     roles: all,
     pages: [
       { id: 'home', path: '/', label: 'nav.home', icon: 'home', component: lazy(() => import('./home')) },
-      { id: 'catalog', path: '/catalog', label: 'nav.catalog', icon: 'box', component: notBuilt('catalog') },
-      { id: 'connect', path: '/connect', label: 'nav.connect', icon: 'plug', component: notBuilt('connect') },
-      { id: 'keys', path: '/keys', label: 'nav.keys', icon: 'key', component: notBuilt('keys') },
+      {
+        id: 'catalog',
+        path: '/catalog',
+        route: '/catalog/:code?',
+        label: 'nav.catalog',
+        icon: 'box',
+        component: lazy(() => import('./catalog')),
+      },
+      {
+        id: 'connect',
+        path: '/connect',
+        label: 'nav.connect',
+        icon: 'plug',
+        component: lazy(() => import('./connect')),
+      },
+      { id: 'keys', path: '/keys', label: 'nav.keys', icon: 'key', component: lazy(() => import('./keys')) },
       {
         id: 'feedback',
         path: '/feedback',
+        route: '/feedback/:number?',
         label: 'nav.feedback',
         icon: 'chat',
-        component: notBuilt('feedback'),
+        component: lazy(() => import('./feedback')),
       },
     ],
   },
@@ -91,7 +110,13 @@ export const NAV: readonly NavGroup[] = [
     label: 'nav.group.system',
     roles: admins,
     pages: [
-      { id: 'users', path: '/admin/users', label: 'nav.users', icon: 'user', component: notBuilt('users') },
+      {
+        id: 'users',
+        path: '/admin/users',
+        label: 'nav.users',
+        icon: 'user',
+        component: lazy(() => import('./users')),
+      },
       { id: 'tools', path: '/admin/tools', label: 'nav.tools', icon: 'wrench', component: notBuilt('tools') },
       { id: 'audit', path: '/admin/audit', label: 'nav.audit', icon: 'shield', component: notBuilt('audit') },
       {
@@ -115,10 +140,10 @@ export interface PublicPage {
 
 export const PUBLIC: readonly PublicPage[] = [
   { id: 'login', path: '/login', label: 'page.login', component: lazy(() => import('./login')) },
-  { id: 'apply', path: '/apply', label: 'page.apply', component: notBuilt('apply') },
-  { id: 'setup', path: '/setup', label: 'page.setup', component: notBuilt('setup') },
-  { id: 'device', path: '/device', label: 'page.device', component: notBuilt('device') },
-  { id: 'invite', path: '/invite/:token', label: 'page.invite', component: notBuilt('invite') },
+  { id: 'apply', path: '/apply', label: 'page.apply', component: lazy(() => import('./apply')) },
+  { id: 'setup', path: '/setup', label: 'page.setup', component: lazy(() => import('./setup')) },
+  { id: 'device', path: '/device', label: 'page.device', component: lazy(() => import('./device')) },
+  { id: 'invite', path: '/invite/:token', label: 'page.invite', component: lazy(() => import('./invite')) },
 ]
 
 /** visibleGroups are the navigation groups for a role and the enabled modules. */

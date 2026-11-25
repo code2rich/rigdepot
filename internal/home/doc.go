@@ -17,6 +17,8 @@
 //	kept/<time>/           files a person had changed, kept when they were removed or overwritten
 //	tmp/                   temporary home directories of previews
 //	secrets/               the local copy of personal secrets, always encrypted
+//	flows/                 the workflows synced here (<code>.json) and the runs in progress (runs/)
+//	knowledge/<code>/      the knowledge bases fetched here with the person's own access
 //	logs/                  the log
 //
 // The directory is 0700 and the files in it are 0600 on macOS and Linux. On Windows the

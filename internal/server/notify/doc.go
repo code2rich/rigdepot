@@ -4,9 +4,38 @@
 // Package notify delivers in-app notifications and dispatches to channels through an outbox.
 //
 // Nothing else in the server imports this package. Domain services publish events (package
-// events); notify subscribes to them (Service.On), works out who should hear of what, and queues
-// mail in the outbox (Service.Enqueue). The in-app notifications and the rules from events to
-// recipients are task M1-2F; so far this package holds the outbox and the channels.
+// events); notify subscribes to them (Service.Subscribe), works out who should hear of what
+// (Rules), writes the in-app notifications and queues mail in the outbox (Service.Enqueue).
+//
+// # Rules
+//
+// A Rule turns one event into Notices: to whom (a user id, or an e-mail address for someone
+// without an account), which template with which parameters, a link into the console, and
+// whether in the app, by mail or both. Rules find people through access (Directory, asked as the
+// system): administrators, a product's owners, the owners who focus on a stage. Whoever caused
+// an event is not told of it; disabled accounts hear nothing; mail goes only to people with an
+// address. Rules lists the built-in rules and who each one reaches.
+//
+// The in-app notifications of an event are written in one transaction and its mail queued in
+// another, so that mail that cannot be queued, and mail the server refuses later, never costs
+// anyone their in-app notification.
+//
+// Events that notify must read without importing their publisher (catalog, feedback, the audit
+// check) are defined in package events; access's events are its own.
+//
+// # In-app notifications
+//
+// One row per recipient in the notifications table holds the template and its parameters, not
+// text: List renders them when they are read, in the reader's language. List pages newest first
+// with an opaque cursor and counts the unread ones over all pages; MarkRead and MarkAllRead touch
+// only the reader's own.
+//
+// # Invitations
+//
+// An invitation's link is a secret and is not in its event, so the HTTP layer hands it to
+// MailInvite when the invitation is made. While mail is not set up MailInvite returns ErrMailOff
+// and the administrator gets the link instead. The outbox forgets the link once the mail is sent
+// (Template.SecretLink).
 //
 // # The outbox
 //

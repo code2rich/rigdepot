@@ -293,7 +293,7 @@ func (e *Engine) Plan(ctx context.Context, st *desired.State, opt Options) (*Pla
 		for code := range failed {
 			tp.held[code] = true
 		}
-		r := render(st.Resources, t.a.Capabilities(t.det))
+		r := render(st.Resources, t.a.Capabilities(t.det), e.renderOptions())
 		tp.info.Degraded = r.degraded
 		tp.info.Skips = append(tp.info.Skips, r.skips...)
 		for code, err := range r.failed {

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/ext/kind"
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/cliout"
 	"github.com/code2rich/rigdepot/internal/desired"
@@ -40,6 +41,22 @@ type planDoc struct {
 	Failed    []failedDoc   `json:"failed"`
 	Preview   []changeDoc   `json:"preview"`
 	Summary   summaryDoc    `json:"summary"`
+	// Knowledge are the knowledge bases a sync fetches with the person's own git.
+	Knowledge []knowledgeDoc `json:"knowledge"`
+}
+
+// knowledgeDoc is a knowledge base fetched into the local data directory, or to be.
+type knowledgeDoc struct {
+	Resource string `json:"resource"`
+	Repo     string `json:"repo"`
+	Ref      string `json:"ref,omitempty"`
+	Dir      string `json:"dir,omitempty"`
+	// Path is where its content is on this computer.
+	Path string `json:"path"`
+	// Commit, Files and Error are what a sync did; absent in a plan.
+	Commit string `json:"commit,omitempty"`
+	Files  *int   `json:"files,omitempty"`
+	Error  string `json:"error,omitempty"`
 }
 
 type sourceDoc struct {
@@ -156,10 +173,17 @@ func (a *app) newPlanDoc(p *sync.Plan, st *desired.State, prev *sandbox.Result) 
 	ok := granted(p)
 	d := planDoc{
 		Uninstall: p.Uninstall, Tools: []toolDoc{}, Ops: []opDoc{}, Attention: []opDoc{}, Degraded: []degradedDoc{},
-		Shared: []sharedDoc{}, Skipped: []skipDoc{}, Failed: []failedDoc{}, Preview: []changeDoc{},
+		Shared: []sharedDoc{}, Skipped: []skipDoc{}, Failed: []failedDoc{}, Preview: []changeDoc{}, Knowledge: []knowledgeDoc{},
 	}
 	if st != nil {
 		d.Source = newSourceDoc(st.Source)
+		for _, r := range st.Resources {
+			if pl, ok := r.Spec.(kind.Pulled); ok {
+				src := pl.Pull()
+				d.Knowledge = append(d.Knowledge, knowledgeDoc{Resource: r.Ref.Code, Repo: src.URL, Ref: src.Ref, Dir: src.Dir,
+					Path: home.KnowledgeDir + "/" + r.Ref.Code})
+			}
+		}
 		for _, f := range st.Failed {
 			fd := failedDoc{Resource: f.Ref.Code, Path: f.Path, Issues: []string{}}
 			for _, is := range f.Issues {

@@ -1,0 +1,6 @@
+id: backend-developer
+entry: AGENT.md
+skills: [api-development]
+binds: [unit-testing, eng-handbook]
+mcp: [gitlab]
+local: [memory/, workspace/]

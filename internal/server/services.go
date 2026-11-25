@@ -65,13 +65,27 @@ func (a *App) openServices(ctx context.Context) error {
 		})
 	}
 	if a.hooks.names == nil {
-		a.hooks.names = accessNames{a.access}
+		a.hooks.names = accessNames{svc: a.access}
 	}
 	a.settings = settings.New(a.db, keys, log, settings.Options{Authorize: a.hooks.settingsAuthorizer(), SetupToken: a.cfg.SetupToken})
-	// Device tokens are refused until the device code flow (M1-22) sets
-	// hooks.devices.
-	a.authn = authn.New(a.db, authn.Options{Access: a.access, Audit: log, Devices: a.hooks.devices})
-	if a.authnOps, err = authnapi.New(a.authn, authnapi.Options{BaseURL: a.cfg.BaseURL, TrustedProxies: a.cfg.TrustedProxies, Log: a.log, Protected: []string{modhost.RoutePrefix}}); err != nil {
+	// The device code flow keeps the devices and verifies their tokens;
+	// tests may put a stand-in into hooks.devices for the verification.
+	a.devices = authn.NewDevices(a.db, authn.DevicesOptions{Access: a.access, Audit: log})
+	if a.hooks.devices == nil {
+		a.hooks.devices = a.devices
+	}
+	if n, ok := a.hooks.names.(accessNames); ok && n.devices == nil {
+		n.devices = a.devices
+		a.hooks.names = n
+	}
+	// Identity sources: the kinds compiled in (builtin/all/server registers
+	// them), their client secrets sealed with the master key.
+	a.authn = authn.New(a.db, authn.Options{Access: a.access, Audit: log, Devices: a.hooks.devices,
+		Keys: keys, Sources: a.identitySources, BaseURL: a.cfg.BaseURL})
+	if a.authnOps, err = authnapi.New(a.authn, authnapi.Options{
+		BaseURL: a.cfg.BaseURL, TrustedProxies: a.cfg.TrustedProxies, Log: a.log, Devices: a.devices,
+		Protected: []string{modhost.RoutePrefix}, SignInRate: a.signInRate,
+	}); err != nil {
 		return err
 	}
 	if a.hooks.firstAdmin == nil {
@@ -132,9 +146,9 @@ func loadKeys(ctx context.Context, cfg *config.Config, db *dbx.DB, generate bool
 // rewrappers are the tables with sealed values, for "keys rotate". Every
 // domain package that stores sealed values adds its masterkey.Rewrapper
 // here: TODO(M1-28) secrets (secret_values), TODO(M1-25) catalog (sources'
-// credentials), TODO(M1-21) identity providers' client secrets.
+// credentials).
 func rewrappers() []masterkey.Rewrapper {
-	return []masterkey.Rewrapper{settings.Rewrapper}
+	return []masterkey.Rewrapper{settings.Rewrapper, authn.Rewrapper}
 }
 
 // keyRotationObject is what the rotation's audit entry is about.

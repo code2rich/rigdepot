@@ -1,0 +1,55 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* Confirming a computer's sign-in: the prototype's confirmation dialog (dialog 'confirm') as a page. */
+
+.center-card.dv {
+  width: min(520px, 100%);
+}
+.pl-code {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 14px 0 4px;
+  padding: 10px 14px;
+  border: 1px dashed var(--line-3);
+  font-family: var(--sans);
+  letter-spacing: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.pl-code b {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+.dv .pl-code {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+}
+.dv .cc-foot {
+  justify-content: flex-end;
+}
+.dv .dv-code {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.dv .dv-code > div {
+  flex: 1;
+}
+.dv .dv-code .field {
+  font-family: var(--mono);
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+@media (max-width: 760px) {
+  .dv .pl-code b {
+    font-size: 26px;
+  }
+}

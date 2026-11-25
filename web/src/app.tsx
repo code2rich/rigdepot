@@ -48,13 +48,16 @@ function Routes() {
     })
   }, [])
 
-  // Pages in the shell need someone signed in; the first-run wizard comes before anything else.
+  // Pages in the shell need someone signed in, with an account that is open (pending accounts apply
+  // first); the first-run wizard comes before anything else, except signing in to finish it.
   const target =
-    meta.value && !meta.value.setup_complete && here !== '/setup'
+    meta.value && !meta.value.setup_complete && here !== '/setup' && here !== '/login'
       ? href('/setup')
       : !isPublic && !me.value
         ? signInPath(here)
-        : undefined
+        : !isPublic && me.value?.status === 'pending'
+          ? href('/apply')
+          : undefined
   useEffect(() => {
     if (target) route(target, true)
   }, [target, route])
@@ -75,7 +78,7 @@ function Routes() {
       <Router>
         {[
           ...NAV.flatMap((g) => g.pages).map((p) => (
-            <Route key={p.id} path={href(p.path)} component={p.component} />
+            <Route key={p.id} path={href(p.route ?? p.path)} component={p.component} />
           )),
           <Route key="404" default component={NotFound} />,
         ]}

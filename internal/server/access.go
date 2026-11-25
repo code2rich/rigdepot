@@ -9,6 +9,7 @@ import (
 
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
+	"github.com/code2rich/rigdepot/internal/server/authn"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
@@ -98,9 +99,12 @@ func accessAuthorizer(svc *access.Service, resourceTarget func(ctx context.Conte
 	}
 }
 
-// accessNames is auditNames from the users access keeps. Devices come with
-// the device code flow (authn, M1-22): until then their ids stand in.
-type accessNames struct{ svc *access.Service }
+// accessNames is auditNames from the users access keeps and the devices
+// authn keeps.
+type accessNames struct {
+	svc     *access.Service
+	devices *authn.Devices // nil: device ids stand in for their names
+}
 
 func (n accessNames) User(ctx context.Context, id string) (string, string, bool) {
 	u, err := n.svc.GetUser(ctx, access.System, id)
@@ -110,4 +114,9 @@ func (n accessNames) User(ctx context.Context, id string) (string, string, bool)
 	return u.Username, u.DisplayName, true
 }
 
-func (accessNames) Device(context.Context, string) (string, bool) { return "", false }
+func (n accessNames) Device(ctx context.Context, id string) (string, bool) {
+	if n.devices == nil {
+		return "", false
+	}
+	return n.devices.DeviceName(ctx, id)
+}

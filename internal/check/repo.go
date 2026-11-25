@@ -35,6 +35,7 @@ var repoMessages = map[string]string{
 	repoformat.CodeMissingMeta:     msg.CheckStructureRepoMissingMeta,
 	repoformat.CodeUndefinedStage:  msg.CheckStructureRepoUndefinedStage,
 	repoformat.CodeUndefinedSecret: msg.CheckStructureRepoUndefinedSecret,
+	repoformat.CodeUndefinedRef:    msg.CheckStructureRepoUndefinedRef,
 	repoformat.CodeUnsafePath:      msg.CheckStructureRepoUnsafePath,
 	repoformat.CodeParse:           msg.CheckStructureRepoParse,
 	repoformat.CodeRead:            msg.CheckStructureRepoRead,

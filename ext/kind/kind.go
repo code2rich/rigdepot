@@ -119,6 +119,12 @@ type RenderOptions struct {
 	// instructions for an AI, such as how to call an MCP server on demand, takes the command
 	// from here and never spells it out either.
 	CLI string
+	// Data is where the command line keeps its local data on the computer the resource is
+	// rendered for, written the way the AI there can use it ("~/.<name>" inside the home
+	// directory). A kind whose content the command line keeps there, such as a knowledge base
+	// fetched from Git (Pulled), tells the AI where to find it. A kind that needs it fails when
+	// it is empty.
+	Data string
 }
 
 // SecretUser is implemented by a Spec whose files refer to personal secrets by name, the way an

@@ -1,9 +1,13 @@
 op write-tree ~/.agents/skills/rgd-contract-skill (skill/contract-skill@3): SKILL.md, scripts/check.sh*
+op write-tree ~/.agents/skills/rgd-contract-agent (agent/contract-agent@1): SKILL.md, memory/README.md, skills/review/SKILL.md local memory, workspace
+op write-tree ~/.agents/skills/rgd-contract-command (workflow/contract-command@1): SKILL.md
 op set-key ~/work/codex-home/config.toml toml ["mcp_servers","rgd-contract-stdio"] (mcp/contract-stdio@2) = {"args":["--stdio","--log-level","info"],"command":"contract-mcp","env":{"CONTRACT_MODE":"read-only"}}
 op set-key ~/work/codex-home/config.toml toml ["mcp_servers","rgd-contract-http"] (mcp/contract-http@1) = {"http_headers":{"X-Contract":"yes"},"url":"https://mcp.example.com/contract"}
 op set-key ~/work/codex-home/config.toml toml ["mcp_servers","rgd-contract-secret"] (mcp/contract-secret@1) = {"bearer_token_env_var":"CONTRACT_TOKEN","url":"https://secret.example.com/mcp"}
 core:
   + tree ~/.agents/skills/rgd-contract-skill
+  + tree ~/.agents/skills/rgd-contract-agent
+  + tree ~/.agents/skills/rgd-contract-command
   + key ~/work/codex-home/config.toml mcp_servers.rgd-contract-stdio
   + key ~/work/codex-home/config.toml mcp_servers.rgd-contract-http
   + key ~/work/codex-home/config.toml mcp_servers.rgd-contract-secret

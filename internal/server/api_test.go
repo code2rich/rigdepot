@@ -8,6 +8,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/ext/identity"
 	"github.com/code2rich/rigdepot/ext/module"
 	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/brand"
@@ -111,6 +113,14 @@ type fixtureOptions struct {
 	version  string
 	// setup runs on the app before its services are opened.
 	setup func(*App)
+	// sources stand in for the identity sources compiled in; log receives
+	// the server's log (nil discards it).
+	sources    []identity.Provider
+	log        *slog.Logger
+	signInRate authnapi.Rate
+	// realDevices leaves device tokens to the device code flow instead of
+	// the stand-in with the administrator's one token.
+	realDevices bool
 }
 
 func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
@@ -149,12 +159,19 @@ func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
 			t.Fatal(err)
 		}
 	}
-	app := NewApp(cfg, logging.Discard(), db, Mounts{})
+	logger := o.log
+	if logger == nil {
+		logger = logging.Discard()
+	}
+	app := NewApp(cfg, logger, db, Mounts{})
+	app.identitySources, app.signInRate = o.sources, o.signInRate
 	if o.hooks {
 		app.hooks.firstAdmin = fakeFirstAdmin{}
 	}
 	devices := testDevices{token: authn.NewToken(authn.DeviceTokenPrefix)}
-	app.hooks.devices = devices
+	if !o.realDevices {
+		app.hooks.devices = devices
+	}
 	app.mailChannels, app.modules, app.adapters, app.version = o.channels, o.modules, o.adapters, o.version
 	cfg.ModulesDisabled = o.locked
 	if o.background {
@@ -209,9 +226,10 @@ func (f *apiFixture) do(t *testing.T, method, path, user, body string, header ma
 
 func TestUnimplementedOperationsAnswer501(t *testing.T) {
 	f := newAPI(t, false)
-	rec, p := f.do(t, http.MethodGet, "/api/v1/meta", "", "", nil)
+	// The feedback queue is a later task's.
+	rec, p := f.do(t, http.MethodGet, "/api/v1/feedback", testAdmin, "", nil)
 	if rec.Code != http.StatusNotImplemented || p.Code != httpapi.CodeNotImplemented || p.RequestId == nil || *p.RequestId != rec.Header().Get(RequestIDHeader) {
-		t.Errorf("GET /api/v1/meta: %d %+v", rec.Code, p)
+		t.Errorf("GET /api/v1/feedback: %d %+v", rec.Code, p)
 	}
 	if rec, p := f.do(t, http.MethodGet, "/api/v1/no-such-thing", "", "", nil); rec.Code != http.StatusNotFound || p.Code != "not_found" {
 		t.Errorf("unknown path: %d %+v", rec.Code, p)
@@ -540,7 +558,7 @@ func TestKeysRotateAndAuditVerifyCommands(t *testing.T) {
 		t.Errorf("verify an empty log: %d %s %s", c, out, errOut)
 	}
 	e2, out, errOut := reenv()
-	if c := runBounded(e2, "keys", "rotate"); c != exitOK || !strings.Contains(out.String(), "Rewrapped 2 sealed records (settings 2)") {
+	if c := runBounded(e2, "keys", "rotate"); c != exitOK || !strings.Contains(out.String(), "Rewrapped 2 sealed records (identity_providers 0, settings 2)") {
 		t.Fatalf("rotate: %d %s %s", c, out, errOut)
 	}
 	e3, out, errOut := reenv()

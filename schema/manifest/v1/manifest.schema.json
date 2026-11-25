@@ -122,6 +122,12 @@
           "type": "array",
           "items": { "$ref": "#/$defs/path" }
         },
+        "local": {
+          "description": "Directories inside the tree, relative to it with forward slashes, whose content belongs to the person's computer, such as the memory of an agent. They do not count towards \"digest\", an update keeps what is in them, and undoing the entry keeps a copy of what is in them in kept/ first. Only for \"tree\". Absent in manifests written before it existed.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "pattern": "^[^/\\\\]+(/[^/\\\\]+)*$" },
+          "uniqueItems": true
+        },
         "edit": {
           "description": "How to take a key that was added out of its file again, byte for byte: in the file as written, \"new\" starts at \"offset\" and replaced \"old\". While \"new\" is still there, undoing puts \"old\" back; otherwise the key is removed by its meaning. Only for \"key\", and only when the key was added rather than changed. Absent in manifests written before it existed: the key is then removed by its meaning.",
           "type": "object",

@@ -1,0 +1,76 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* A-01 工作台. From the prototype (工作台; 四项核心指标; 新手指引; 环节选择). */
+
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 20px 40px; margin-bottom: 22px }
+.hero h1 { font-size: 26px; font-weight: 600; letter-spacing: -.015em; line-height: 1.2 }
+.hero-sub { margin-top: 6px; color: var(--ink-2); font-size: 13.5px }
+.hero-tags { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 14px; font-size: 12px; color: var(--ink-3) }
+.hero-tags > span { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap }
+.hero-tags .btn.icon { width: 24px; height: 24px } .hero-tags .btn.icon svg { width: 13px; height: 13px }
+
+/* 四项核心指标：一条带分隔线的读数板 */
+.pillars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 16px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); overflow: hidden }
+.pillars.three { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+.pillar { position: relative; display: grid; grid-template-rows: auto auto 1fr; gap: 10px; padding: 14px 18px 16px; text-align: left; transition: background var(--t-fast) var(--ease) }
+.pillar.static { cursor: default; grid-template-rows: auto auto 1fr auto }
+.pillar + .pillar { border-left: 1px solid var(--line) }
+button.pillar:hover { background: var(--hover) }
+.pillar .t { display: flex; align-items: center; gap: 8px; color: var(--ink-2) }
+.pillar .t b { font-family: var(--display); font-weight: 800; font-size: 13px; color: var(--ink-3); letter-spacing: .04em }
+.pillar .t svg { width: 13px; height: 13px; margin-left: auto; color: var(--ink-3); opacity: 0; transform: translate(-3px, 3px); transition: opacity var(--t-fast) var(--ease), transform var(--t-mid) var(--ease) }
+button.pillar:hover .t svg, button.pillar:focus-visible .t svg { opacity: 1; transform: none }
+.pillar .vrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px }
+.pillar .v { font-family: var(--display); font-weight: 800; font-size: 38px; line-height: .84; letter-spacing: .01em; font-variant-numeric: tabular-nums }
+.pillar .v small { font-family: var(--sans); font-weight: 500; font-size: 12px; margin-left: 4px; color: var(--ink-2); letter-spacing: 0 }
+.pillar .s { font-size: 12px; color: var(--ink-3); line-height: 1.5 }
+.cells { display: grid; grid-template-columns: repeat(10, 6px); grid-auto-rows: 6px; gap: 2px; flex: none }
+.cells i { display: block; background: var(--soft-2) } .cells i.on { background: var(--ink-2) }
+.compo { display: flex; gap: 2px; width: 96px; height: 8px; flex: none }
+.compo i { display: block; height: 100%; background: var(--k, var(--ink-3)); min-width: 3px }
+.compo i.fb-new { background: var(--link) } .compo i.fb-accepted, .compo i.fb-in_progress { background: var(--warn) } .compo i.fb-resolved { background: var(--ok) }
+.bays8 { display: grid; grid-template-columns: repeat(6, 12px); gap: 3px; flex: none }
+.bays8 i { display: block; width: 12px; height: 12px; background: var(--ink-2) }
+
+/* 新手指引 */
+.guide { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); margin-bottom: 16px; padding: 0 }
+.guide-l { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px 20px; min-width: 0 }
+.guide-r { padding: 16px 18px; border-left: 1px solid var(--line); background: var(--panel-2); border-radius: 0 var(--r-3) var(--r-3) 0 }
+.guide-h { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; min-width: 0 }
+.gbar { display: flex; gap: 2px; margin-left: auto; flex: none } .gbar i { width: 14px; height: 5px; background: var(--soft-2) } .gbar i.on { background: var(--ink) } .gbar i.cur { background: var(--accent) }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px }
+.steps li { display: flex; gap: 11px; align-items: flex-start; font-size: 13px; padding: 6px 0 }
+.steps .n { width: 22px; height: 22px; border: 1px solid var(--line-2); display: grid; place-items: center; font-family: var(--mono); font-size: 10px; font-weight: 500; color: var(--ink-3); flex: none; background: var(--panel) }
+.steps .n svg { width: 12px; height: 12px; stroke-width: 2.2 }
+.steps li.done .n { border-color: color-mix(in srgb, var(--ok) 45%, transparent); color: var(--ok); background: color-mix(in srgb, var(--ok) 9%, var(--panel)) }
+.steps li.cur .n { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700 }
+.steps li b { display: block; font-weight: 600; line-height: 1.45 } .steps li.done b { color: var(--ink-2); font-weight: 500 } .steps li span { font-size: 12px; color: var(--ink-3) }
+
+/* 环节选择：八个货位一字排开 */
+.stages { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); margin: 0 0 6px }
+.stg { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 9px 10px 10px; border-top: 2px solid var(--line); text-align: left; transition: border-color var(--t-mid) var(--ease), background var(--t-fast) var(--ease); min-width: 0 }
+.stg:hover { background: var(--hover); border-top-color: var(--line-3) }
+.stg small { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: .04em }
+.stg small em { font-style: normal; color: var(--ink-2); font-family: var(--sans); font-size: 10.5px } .stg small em::before { content: ""; display: inline-block; width: 4px; height: 4px; background: var(--ink-2); margin-right: 4px; vertical-align: 2px }
+.stg b { font-size: 13.5px; font-weight: 600; color: var(--ink-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap } .stg .c { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums }
+.stg.on { border-top-color: var(--ink); background: var(--soft) } .stg.on b { color: var(--ink) }
+.kgroup { display: flex; align-items: center; gap: 8px; margin: 18px 0 4px; font-family: var(--mono); font-size: var(--f-tag); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2) }
+.kgroup .n { color: var(--ink-3) } .kgroup::after { content: ""; flex: 1; height: 1px; background: var(--line) }
+.li .chev { width: 16px; height: 16px; color: var(--ink-3); flex: none } .li .chev svg { width: 100%; height: 100%; display: block }
+
+@media (max-width: 1180px) {
+  .pillars { grid-template-columns: repeat(2, minmax(0, 1fr)) } .pillar:nth-child(3) { border-left: 0 } .pillar:nth-child(n+3) { border-top: 1px solid var(--line) }
+}
+@media (max-width: 1080px) {
+  .guide { grid-template-columns: minmax(0, 1fr) }
+  .guide-r { border-left: 0; border-top: 1px solid var(--line); border-radius: 0 0 var(--r-3) var(--r-3) }
+  .stages { grid-template-columns: repeat(4, minmax(0, 1fr)) }
+  .hero { grid-template-columns: minmax(0, 1fr) }
+}
+@media (max-width: 760px) {
+  .hero h1 { font-size: 22px }
+  .pillars, .pillars.three { grid-template-columns: minmax(0, 1fr) } .pillar + .pillar { border-left: 0; border-top: 1px solid var(--line) } .pillar .v { font-size: 32px }
+  .stg { padding: 8px 8px 9px }
+  .guide-l { padding: 16px } .guide-r { padding: 14px 16px }
+}

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	stdsync "sync"
+	"time"
 
 	"github.com/spf13/pflag"
 	"golang.org/x/term"
@@ -43,6 +44,14 @@ type Env struct {
 	IsTerminal func(any) bool
 	// GOOS decides how paths are shown (~/… or %USERPROFILE%\…).
 	GOOS string
+	// Hostname names this computer for the server (rgd login); nil is os.Hostname.
+	Hostname func() (string, error)
+	// OpenBrowser opens a page in the person's browser, when they ask for it in a terminal
+	// (rgd login). Nil: the program only prints the address.
+	OpenBrowser func(url string) error
+
+	// sleep waits between polls (rgd login); nil waits for real. Tests make it return at once.
+	sleep func(ctx context.Context, d time.Duration) error
 
 	// Adapters are the AI tools sync, status and uninstall work with; nil means every
 	// registered adapter (builtin/all).
@@ -51,6 +60,8 @@ type Env struct {
 	Kinds repoformat.Kinds
 	// NewExecutor makes the executors of the sync engine; nil means the real one.
 	NewExecutor func(executor.Roots, executor.State) (sync.Executor, error)
+	// Knowledge fetches the knowledge bases a sync delivers; nil means the person's own git.
+	Knowledge sync.Fetcher
 }
 
 // Main runs the command-line program with the given arguments (without the
@@ -67,7 +78,9 @@ func Main(args []string) int {
 			file, ok := f.(*os.File)
 			return ok && term.IsTerminal(int(file.Fd()))
 		},
-		GOOS: runtime.GOOS,
+		GOOS:        runtime.GOOS,
+		Hostname:    os.Hostname,
+		OpenBrowser: openBrowser,
 	})
 }
 
