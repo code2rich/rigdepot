@@ -2175,6 +2175,9 @@ type Notification struct {
 type NotificationPage struct {
 	Items      []Notification `json:"items"`
 	NextCursor *string        `json:"next_cursor,omitempty"`
+
+	// Unread How many of my notifications are unread, over all pages: the number on the bell.
+	Unread int `json:"unread"`
 }
 
 // OrgDefaults Organisation-wide defaults the command line applies below its own
