@@ -59,7 +59,7 @@ export const NAV: readonly NavGroup[] = [
         path: '/connect',
         label: 'nav.connect',
         icon: 'plug',
-        component: notBuilt('connect'),
+        component: lazy(() => import('./connect')),
       },
       { id: 'keys', path: '/keys', label: 'nav.keys', icon: 'key', component: notBuilt('keys') },
       {
