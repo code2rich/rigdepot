@@ -245,6 +245,32 @@ export interface paths {
         patch: operations["updateMe"];
         trace?: never;
     };
+    "/api/v1/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change one's own password
+         * @description Local accounts only: an account that signs in through an identity
+         *     provider has no password here (`409 auth.no_password`). A wrong
+         *     current password is `400 request.invalid` on `current_password` and
+         *     counts towards the lock like a failed sign-in (`429 auth.locked`).
+         *     Every other browser session of the account ends; this one stays
+         *     signed in, and computers stay signed in (sign them out one by one, or
+         *     everywhere). Only from the browser.
+         */
+        post: operations["changeMyPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/devices": {
         parameters: {
             query?: never;
@@ -2047,6 +2073,10 @@ export interface components {
             focus_stages?: components["schemas"]["StageId"][];
             locale?: string;
         };
+        ChangePasswordRequest: {
+            current_password: string;
+            new_password: string;
+        };
         Device: {
             id: components["schemas"]["Id"];
             /** @description The computer's name as the command line reported it. */
@@ -3775,6 +3805,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Me"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    changeMyPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "current_password": "<placeholder: current password>",
+                 *       "new_password": "<placeholder: at least 12 characters>"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Changed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

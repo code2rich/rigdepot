@@ -1189,6 +1189,12 @@ type CatalogResource struct {
 	When    *string `json:"when,omitempty"`
 }
 
+// ChangePasswordRequest defines model for ChangePasswordRequest.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
 // CheckCounts defines model for CheckCounts.
 type CheckCounts struct {
 	// Advisory Should-fix findings. They never block.
@@ -3381,6 +3387,9 @@ type CreateJoinRequestsJSONRequestBody = CreateJoinRequestsRequest
 // MarkMyNotificationsReadJSONRequestBody defines body for MarkMyNotificationsRead for application/json ContentType.
 type MarkMyNotificationsReadJSONRequestBody = MarkNotificationsReadRequest
 
+// ChangeMyPasswordJSONRequestBody defines body for ChangeMyPassword for application/json ContentType.
+type ChangeMyPasswordJSONRequestBody = ChangePasswordRequest
+
 // SetMySecretJSONRequestBody defines body for SetMySecret for application/json ContentType.
 type SetMySecretJSONRequestBody = SetSecretRequest
 
@@ -4101,6 +4110,36 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/me/notifications/mark-read (the `MarkMyNotificationsRead` operationId).
 	MarkMyNotificationsRead(ctx context.Context, body MarkMyNotificationsReadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ChangeMyPasswordWithBody Change one's own password
+	//
+	// Local accounts only: an account that signs in through an identity
+	// provider has no password here (`409 auth.no_password`). A wrong
+	// current password is `400 request.invalid` on `current_password` and
+	// counts towards the lock like a failed sign-in (`429 auth.locked`).
+	// Every other browser session of the account ends; this one stays
+	// signed in, and computers stay signed in (sign them out one by one, or
+	// everywhere). Only from the browser.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api/v1/me/password (the `ChangeMyPassword` operationId).
+	ChangeMyPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ChangeMyPassword Change one's own password
+	//
+	// Local accounts only: an account that signs in through an identity
+	// provider has no password here (`409 auth.no_password`). A wrong
+	// current password is `400 request.invalid` on `current_password` and
+	// counts towards the lock like a failed sign-in (`429 auth.locked`).
+	// Every other browser session of the account ends; this one stays
+	// signed in, and computers stay signed in (sign them out one by one, or
+	// everywhere). Only from the browser.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api/v1/me/password (the `ChangeMyPassword` operationId).
+	ChangeMyPassword(ctx context.Context, body ChangeMyPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListMySecrets The personal secrets resources ask me for
 	//
@@ -6065,6 +6104,56 @@ func (c *Client) MarkMyNotificationsReadWithBody(ctx context.Context, contentTyp
 // Corresponds with POST /api/v1/me/notifications/mark-read (the `MarkMyNotificationsRead` operationId).
 func (c *Client) MarkMyNotificationsRead(ctx context.Context, body MarkMyNotificationsReadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewMarkMyNotificationsReadRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ChangeMyPasswordWithBody Change one's own password
+//
+// Local accounts only: an account that signs in through an identity
+// provider has no password here (`409 auth.no_password`). A wrong
+// current password is `400 request.invalid` on `current_password` and
+// counts towards the lock like a failed sign-in (`429 auth.locked`).
+// Every other browser session of the account ends; this one stays
+// signed in, and computers stay signed in (sign them out one by one, or
+// everywhere). Only from the browser.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api/v1/me/password (the `ChangeMyPassword` operationId).
+func (c *Client) ChangeMyPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewChangeMyPasswordRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ChangeMyPassword Change one's own password
+//
+// Local accounts only: an account that signs in through an identity
+// provider has no password here (`409 auth.no_password`). A wrong
+// current password is `400 request.invalid` on `current_password` and
+// counts towards the lock like a failed sign-in (`429 auth.locked`).
+// Every other browser session of the account ends; this one stays
+// signed in, and computers stay signed in (sign them out one by one, or
+// everywhere). Only from the browser.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api/v1/me/password (the `ChangeMyPassword` operationId).
+func (c *Client) ChangeMyPassword(ctx context.Context, body ChangeMyPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewChangeMyPasswordRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10006,6 +10095,46 @@ func NewMarkMyNotificationsReadRequestWithBody(server string, contentType string
 	return req, nil
 }
 
+// NewChangeMyPasswordRequest calls the generic ChangeMyPassword builder with application/json body
+func NewChangeMyPasswordRequest(server string, body ChangeMyPasswordJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := runtime.JSONMarshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewChangeMyPasswordRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewChangeMyPasswordRequestWithBody constructs an http.Request for the ChangeMyPassword method, with any body, and a specified content type
+func NewChangeMyPasswordRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := "/api/v1/me/password"
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListMySecretsRequest constructs an http.Request for the ListMySecrets method
 func NewListMySecretsRequest(server string) (*http.Request, error) {
 	var err error
@@ -13208,6 +13337,36 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/me/notifications/mark-read (the `MarkMyNotificationsRead` operationId).
 	MarkMyNotificationsReadWithResponse(ctx context.Context, body MarkMyNotificationsReadJSONRequestBody, reqEditors ...RequestEditorFn) (*MarkMyNotificationsReadResponse, error)
+
+	// ChangeMyPasswordWithBodyWithResponse Change one's own password
+	//
+	// Local accounts only: an account that signs in through an identity
+	// provider has no password here (`409 auth.no_password`). A wrong
+	// current password is `400 request.invalid` on `current_password` and
+	// counts towards the lock like a failed sign-in (`429 auth.locked`).
+	// Every other browser session of the account ends; this one stays
+	// signed in, and computers stay signed in (sign them out one by one, or
+	// everywhere). Only from the browser.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/me/password (the `ChangeMyPassword` operationId).
+	ChangeMyPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeMyPasswordResponse, error)
+
+	// ChangeMyPasswordWithResponse Change one's own password
+	//
+	// Local accounts only: an account that signs in through an identity
+	// provider has no password here (`409 auth.no_password`). A wrong
+	// current password is `400 request.invalid` on `current_password` and
+	// counts towards the lock like a failed sign-in (`429 auth.locked`).
+	// Every other browser session of the account ends; this one stays
+	// signed in, and computers stay signed in (sign them out one by one, or
+	// everywhere). Only from the browser.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/me/password (the `ChangeMyPassword` operationId).
+	ChangeMyPasswordWithResponse(ctx context.Context, body ChangeMyPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeMyPasswordResponse, error)
 
 	// ListMySecretsWithResponse The personal secrets resources ask me for
 	//
@@ -16445,6 +16604,47 @@ func (r MarkMyNotificationsReadResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r MarkMyNotificationsReadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ChangeMyPasswordResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ChangeMyPasswordResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ChangeMyPasswordResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ChangeMyPasswordResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ChangeMyPasswordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ChangeMyPasswordResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -20579,6 +20779,48 @@ func (c *ClientWithResponses) MarkMyNotificationsReadWithResponse(ctx context.Co
 	return ParseMarkMyNotificationsReadResponse(rsp)
 }
 
+// ChangeMyPasswordWithBodyWithResponse Change one's own password
+//
+// Local accounts only: an account that signs in through an identity
+// provider has no password here (`409 auth.no_password`). A wrong
+// current password is `400 request.invalid` on `current_password` and
+// counts towards the lock like a failed sign-in (`429 auth.locked`).
+// Every other browser session of the account ends; this one stays
+// signed in, and computers stay signed in (sign them out one by one, or
+// everywhere). Only from the browser.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/me/password (the `ChangeMyPassword` operationId).
+func (c *ClientWithResponses) ChangeMyPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeMyPasswordResponse, error) {
+	rsp, err := c.ChangeMyPasswordWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseChangeMyPasswordResponse(rsp)
+}
+
+// ChangeMyPasswordWithResponse Change one's own password
+//
+// Local accounts only: an account that signs in through an identity
+// provider has no password here (`409 auth.no_password`). A wrong
+// current password is `400 request.invalid` on `current_password` and
+// counts towards the lock like a failed sign-in (`429 auth.locked`).
+// Every other browser session of the account ends; this one stays
+// signed in, and computers stay signed in (sign them out one by one, or
+// everywhere). Only from the browser.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/me/password (the `ChangeMyPassword` operationId).
+func (c *ClientWithResponses) ChangeMyPasswordWithResponse(ctx context.Context, body ChangeMyPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeMyPasswordResponse, error) {
+	rsp, err := c.ChangeMyPassword(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseChangeMyPasswordResponse(rsp)
+}
+
 // ListMySecretsWithResponse The personal secrets resources ask me for
 //
 // Whether each is configured and until when. No operation returns a value.
@@ -23596,6 +23838,35 @@ func ParseMarkMyNotificationsReadResponse(rsp *http.Response) (*MarkMyNotificati
 	}
 
 	response := &MarkMyNotificationsReadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := runtime.JSONUnmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseChangeMyPasswordResponse parses an HTTP response from a ChangeMyPasswordWithResponse call
+func ParseChangeMyPasswordResponse(rsp *http.Response) (*ChangeMyPasswordResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ChangeMyPasswordResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

@@ -416,6 +416,30 @@ paths:
               examples: { member: { $ref: '#/components/examples/MeMember' } }
         default: { $ref: '#/components/responses/Problem' }
 
+  /api/v1/me/password:
+    post:
+      operationId: changeMyPassword
+      summary: Change one's own password
+      description: |
+        Local accounts only: an account that signs in through an identity
+        provider has no password here (`409 auth.no_password`). A wrong
+        current password is `400 request.invalid` on `current_password` and
+        counts towards the lock like a failed sign-in (`429 auth.locked`).
+        Every other browser session of the account ends; this one stays
+        signed in, and computers stay signed in (sign them out one by one, or
+        everywhere). Only from the browser.
+      tags: [me]
+      security: [{ session: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+            example: { current_password: '<placeholder: current password>', new_password: '<placeholder: at least 12 characters>' }
+      responses:
+        '204': { description: Changed. }
+        default: { $ref: '#/components/responses/Problem' }
+
   /api/v1/me/devices:
     get:
       operationId: listMyDevices
@@ -3345,6 +3369,12 @@ components:
         job: { type: string, maxLength: 32 }
         focus_stages: { type: array, maxItems: 16, items: { $ref: '#/components/schemas/StageId' } }
         locale: { type: string, maxLength: 35 }
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string, maxLength: 256 }
+        new_password: { type: string, minLength: 12, maxLength: 256 }
     Device:
       type: object
       required: [id, name, os, arch, cli_version, key_storage, current, created_at, last_seen_at, tools]
