@@ -317,3 +317,39 @@ func TestCatalogEventsReachTheBus(t *testing.T) {
 		t.Errorf("events on the bus: %v", got)
 	}
 }
+
+func TestListStages(t *testing.T) {
+	f := newCatalogAPI(t)
+	f.call("GET", "/api/v1/stages", "", nil, nil, http.StatusUnauthorized)
+
+	// A stage a repository named, and a default one an administrator hid.
+	ctx := context.Background()
+	if _, err := f.app.db.ExecContext(ctx, `INSERT INTO stages (id, code, name, position, hidden, created_at, updated_at) VALUES (?, 'security', '', 100, FALSE, 1, 1), (?, 'scm', '', 5, TRUE, 1, 1)`,
+		dbx.NewID(), dbx.NewID()); err != nil {
+		t.Fatal(err)
+	}
+	type stage struct {
+		ID, Name string
+		Hidden   bool
+	}
+	list := func(lang string) []stage {
+		t.Helper()
+		rec := f.call("GET", "/api/v1/stages", testMember, nil, map[string]string{"Accept-Language": lang}, http.StatusOK)
+		var out []stage
+		for _, s := range decode[httpapi.StageList](t, rec).Items {
+			out = append(out, stage{s.Id, s.Name, s.Hidden})
+		}
+		return out
+	}
+	want := []stage{
+		{"requirement", "Requirements", false}, {"architecture", "Architecture", false}, {"design", "Design", false},
+		{"develop", "Development", false}, {"test", "Testing", false}, {"scm", "SCM", true},
+		{"release", "Release", false}, {"ops", "Operations", false}, {"security", "security", false},
+	}
+	if got := list("en"); !slices.Equal(got, want) {
+		t.Errorf("en:\n got %v\nwant %v", got, want)
+	}
+	if got := list("zh-CN,zh;q=0.9"); len(got) != len(want) || got[0].Name != "需求" || got[5].Name != "配管" || got[8].Name != "security" {
+		t.Errorf("zh-CN: %v", got)
+	}
+}

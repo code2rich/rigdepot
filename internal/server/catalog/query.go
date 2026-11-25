@@ -458,6 +458,34 @@ func (s *Service) Rules() (int, []Rule) {
 	return s.rules.Version, out
 }
 
+// Stages returns the stages of the delivery process in order: the default ones (ext/resource)
+// first, then the ones resources named that the server had not seen, by when they appeared. A
+// hidden stage is listed and marked. The default stages have no name of their own (their names
+// come from the translations); the others are named by their identifier.
+func (s *Service) Stages(ctx context.Context) ([]resource.Stage, error) {
+	out := resource.DefaultStages()
+	rows, err := s.db.QueryContext(ctx, `SELECT code, name, hidden FROM stages ORDER BY position, created_at, code`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var st resource.Stage
+		if err := rows.Scan(&st.ID, &st.Name, &st.Hidden); err != nil {
+			return nil, err
+		}
+		if i := slices.IndexFunc(out, func(x resource.Stage) bool { return x.ID == st.ID }); i >= 0 {
+			out[i].Hidden = st.Hidden
+			if st.Name != "" {
+				out[i].Name = st.Name
+			}
+			continue
+		}
+		out = append(out, st)
+	}
+	return out, rows.Err()
+}
+
 // ResourceCounts returns, by product id, how many resources that are not disabled are scoped to
 // each product.
 func (s *Service) ResourceCounts(ctx context.Context) (map[string]int, error) {

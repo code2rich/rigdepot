@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -195,14 +196,17 @@ func configFindings(cfg *config.Config) []finding {
 	case !https && cfg.ServesTLS():
 		add(levelProblem, "this server serves HTTPS, but base_url is http://: links, sign-in callbacks and cookies would use plain http; make base_url https://")
 	case !https && proxy:
-		add(levelProblem, "a reverse proxy is declared (trusted_proxies), but base_url is http://: let the proxy serve HTTPS and make base_url https://")
+		// config.Load refuses plain http on a network address, so base_url is on this machine
+		// here: a trial, such as Compose (which always declares its network as the proxy)
+		// opened at http://localhost. Worth knowing, not a contradiction.
+		add(levelNote, "base_url is http:// on this machine while a reverse proxy is declared (trusted_proxies): fine for a trial on this computer; for the team, let the proxy serve HTTPS and make base_url its https:// address")
 	}
 	if !proxy && !cfg.ServesTLS() && config.IsLoopbackHost(cfg.BaseURL.Hostname()) {
 		if port := cfg.BaseURL.Port(); port != "" && port != listenPort {
 			add(levelNote, "base_url is on this machine at port %s, but the server listens on %s: links point to a port nothing serves unless something forwards it", port, cfg.Listen)
 		}
 	}
-	if proxy && !config.IsLoopbackHost(listenHost) {
+	if proxy && !config.IsLoopbackHost(listenHost) && !inContainer() {
 		add(levelNote, "behind a reverse proxy, but listening on %s: anyone who can reach that port bypasses the proxy; listen on 127.0.0.1 if the proxy is on this machine", cfg.Listen)
 	}
 	if len(cfg.TLS.ACMEDomains) > 0 {
@@ -235,6 +239,19 @@ func configFindings(cfg *config.Config) []finding {
 		add(levelNote, "web_dev_proxy is set: the console comes from a development server, not from the program (development only)")
 	}
 	return out
+}
+
+// inContainer reports whether the server runs in a container (Docker writes /.dockerenv, Podman
+// /run/.containerenv). There it has to listen on every interface of the container, and who can
+// reach the port is decided by how the port is published, not by the listen address. A variable
+// for the tests.
+var inContainer = func() bool {
+	for _, marker := range []string{"/.dockerenv", "/run/.containerenv"} {
+		if _, err := os.Stat(marker); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // within reports whether path is inside dir (or is dir).

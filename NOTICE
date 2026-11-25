@@ -9,6 +9,11 @@ README.md.
 
 Third-party components
 
+The release archives and packages carry THIRD_PARTY_NOTICES, which lists every
+third-party component compiled into the programs with its license: the Go
+modules of rgd and rgd-server, and the JavaScript packages and fonts of the
+web console that rgd-server embeds. The fonts of the web console are:
+
 Big Shoulders Display (web/public/fonts/big-shoulders-display-latin-wght-normal.woff2)
   Copyright Google Inc.
   Licensed under the SIL Open Font License, Version 1.1

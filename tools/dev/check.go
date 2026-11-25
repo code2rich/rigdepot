@@ -213,14 +213,18 @@ func firstLine(s string) string {
 func printResults(title string, results []result) {
 	goVersion, _ := output("", nil, "go", "env", "GOVERSION", "GOOS", "GOARCH")
 	fmt.Printf("\n%s (%s)\n\n", title, strings.Join(strings.Fields(goVersion), " "))
-	fmt.Printf("| %-16s | %-7s | %-6s | %s\n", "step", "result", "time", "detail")
-	fmt.Printf("| %s | %s | %s | %s\n", strings.Repeat("-", 16), strings.Repeat("-", 7), strings.Repeat("-", 6), strings.Repeat("-", 6))
+	width := 16
+	for _, r := range results {
+		width = max(width, len(r.name))
+	}
+	fmt.Printf("| %-*s | %-7s | %-6s | %s\n", width, "step", "result", "time", "detail")
+	fmt.Printf("| %s | %s | %s | %s\n", strings.Repeat("-", width), strings.Repeat("-", 7), strings.Repeat("-", 6), strings.Repeat("-", 6))
 	for _, r := range results {
 		elapsed := ""
 		if r.elapsed > 0 {
 			elapsed = fmt.Sprintf("%.1fs", r.elapsed.Seconds())
 		}
-		fmt.Printf("| %-16s | %-7s | %6s | %s\n", r.name, r.status, elapsed, r.detail)
+		fmt.Printf("| %-*s | %-7s | %6s | %s\n", width, r.name, r.status, elapsed, r.detail)
 	}
 	fmt.Println()
 }

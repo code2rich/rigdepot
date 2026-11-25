@@ -39,6 +39,9 @@ import (
 // map the domain's errors to problem documents (httpapi.ProblemError); the
 // rules live in the domain packages.
 type api struct {
+	// Every operation of the contract has an owner now, so no method of fallback is reached;
+	// it stays for the next operation the contract gains.
+	//lint:ignore U1000 the bottom layer answers 501 for an operation the contract gains before a domain implements it
 	fallback
 	*accessapi.Handlers
 	*authnapi.Ops
@@ -59,6 +62,8 @@ type api struct {
 
 // fallback puts notImplemented's methods one embedding level below the
 // domains'.
+//
+//lint:ignore U1000 see the field in api
 type fallback struct{ notImplemented }
 
 var _ httpapi.StrictServerInterface = api{}
@@ -114,7 +119,8 @@ type hooks struct {
 // checks the credential each operation's security list asks for and puts
 // the caller into the context with access.WithActor.
 func apiMounts(app *App) Mounts {
-	texts, err := i18n.Load(locales.FS, "check")
+	// The findings' messages and the stages' names.
+	texts, err := i18n.Load(locales.FS, "check", "server")
 	if err != nil {
 		panic(err) // the catalogues are embedded and checked by tools/dev check
 	}

@@ -119,9 +119,9 @@ docker compose cp rigdepot:/var/lib/rigdepot/master.key ./master.key   # then mo
 
 What Compose sets up: one container, running as an unprivileged user (10001) with a read-only root file system, no capabilities and `no-new-privileges`; a volume `rigdepot-data` with everything that needs keeping; a network with the fixed range `RGD_SUBNET`, so that `RGD_TRUSTED_PROXIES` can name it. A reverse proxy on the host reaches the container through that network's gateway, and nothing else can reach the port.
 
-Commands inside the container run as `docker compose exec rigdepot rgd-server <command>`, for example `docker compose exec rigdepot rgd-server doctor`. `config check` notes that the server listens on `0.0.0.0:8080` behind a proxy: inside the container it has to, and Compose publishes the port on `127.0.0.1` only, so the note does not apply here.
+Commands inside the container run as `docker compose exec rigdepot rgd-server <command>`, for example `docker compose exec rigdepot rgd-server doctor`. Inside the container the server has to listen on `0.0.0.0:8080`; Compose publishes the port on `127.0.0.1` only, and `config check` knows it runs in a container and does not flag the listen address.
 
-> **Trying it on your own computer.** Set `RGD_BASE_URL=http://localhost:8080` and open that address; no proxy is needed. `doctor` and `config check` will report that a proxy is declared while the address is `http://`. That is expected for a trial, and goes away with the real address and the proxy.
+> **Trying it on your own computer.** Set `RGD_BASE_URL=http://localhost:8080` and open that address; no proxy is needed. `config check` adds a note that a proxy is declared while the address is `http://` on this machine; that is a trial, not a problem, and the note goes away with the real `https://` address and the proxy.
 
 **Other settings.** `compose.yaml` passes only the variables above. For any other setting from [Configuration](#configuration), create `compose.override.yaml` next to it, which Compose reads automatically:
 

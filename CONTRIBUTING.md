@@ -43,10 +43,11 @@ The first `check` compiles everything six times over and takes a few minutes; la
 | `test` | Runs tests in the same isolated environment as `check`. Takes packages and `go test` flags: `go run ./tools/dev test ./internal/cli -run TestVersion`. |
 | `gen` | Regenerates generated files: the name constants from `brand.json`, the message key constants, the published copies of the resource kinds' schemas, the API code from `api/openapi.yaml`, and the web console's generated files. `gen --check` only reports what is stale. |
 | `web-deps` | Installs the web console's dependencies from `web/pnpm-lock.yaml`. Needs Node, pnpm and the network. |
-| `web` | Builds the web console into `web/dist`, for `go build -tags webdist`. |
+| `web` | Builds the web console into `web/dist`, for `go build -tags webdist`, with the licenses of the packages and fonts it bundles (`web/dist/third-party-notices.txt`). |
 | `check-linux` | Runs `check` in a local Linux container, so tests really run on Linux. Needs Docker. |
 | `release-snapshot` | Builds every release artifact into `dist/` twice without publishing anything, and compares the two. |
-| `release-files` | Writes the shell completions and third-party notices the release archives carry. |
+| `release` | Publishes the version tag on `HEAD`: checks, goreleaser, the GitHub release (as a draft until it is checked), the image on ghcr.io with its `docker save` files, Homebrew and Scoop. Needs `GITHUB_TOKEN`; without it, or with `--dry-run`, it builds and checks everything and publishes nothing. `--dry-run --tag v0.4.0` rehearses a tag that does not exist yet. The release workflow runs the same task. |
+| `release-files` | Writes the shell completions and third-party notices the release archives carry: the licenses of the Go modules, and the web console's from `web/dist`. A license outside Apache-2.0, MIT, BSD, ISC and OFL stops it; `check` does the same for the web console's packages. |
 
 The `Makefile` only holds aliases for these. CI runs the same commands. No check lives in the Makefile or in a workflow file, because a check that lives there cannot run on your machine.
 

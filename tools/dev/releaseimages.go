@@ -116,15 +116,16 @@ func (r *rehearsal) imageExports() (string, error) {
 	return strings.Join(names, ", ") + " (docker save, gzip), in checksums.txt", nil
 }
 
-// dockerSave writes docker save of image, gzipped, to path.
-func dockerSave(image, path string) error {
+// dockerSave writes docker save of image, gzipped, to path. args go before the image, such as
+// --platform.
+func dockerSave(image, path string, args ...string) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 	gz, _ := gzip.NewWriterLevel(f, gzip.BestCompression)
-	cmd := exec.Command("docker", "save", image)
+	cmd := exec.Command("docker", append(append([]string{"save"}, args...), image)...)
 	cmd.Stdout = gz
 	var stderr strings.Builder
 	cmd.Stderr = &stderr

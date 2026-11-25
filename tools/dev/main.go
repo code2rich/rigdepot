@@ -29,6 +29,7 @@ var tasks = map[string]task{
 	"gen":              {"regenerate generated files; --check only reports whether they are stale", runGen},
 	"check-linux":      {"run check inside a local Linux container (needs Docker)", runCheckLinux},
 	"release-snapshot": {"build all release artifacts into dist/ without publishing, twice, and compare", runReleaseSnapshot},
+	"release":          {"publish the version tag on HEAD (needs GITHUB_TOKEN); --dry-run builds and checks only", runRelease},
 	"release-files":    {"write the completions and third-party notices the release archives carry", runReleaseFiles},
 	"web-deps":         {"install the web console's dependencies (needs Node, pnpm and the network)", runWebDeps},
 	"web":              {"build the web console into web/dist for go build -tags webdist", runWeb},

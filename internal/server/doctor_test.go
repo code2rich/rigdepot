@@ -55,7 +55,30 @@ func TestConfigCheck(t *testing.T) {
 	}
 }
 
+// findings returns configFindings of the configuration vars give, one "level: text" per line.
+func findings(t *testing.T, vars map[string]string) string {
+	t.Helper()
+	cfg, err := config.Load(config.Options{LookupEnv: func(k string) (string, bool) { v, ok := vars[k]; return v, ok }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, f := range configFindings(cfg) {
+		got = append(got, f.level+": "+f.text)
+	}
+	return strings.Join(got, "\n")
+}
+
+// notInContainer makes configFindings believe it runs outside a container, as when check-linux
+// runs the tests in one.
+func notInContainer(t *testing.T) {
+	saved := inContainer
+	inContainer = func() bool { return false }
+	t.Cleanup(func() { inContainer = saved })
+}
+
 func TestConfigFindings(t *testing.T) {
+	notInContainer(t)
 	tests := []struct {
 		name string
 		env  map[string]string
@@ -64,7 +87,9 @@ func TestConfigFindings(t *testing.T) {
 		{"local trial", map[string]string{config.EnvName("BASE_URL"): "http://127.0.0.1:8080", config.EnvName("LISTEN"): "127.0.0.1:8080"}, ""},
 		{"behind a proxy", map[string]string{config.EnvName("LISTEN"): "127.0.0.1:8080", config.EnvName("TRUSTED_PROXIES"): "127.0.0.1", config.EnvName("MASTER_KEY_FILE"): "/etc/rgd/master.key"}, ""},
 		{"https, nothing serves it", map[string]string{}, "problem: base_url is https://"},
-		{"proxy with http base", map[string]string{config.EnvName("BASE_URL"): "http://127.0.0.1:8080", config.EnvName("TRUSTED_PROXIES"): "127.0.0.1"}, "problem: a reverse proxy is declared"},
+		// Compose's defaults opened on this computer: its network declared as the proxy,
+		// listening on every interface of the container, base_url on localhost.
+		{"proxy with http base on this machine", map[string]string{config.EnvName("BASE_URL"): "http://localhost:8080", config.EnvName("LISTEN"): "0.0.0.0:8080", config.EnvName("TRUSTED_PROXIES"): "172.31.250.0/24"}, "note: base_url is http:// on this machine while a reverse proxy is declared"},
 		{"proxy, open port", map[string]string{config.EnvName("LISTEN"): "0.0.0.0:8080", config.EnvName("TRUSTED_PROXIES"): "10.0.0.0/8"}, "note: behind a reverse proxy, but listening on 0.0.0.0:8080"},
 		{"acme off 443", map[string]string{config.EnvName("TLS_ACME_DOMAINS"): "hub.example.com"}, "note: automatic certificates are checked by the authority on port 443"},
 		{"backup with postgres", map[string]string{config.EnvName("TRUSTED_PROXIES"): "127.0.0.1", config.EnvName("BACKUP_DIR"): "/srv/b", config.EnvName("DATABASE_URL"): "postgres://app@db.example.com/x"}, "problem: backup.dir is set, but"},
@@ -76,18 +101,41 @@ func TestConfigFindings(t *testing.T) {
 		for k, v := range tt.env {
 			vars[k] = v
 		}
-		cfg, err := config.Load(config.Options{LookupEnv: func(k string) (string, bool) { v, ok := vars[k]; return v, ok }})
-		if err != nil {
-			t.Fatalf("%s: %v", tt.name, err)
-		}
-		var got []string
-		for _, f := range configFindings(cfg) {
-			got = append(got, f.level+": "+f.text)
-		}
-		all := strings.Join(got, "\n")
+		all := findings(t, vars)
 		if tt.want == "" && strings.Contains(all, "problem") || tt.want != "" && !strings.Contains(all, tt.want) {
 			t.Errorf("%s: %s", tt.name, all)
 		}
+	}
+}
+
+// TestConfigCheckComposeTrial is the false alarm of M1-43: Compose's defaults (its network
+// declared as the proxy, listening on every interface of the container) opened on this computer
+// at http://localhost. That is a trial, not a contradiction: config check exits 0, and in the
+// container the listen address is not worth a note either.
+func TestConfigCheckComposeTrial(t *testing.T) {
+	compose := map[string]string{
+		config.EnvName("BASE_URL"):        "http://localhost:8080",
+		config.EnvName("LISTEN"):          "0.0.0.0:8080",
+		config.EnvName("TRUSTED_PROXIES"): "172.31.250.0/24",
+	}
+	notInContainer(t)
+	e, stdout, _ := testEnv(t, compose)
+	if code := runBounded(e, "config", "check"); code != exitOK || strings.Contains(stdout.String(), "problem:") {
+		t.Errorf("config check: %d\n%s", code, stdout)
+	}
+
+	inContainer = func() bool { return true }
+	all := findings(t, compose)
+	if strings.Contains(all, "listening on") {
+		t.Errorf("in a container, listening on every interface is noted:\n%s", all)
+	}
+	if !strings.Contains(all, "note: base_url is http:// on this machine") {
+		t.Errorf("the trial is not noted:\n%s", all)
+	}
+	// An https base_url behind the proxy, in the container: nothing at all about the transport.
+	compose[config.EnvName("BASE_URL")] = "https://hub.example.com"
+	if all := findings(t, compose); strings.Contains(all, "proxy") || strings.Contains(all, "listening") {
+		t.Errorf("a proper deployment in a container:\n%s", all)
 	}
 }
 

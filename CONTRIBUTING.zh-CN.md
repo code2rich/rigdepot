@@ -43,10 +43,11 @@ go run ./tools/dev check     # 全部检查，结尾打印一张结果表
 | `test` | 在和 `check` 相同的隔离环境里跑测试。可以带包和 `go test` 的参数：`go run ./tools/dev test ./internal/cli -run TestVersion`。 |
 | `gen` | 重新生成生成文件：`brand.json` 里的名字常量、文案键的常量、各资源类型 Schema 的发布副本、`api/openapi.yaml` 生成的接口代码、网页控制台的生成文件。`gen --check` 只报告哪些过期了。 |
 | `web-deps` | 按 `web/pnpm-lock.yaml` 安装网页控制台的依赖。需要 Node、pnpm 和网络。 |
-| `web` | 把网页控制台构建到 `web/dist`，给 `go build -tags webdist` 用。 |
+| `web` | 把网页控制台构建到 `web/dist`，给 `go build -tags webdist` 用，同时写出它打包的依赖和字体的许可（`web/dist/third-party-notices.txt`）。 |
 | `check-linux` | 在本机的 Linux 容器里跑 `check`，让测试真的在 Linux 上执行。需要 Docker。 |
 | `release-snapshot` | 把全部发布产物构建两遍到 `dist/`，不发布任何东西，并比较两遍是否一致。 |
-| `release-files` | 生成发布压缩包里带的命令补全脚本和第三方声明。 |
+| `release` | 发布 `HEAD` 上的版本标签：检查、goreleaser、GitHub 发布页（核对完之前是草稿）、ghcr.io 上的镜像和它的 `docker save` 文件、Homebrew 和 Scoop。需要 `GITHUB_TOKEN`；没有它，或带 `--dry-run` 时，只构建和核对，不发布任何东西。`--dry-run --tag v0.4.0` 预演一个还没打的标签。发版的工作流跑的也是这个任务。 |
+| `release-files` | 生成发布压缩包里带的命令补全脚本和第三方声明：Go 模块的许可，加上 `web/dist` 里网页控制台的许可。许可不在 Apache-2.0、MIT、BSD、ISC、OFL 之内就停下；`check` 对控制台的依赖做同样的核对。 |
 
 `Makefile` 里只是这些任务的别名。CI 跑的也是同样的命令。没有任何检查写在 Makefile 或工作流文件里，因为写在那里的检查没法在你自己的电脑上跑。
 

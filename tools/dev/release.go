@@ -547,7 +547,8 @@ func archiveEntries(path string) ([]string, error) {
 	}
 }
 
-// copyDir copies a directory of regular files.
+// copyDir copies a directory of regular files, keeping their permissions (dist/ holds
+// programs).
 func copyDir(src, dst string) error {
 	return filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -561,10 +562,14 @@ func copyDir(src, dst string) error {
 		if d.IsDir() {
 			return os.MkdirAll(target, 0o755)
 		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
 		data, err := os.ReadFile(p)
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(target, data, 0o644)
+		return os.WriteFile(target, data, info.Mode().Perm())
 	})
 }

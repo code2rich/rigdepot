@@ -1,9 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Rigdepot Authors
 #
-# Publishes a release when a version tag is pushed: the archives for six
-# targets and their checksums go to GitHub Releases, the server image for
-# linux/amd64 and linux/arm64 goes to ghcr.io.
+# Publishes a release when a version tag (v0.4.0, v0.4.0-rc.1) is pushed. The
+# work is the same command the owner runs on a machine of their own:
+#
+#   go run ./tools/dev release --yes
+#
+# It checks the commit, builds every artifact with goreleaser (.goreleaser.yaml),
+# pushes the server image for linux/amd64 and linux/arm64 to ghcr.io, creates
+# the GitHub release as a draft with the archives, packages, checksums and
+# install scripts, updates the Homebrew tap and the Scoop bucket (not for a
+# release candidate), pulls each architecture of the image back to add its
+# docker save export to the release and to checksums.txt, checks the draft
+# against what was built, publishes it, and installs rgd from it.
+#
+# This file only prepares the machine. Nothing is decided here.
+#
+# Secrets: GITHUB_TOKEN (given by Actions; the permissions below) and
+# PACKAGES_GITHUB_TOKEN (a token that can push to code2rich/homebrew-tap and
+# code2rich/scoop-bucket; not needed for a release candidate).
 #
 # Actions are pinned by commit. Only this workflow has write permissions.
 
@@ -23,14 +38,14 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     permissions:
       contents: write # create the release and upload its files
       packages: write # push the image to ghcr.io
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # the changelog and the version come from the history
+          fetch-depth: 0 # the tag, origin/main and the commit dates come from the history
           persist-credentials: false
 
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
@@ -40,24 +55,22 @@ jobs:
             tools/tools.sum
             tools/release.sum
 
-      - name: Download dependencies
-        run: go run ./tools/dev deps
+      # The web console is embedded in rgd-server; pnpm comes in the version
+      # web/package.json names, through corepack.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
 
-      - name: Check
-        run: go run ./tools/dev check
-
-      - name: Build and publish the release
-        # The goreleaser version is the one pinned in tools/release.mod.
-        run: go tool -modfile=tools/release.mod goreleaser release --clean
+      - name: Enable pnpm
+        run: corepack enable
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
 
-      - name: Version information for the image
-        id: info
-        shell: bash
-        run: |
-          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          echo "date=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+      # The image is built for two architectures: QEMU for the one this runner
+      # is not, and a buildx builder with the docker-container driver, which
+      # can push a multi-architecture image. Both must exist before goreleaser
+      # runs.
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -67,26 +80,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Image tags
-        id: meta
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/rigdepot-server
-          # 0.4.0 and 0.4; "latest" is added for a release that is not a
-          # pre-release.
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+      # An SPDX SBOM per archive (goreleaser calls syft).
+      - uses: anchore/sbom-action/download-syft@dfcb83b97731532d72be422cbc51ee64adb6fd56 # v0.24.4
 
-      - name: Build and push the image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            VERSION=${{ steps.info.outputs.version }}
-            COMMIT=${{ github.sha }}
-            DATE=${{ steps.info.outputs.date }}
+      - name: Download dependencies
+        run: |
+          go run ./tools/dev deps
+          go run ./tools/dev web-deps
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+      - name: Release
+        run: go run ./tools/dev release --yes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGES_GITHUB_TOKEN: ${{ secrets.PACKAGES_GITHUB_TOKEN }}
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"

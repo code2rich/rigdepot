@@ -119,9 +119,9 @@ docker compose cp rigdepot:/var/lib/rigdepot/master.key ./master.key   # 然后�
 
 Compose 建了这些：一个容器，以无特权用户（10001）运行，根文件系统只读，没有任何 capability，带 `no-new-privileges`；一个卷 `rigdepot-data`，要留的东西都在里面；一个固定网段 `RGD_SUBNET` 的网络，好让 `RGD_TRUSTED_PROXIES` 能指名它。主机上的反向代理经这个网络的网关访问容器，别的东西访问不到这个端口。
 
-在容器里运行命令：`docker compose exec rigdepot rgd-server <命令>`，比如 `docker compose exec rigdepot rgd-server doctor`。`config check` 会提示「在反向代理后面却监听 `0.0.0.0:8080`」：在容器里只能这样监听，而 Compose 只把端口发布在 `127.0.0.1` 上，所以这条提示在这里不适用。
+在容器里运行命令：`docker compose exec rigdepot rgd-server <命令>`，比如 `docker compose exec rigdepot rgd-server doctor`。在容器里服务端只能监听 `0.0.0.0:8080`；Compose 只把端口发布在 `127.0.0.1` 上，`config check` 知道自己在容器里，不会就监听地址提示。
 
-> **在自己的电脑上试一试。** 设 `RGD_BASE_URL=http://localhost:8080`，打开这个地址就行，不需要代理。`doctor` 和 `config check` 会报「声明了反向代理，但地址是 `http://`」。试用时这是预料之中的，换成正式地址、加上代理后就没有了。
+> **在自己的电脑上试一试。** 设 `RGD_BASE_URL=http://localhost:8080`，打开这个地址就行，不需要代理。`config check` 会给一条提示：声明了反向代理，但地址是本机的 `http://`。这是试用，不算问题；换成正式的 `https://` 地址、加上代理后就没有了。
 
 **其他配置项。** `compose.yaml` 只传上面这几个变量。要用[配置](#配置)里的其他项，在旁边建一个 `compose.override.yaml`，Compose 会自动读它：
 
