@@ -4,6 +4,7 @@
 package sync
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -102,3 +103,42 @@ func checkArtifacts(ref resource.Ref, arts []adapter.Artifact) error {
 	}
 	return nil
 }
+
+// launch rewrites the MCP servers a tool takes natively for the MCP modes in which the
+// command-line program starts them, so that no secret has to be in the tool's configuration:
+//
+//   - MCPLauncher: each server's entry starts "<launcher> mcp run <code>" instead.
+//   - MCPSingleEntry: the servers' entries are replaced by one, brand.MCPEntry, that starts
+//     "<launcher> mcp serve", the proxy of them all; without any server, there is no entry.
+//
+// The single entry is recorded under a resource of its own, the kind mcp with the entry's name
+// as code, since it belongs to no resource of the repository. A tool that does not take stdio
+// servers keeps the servers as they are: there is nothing to start for it.
+func launch(arts []adapter.Artifact, caps adapter.Capabilities, opt Options) []adapter.Artifact {
+	if (opt.MCPMode != adapter.MCPLauncher && opt.MCPMode != adapter.MCPSingleEntry) || !caps.MCP.Stdio {
+		return arts
+	}
+	cmd := cmp.Or(opt.Launcher, brand.CLI)
+	out := make([]adapter.Artifact, 0, len(arts))
+	found := false
+	for _, a := range arts {
+		s, ok := a.(adapter.MCPServer)
+		if !ok {
+			out = append(out, a)
+			continue
+		}
+		found = true
+		if opt.MCPMode == adapter.MCPLauncher {
+			out = append(out, adapter.MCPServer{Resource: s.Resource, EntryName: s.EntryName, Transport: adapter.Stdio,
+				Command: cmd, Args: []string{"mcp", "run", s.Resource.Code}})
+		}
+	}
+	if opt.MCPMode == adapter.MCPSingleEntry && found {
+		out = append(out, adapter.MCPServer{Resource: SingleEntry, EntryName: brand.MCPEntry, Transport: adapter.Stdio,
+			Command: cmd, Args: []string{"mcp", "serve"}})
+	}
+	return out
+}
+
+// SingleEntry is the resource the single entry of MCPSingleEntry is recorded under.
+var SingleEntry = resource.Ref{Kind: resource.KindMCP, Code: brand.MCPEntry}

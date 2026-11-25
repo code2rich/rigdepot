@@ -77,7 +77,10 @@ func (s *Service) saveDraft(ctx context.Context, a access.Actor, in draftInput) 
 			if row.Kind != c.Ref.Kind {
 				return ErrKindMismatch.with(map[string]any{"kind": row.Kind})
 			}
+			adopt := in.origin == OriginRepo && row.Origin == OriginRepo && row.SourceID == ""
 			switch {
+			case adopt:
+				// The repository it came from was removed (DeleteSource): this one takes it over.
 			case in.origin == OriginRepo && (row.Origin != OriginRepo || row.SourceID != in.sourceID):
 				return ErrCodeTaken.with(map[string]any{"code": row.Code})
 			case in.origin != OriginRepo && row.Origin == OriginRepo:
@@ -85,6 +88,18 @@ func (s *Service) saveDraft(ctx context.Context, a access.Actor, in draftInput) 
 			}
 			if err := o.check(access.ActionResourceEdit, row.target(), obj); err != nil {
 				return err
+			}
+			if adopt {
+				if _, err := o.tx.ExecContext(ctx, `UPDATE resources SET source_id = ? WHERE id = ?`, in.sourceID, row.ID); err != nil {
+					return err
+				}
+				if err := s.touch(o, row.ID, now); err != nil {
+					return err
+				}
+				if err := o.record(access.ActionResourceEdit, obj, map[string]any{"source": in.sourceID}); err != nil {
+					return err
+				}
+				row.SourceID, res.Changed = in.sourceID, true
 			}
 			d, has, err := s.draft(ctx, o.tx, row.Resource)
 			if err != nil {
@@ -422,6 +437,11 @@ func (s *Service) ImportRepo(ctx context.Context, a access.Actor, src ImportSour
 	}
 	if err := s.ensureStages(ctx, repo.Config.Stages); err != nil {
 		return res, err
+	}
+	if s.defineSecrets != nil && len(repo.Config.Secrets) > 0 {
+		if err := s.defineSecrets(ctx, repo.Config.Secrets); err != nil {
+			return res, fmt.Errorf("catalog: defining the repository's secrets: %w", err)
+		}
 	}
 	cs, err := s.checkRepo(ctx, repo, nil)
 	if err != nil {

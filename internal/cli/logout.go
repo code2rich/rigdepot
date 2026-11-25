@@ -13,17 +13,16 @@ import (
 	"github.com/code2rich/rigdepot/internal/device"
 	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/i18n/msg"
+	"github.com/code2rich/rigdepot/internal/localsecrets"
 )
 
 func init() { register("", newLogoutCmd) }
 
 // newLogoutCmd: rgd logout. It signs this computer out on the server and deletes the device token
 // and key from the keychain. When the server cannot be told, the token is deleted all the same and
-// the person is told how to sign the computer out on the server's page. The server's address stays
-// in config.toml for the next rgd login.
-//
-// TODO(M1-28): also delete the local copies of personal secrets (secrets/vault.json, package
-// localsecrets), which are sealed to the device key and useless without it.
+// the person is told how to sign the computer out on the server's page. The local copies of
+// personal secrets (secrets/vault.json, package localsecrets) go with the key they are sealed
+// to. The server's address stays in config.toml for the next rgd login.
 func newLogoutCmd(a *app) *cobra.Command {
 	return &cobra.Command{
 		Use:   "logout",
@@ -34,7 +33,7 @@ func newLogoutCmd(a *app) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			id, _, err := a.identity()
+			id, data, err := a.identity()
 			if err != nil {
 				return err
 			}
@@ -43,6 +42,11 @@ func newLogoutCmd(a *app) *cobra.Command {
 			})
 			if err != nil {
 				return a.deviceError(out.Credentials.Server, err)
+			}
+			// The key they were sealed to is gone, so are the copies. A key that could not be
+			// deleted stopped Logout above, and the copies stay with it.
+			if err := localsecrets.New(data).Delete(); err != nil {
+				return err
 			}
 			doc := logoutDoc{WasSignedIn: out.SignedIn, Server: out.Credentials.Server, ServerSignedOut: out.SignedIn && out.ServerErr == nil}
 			if out.ServerErr != nil {

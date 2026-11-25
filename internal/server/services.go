@@ -7,10 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/buildinfo"
 	"github.com/code2rich/rigdepot/internal/logging"
+	"github.com/code2rich/rigdepot/internal/repoformat"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/authn"
@@ -19,9 +22,11 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/delivery"
 	"github.com/code2rich/rigdepot/internal/server/events"
+	"github.com/code2rich/rigdepot/internal/server/feedback"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/modhost"
+	"github.com/code2rich/rigdepot/internal/server/secrets"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
 
@@ -97,11 +102,29 @@ func (a *App) openServices(ctx context.Context) error {
 		a.hooks.firstAdmin = a.authnOps
 	}
 	co := a.catalogOptions
-	co.Auditor, co.Version = log, buildinfo.Version
+	co.Auditor, co.Version, co.Keys = log, buildinfo.Version, keys
+	if co.DefineSecrets == nil {
+		// The secrets a repository defines go to the secrets domain (made below).
+		co.DefineSecrets = func(ctx context.Context, defs map[string]repoformat.Secret) error {
+			if a.secrets == nil {
+				return errors.New("the secrets service is not ready")
+			}
+			return a.secrets.Define(ctx, secretDefs(defs))
+		}
+	}
 	if a.bg != nil {
 		co.Events = a.bg.Events
+		jobs := a.bg.Jobs
+		co.PullNow = func() { jobs.Trigger(catalog.SourceSyncJob) }
 	}
 	if a.catalog, err = catalog.New(a.db, a.access, co); err != nil {
+		return err
+	}
+	fo := feedback.Options{Auditor: log}
+	if a.bg != nil {
+		fo.Events = a.bg.Events
+	}
+	if a.feedback, err = feedback.New(a.db, a.access, a.catalog, fo); err != nil {
 		return err
 	}
 	// Delivery counts the installs of the computers that are signed in: the device code flow's.
@@ -111,6 +134,19 @@ func (a *App) openServices(ctx context.Context) error {
 	}
 	if a.hooks.toolUsage == nil {
 		a.hooks.toolUsage = deliveryHooks{svc: a.delivery}
+	}
+	// Personal secrets: values sealed with the master key, handed out sealed to one device.
+	a.secrets = secrets.New(a.db, keys, secrets.Options{Audit: log})
+	if a.hooks.secretsConfigured == nil {
+		a.hooks.secretsConfigured = a.secrets.Configured
+	}
+	if a.hooks.secretVersions == nil {
+		a.hooks.secretVersions = a.secrets.Versions
+	}
+	if a.bg != nil {
+		// Which resource uses which secret, once a version is live or its settings changed.
+		a.bg.Events.Subscribe("secrets", []string{events.ResourcePublished{}.EventName(), events.ResourceUpdated{}.EventName()},
+			useSecrets(a.catalog, a.secrets))
 	}
 
 	// The master key is loaded and is the one the database was sealed with.
@@ -158,13 +194,21 @@ func loadKeys(ctx context.Context, cfg *config.Config, db *dbx.DB, generate bool
 
 // rewrappers are the tables with sealed values, for "keys rotate". Every
 // domain package that stores sealed values adds its masterkey.Rewrapper
-// here: TODO(M1-28) secrets (secret_values), TODO(M1-25) catalog (sources'
-// credentials).
+// here.
 func rewrappers() []masterkey.Rewrapper {
-	return []masterkey.Rewrapper{settings.Rewrapper, authn.Rewrapper}
+	return []masterkey.Rewrapper{settings.Rewrapper, authn.Rewrapper, catalog.SourcesRewrapper, secrets.Rewrapper}
 }
 
 // keyRotationObject is what the rotation's audit entry is about.
 func keyRotationObject(keys *masterkey.Keyring) audit.Object {
 	return audit.Object{Kind: "master_key", ID: keys.CurrentID(), Label: brand.Server + " master key"}
+}
+
+// secretDefs turns the secrets of a rigdepot.yaml into definitions, by name.
+func secretDefs(in map[string]repoformat.Secret) []secrets.Def {
+	out := make([]secrets.Def, 0, len(in))
+	for _, name := range slices.Sorted(maps.Keys(in)) {
+		out = append(out, secrets.Def{Name: name, Label: in[name].Label, Howto: in[name].Howto})
+	}
+	return out
 }

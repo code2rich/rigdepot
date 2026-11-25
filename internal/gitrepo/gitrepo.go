@@ -77,6 +77,9 @@ type Source struct {
 	// Dir is a directory inside the repository, slash-separated, whose content becomes the root
 	// of the snapshot. Empty means the whole repository.
 	Dir string
+	// Credential, when set, is sent to an https repository; any other address with a
+	// credential is refused with ErrAddress.
+	Credential *Credential
 }
 
 // Snapshot is the content of one commit.
@@ -180,6 +183,10 @@ func (f *Fetcher) Archive(ctx context.Context, src Source, w io.Writer) (commit 
 	if err := checkRef(src.Ref); err != nil {
 		return "", err
 	}
+	auth, err := authConfig(addr, src.Credential)
+	if err != nil {
+		return "", err
+	}
 	dir := strings.Trim(src.Dir, "/")
 	if dir != "" && (!fs.ValidPath(dir) || dir == ".") {
 		return "", fmt.Errorf("%w: %q is not a relative, slash-separated directory", ErrNoDir, src.Dir)
@@ -189,7 +196,7 @@ func (f *Fetcher) Archive(ctx context.Context, src Source, w io.Writer) (commit 
 	if err != nil {
 		return "", err
 	}
-	if err := f.fetch(ctx, repo, addr, src.Ref == ""); err != nil {
+	if err := f.fetch(ctx, repo, addr, src.Ref == "", auth); err != nil {
 		return "", err
 	}
 	commit, err = f.resolve(ctx, repo, src.Ref)
@@ -286,7 +293,7 @@ func writeAttributes(repo string) error {
 // commit HEAD points at. HEAD is only asked for when it is needed, because a repository whose
 // HEAD names a branch that does not exist would otherwise fail every fetch. The address is passed on the command line instead of being stored as a remote, so
 // the cache never holds anything but objects and references.
-func (f *Fetcher) fetch(ctx context.Context, repo string, addr address, head bool) error {
+func (f *Fetcher) fetch(ctx context.Context, repo string, addr address, head bool, auth [][2]string) error {
 	args := []string{
 		"fetch", "--quiet", "--prune", "--force", "--no-tags", "--no-recurse-submodules",
 		"--", addr.arg,
@@ -296,7 +303,7 @@ func (f *Fetcher) fetch(ctx context.Context, repo string, addr address, head boo
 	if head {
 		args = append(args, "+HEAD:"+headRef)
 	}
-	if _, err := f.run(ctx, command{gitDir: repo, allow: addr.transport, args: args, shown: &addr}); err != nil {
+	if _, err := f.run(ctx, command{gitDir: repo, allow: addr.transport, args: args, shown: &addr, config: auth}); err != nil {
 		var ge *gitError
 		if errors.As(err, &ge) {
 			return fmt.Errorf("%w %s: %s", ErrFetch, addr.shown, ge.msg)
