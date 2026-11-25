@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -100,5 +101,19 @@ func TestResponsesFollowTheContract(t *testing.T) {
 	}
 	if _, ok := page["items"]; !ok || page["next_cursor"] != next {
 		t.Errorf("page = %v, want items and next_cursor", page)
+	}
+}
+
+func TestProblemErrorIsItsDocument(t *testing.T) {
+	impl := stub{listFeedback: func(ListFeedbackRequestObject) (ListFeedbackResponseObject, error) {
+		return nil, fmt.Errorf("wrapped: %w", NewProblem(http.StatusForbidden, "access.denied", "Not yours."))
+	}}
+	rec, p := serve(t, impl, http.MethodGet, "/api/v1/feedback", "", nil)
+	if rec.Code != http.StatusForbidden || p.Code != "access.denied" || p.Detail == nil || *p.Detail != "Not yours." {
+		t.Errorf("%d %+v", rec.Code, p)
+	}
+	impl.listFeedback = func(ListFeedbackRequestObject) (ListFeedbackResponseObject, error) { return nil, ErrNotImplemented }
+	if rec, p := serve(t, impl, http.MethodGet, "/api/v1/feedback", "", nil); rec.Code != http.StatusNotImplemented || p.Code != CodeNotImplemented {
+		t.Errorf("not implemented: %d %+v", rec.Code, p)
 	}
 }
