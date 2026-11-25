@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/internal/executor"
 	"github.com/code2rich/rigdepot/internal/manifest"
 )
@@ -147,7 +148,7 @@ func (s *Session) Apply(ctx context.Context, p *Plan, ap Approval) (*Result, err
 			done = Done{Item: it, Kept: r.Kept, Outcome: r.Outcome, Leftover: r.Leftover}
 		default:
 			tool := executor.Tool{ID: it.Tool, Roots: p.roots[it.Tool]}
-			a, err := ex.Apply(ctx, tool, it.Op, it.Observed, executor.Options{Keep: it.Action == ActionOverwrite})
+			a, err := write(ctx, ex, tool, it, it.Op, it.Entry, it.Observed)
 			if err != nil {
 				if errors.Is(err, executor.ErrChanged) || errors.Is(err, executor.ErrUnreadable) {
 					res.Retry = append(res.Retry, Failure{Item: it, Err: err})
@@ -172,6 +173,39 @@ func (s *Session) Apply(ctx context.Context, p *Plan, ap Approval) (*Result, err
 		runErr = errors.Join(runErr, err)
 	}
 	return res, runErr
+}
+
+// replacesKey reports whether an item gives a key we set before a new value.
+func replacesKey(it Item) bool {
+	return it.Target.Op == manifest.OpKey && it.Entry != nil && it.Observed.State == executor.Present &&
+		(it.Action == ActionUpdate || it.Action == ActionOverwrite)
+}
+
+// write carries out an item that writes, with op and en as the executor sees them (the preview
+// maps them into its sandbox) and pre what the target looked like.
+//
+// A key we set before is not given its new value in place: it is undone, then set again. Setting
+// a key that is already there replaces its value and records no edit, so an in-place update
+// would leave an entry that uninstall can only remove by its meaning, no longer byte for byte;
+// undoing it first takes out exactly the bytes the first write added, and the new write records
+// its own. A value the person changed is kept by the undo, as an overwrite promises.
+func write(ctx context.Context, ex Executor, tool executor.Tool, it Item, op adapter.Op, en *manifest.Entry, pre executor.Observed) (executor.Applied, error) {
+	if !replacesKey(it) {
+		return ex.Apply(ctx, tool, op, pre, executor.Options{Keep: it.Action == ActionOverwrite})
+	}
+	target := executor.TargetOf(op)
+	if cur := ex.Observe(target); !cur.Same(pre) {
+		return executor.Applied{}, fmt.Errorf("%s: %w", it.ID, executor.ErrChanged)
+	}
+	r, err := ex.Revert(ctx, *en)
+	if err != nil {
+		return executor.Applied{}, err
+	}
+	a, err := ex.Apply(ctx, tool, op, ex.Observe(target), executor.Options{})
+	if a.Kept == "" {
+		a.Kept = r.Kept
+	}
+	return a, err
 }
 
 // record updates the manifest for what Apply did not write through the executor.
