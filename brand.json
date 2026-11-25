@@ -1,0 +1,12 @@
+{
+  "name": "Rigdepot",
+  "cli": "rgd",
+  "cliLong": "rigdepot",
+  "server": "rgd-server",
+  "home": ".rigdepot",
+  "prefix": "rgd-",
+  "managedMarker": "managed-by: Rigdepot",
+  "mcpEntry": "rigdepot",
+  "repoConfig": "rigdepot.yaml",
+  "envPrefix": "RGD_"
+}
