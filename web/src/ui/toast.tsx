@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Rigdepot Authors
 
-// The short confirmation at the bottom of the screen ("已保存"), as in the prototype. One at a time; it goes
-// away after a few seconds. The shell renders it; anything calls toast().
+// The short note at the bottom after something is done ("Saved"), as in the prototype's toast(). It is
+// read out by screen readers and goes away by itself.
 
 import { signal } from '@preact/signals'
 
 const message = signal('')
 let timer: ReturnType<typeof setTimeout> | undefined
 
-/** toast shows a message for a few seconds. */
+/** toast shows a note for a few seconds, replacing the one before. */
 export function toast(text: string) {
   clearTimeout(timer)
   message.value = text
@@ -18,13 +18,16 @@ export function toast(text: string) {
   }, 3200)
 }
 
-/** Toast is the place the message appears; rendered once, by the shell. */
+/** Toast is where the notes appear. The shell renders it once; pages outside the shell (sign-in, setup) render their own. */
 export function Toast() {
-  if (!message.value) return null
   return (
-    <div class="toast" role="status">
-      <i />
-      {message.value}
+    <div role="status" aria-live="polite">
+      {message.value && (
+        <div class="toast">
+          <i />
+          {message.value}
+        </div>
+      )}
     </div>
   )
 }

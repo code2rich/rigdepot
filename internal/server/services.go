@@ -10,6 +10,7 @@ import (
 
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/buildinfo"
+	"github.com/code2rich/rigdepot/internal/logging"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/authn"
@@ -78,10 +79,13 @@ func (a *App) openServices(ctx context.Context) error {
 		n.devices = a.devices
 		a.hooks.names = n
 	}
-	a.authn = authn.New(a.db, authn.Options{Access: a.access, Audit: log, Devices: a.hooks.devices})
+	// Identity sources: the kinds compiled in (builtin/all/server registers
+	// them), their client secrets sealed with the master key.
+	a.authn = authn.New(a.db, authn.Options{Access: a.access, Audit: log, Devices: a.hooks.devices,
+		Keys: keys, Sources: a.identitySources, BaseURL: a.cfg.BaseURL})
 	if a.authnOps, err = authnapi.New(a.authn, authnapi.Options{
 		BaseURL: a.cfg.BaseURL, TrustedProxies: a.cfg.TrustedProxies, Log: a.log, Devices: a.devices,
-		Protected: []string{modhost.RoutePrefix},
+		Protected: []string{modhost.RoutePrefix}, SignInRate: a.signInRate,
 		// What each computer said at its last sync; delivery exists by the time anyone asks.
 		DeviceSyncs: func(ctx context.Context, ids []string) (map[string]authnapi.DeviceSync, error) {
 			return deliveryHooks{svc: a.delivery}.DeviceSyncs(ctx, ids)
@@ -125,7 +129,7 @@ func (a *App) openServices(ctx context.Context) error {
 		// can read this log runs the server anyway. It stops working when the
 		// wizard is complete.
 		a.log.Warn("setup is not complete: open the server's address in a browser and enter this one-time setup code",
-			"base_url", a.cfg.BaseURL.String(), "setup_code", token)
+			"base_url", a.cfg.BaseURL.String(), "setup_code", logging.Disclosed(token))
 	default:
 		a.log.Info("setup is not complete: open the server's address in a browser and enter the setup token given in " + config.EnvName("SETUP_TOKEN"))
 	}
@@ -155,9 +159,9 @@ func loadKeys(ctx context.Context, cfg *config.Config, db *dbx.DB, generate bool
 // rewrappers are the tables with sealed values, for "keys rotate". Every
 // domain package that stores sealed values adds its masterkey.Rewrapper
 // here: TODO(M1-28) secrets (secret_values), TODO(M1-25) catalog (sources'
-// credentials), TODO(M1-21) identity providers' client secrets.
+// credentials).
 func rewrappers() []masterkey.Rewrapper {
-	return []masterkey.Rewrapper{settings.Rewrapper}
+	return []masterkey.Rewrapper{settings.Rewrapper, authn.Rewrapper}
 }
 
 // keyRotationObject is what the rotation's audit entry is about.

@@ -183,15 +183,12 @@ func TestHelpListsEveryCommand(t *testing.T) {
 	}
 }
 
-// TestOperationsCommandsSayTheyAreNotThereYet: the commands of task M1-42
-// exist so that they fail clearly instead of as unknown commands.
-func TestOperationsCommandsSayTheyAreNotThereYet(t *testing.T) {
-	for _, args := range [][]string{{"backup"}, {"restore", "--check", "x"}, {"reset-admin"},
-		{"setup", "--from", "x"}, {"config", "check"}, {"doctor"}} {
-		e, _, stderr := testEnv(t, nil)
-		if code := run(context.Background(), args, e); code != exitFailure || !strings.Contains(stderr.String(), "not implemented") {
-			t.Errorf("%v: exit code %d, stderr %q", args, code, stderr)
-		}
+// TestSetupFromFileSaysItIsNotThereYet: setup --from exists so that it fails clearly instead
+// of as an unknown command.
+func TestSetupFromFileSaysItIsNotThereYet(t *testing.T) {
+	e, _, stderr := testEnv(t, nil)
+	if code := run(context.Background(), []string{"setup", "--from", "x"}, e); code != exitFailure || !strings.Contains(stderr.String(), "not implemented") {
+		t.Errorf("exit code %d, stderr %q", code, stderr)
 	}
 }
 
@@ -230,8 +227,9 @@ func TestServe(t *testing.T) {
 		t.Errorf("api: %s %v %s", resp.Status, resp.Header, body)
 	}
 
-	if resp, _ := get(t, "http://"+srv.addr+"/api/v1/meta"); resp.StatusCode != http.StatusNotImplemented {
-		t.Errorf("an operation nobody implements yet: %s", resp.Status)
+	if resp, body := get(t, "http://"+srv.addr+"/api/v1/meta"); resp.StatusCode != http.StatusOK ||
+		!strings.Contains(body, `"setup_complete":false`) || !strings.Contains(body, `{"id":"local","kind":"local"`) {
+		t.Errorf("meta before setup: %s %s", resp.Status, body)
 	}
 
 	if code := srv.wait(t); code != exitOK {

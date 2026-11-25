@@ -45,8 +45,9 @@ func runHealthcheck(ctx context.Context, e *env, args []string) int {
 		scheme = "https"
 		// The certificate names the public host, not the loopback address
 		// this connects to. Nothing secret is sent and the answer is only
-		// a status, so the name is not checked.
-		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+		// a status, so the name is not checked. The public host goes in
+		// the handshake all the same: automatic certificates are chosen by it.
+		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true, ServerName: cfg.BaseURL.Hostname()}}
 	}
 	path := "/healthz"
 	if ready {

@@ -48,8 +48,9 @@ type Options struct {
 	// TrustedProxies are the reverse proxies whose X-Forwarded-For is
 	// believed, for limits by client address.
 	TrustedProxies []netip.Prefix
-	// SignInRate limits signing in, opening invitation links and starting
-	// rgd login per client address; UserRate limits every other operation per account. The zero
+	// SignInRate limits signing in (with a password, and through identity
+	// providers, separately), opening invitation links and starting rgd
+	// login per client address; UserRate limits every other operation per account. The zero
 	// value is DefaultSignInRate and DefaultUserRate; a negative Burst
 	// turns a limit off.
 	SignInRate, UserRate Rate
@@ -78,7 +79,7 @@ type Ops struct {
 	svc       *authn.Service
 	devices   *authn.Devices
 	syncs     func(ctx context.Context, deviceIDs []string) (map[string]DeviceSync, error)
-	base      string // the public address without a trailing slash, for verification_uri
+	base      string // the public address without a trailing slash, for verification_uri and redirects
 	log       *slog.Logger
 	ops       *operations
 	cop       *http.CrossOriginProtection
@@ -89,6 +90,7 @@ type Ops struct {
 	signIn     *limiter
 	invite     *limiter
 	deviceCode *limiter
+	provider   *limiter
 	user       *limiter
 }
 
@@ -114,7 +116,7 @@ func New(svc *authn.Service, o Options) (*Ops, error) {
 	h := &Ops{
 		protected: o.Protected, devices: o.Devices, syncs: o.DeviceSyncs,
 		svc: svc, log: o.Log, ops: ops, cop: http.NewCrossOriginProtection(), path: "/", trusted: o.TrustedProxies,
-		signIn: newLimiter(o.SignInRate, o.Now), invite: newLimiter(o.SignInRate, o.Now), deviceCode: newLimiter(o.SignInRate, o.Now), user: newLimiter(o.UserRate, o.Now),
+		signIn: newLimiter(o.SignInRate, o.Now), invite: newLimiter(o.SignInRate, o.Now), deviceCode: newLimiter(o.SignInRate, o.Now), provider: newLimiter(o.SignInRate, o.Now), user: newLimiter(o.UserRate, o.Now),
 	}
 	if b := o.BaseURL; b != nil {
 		h.secure = b.Scheme == "https"
@@ -160,6 +162,11 @@ var details = map[string]string{
 	"access.denied":            "You are not allowed to do this.",
 	"object.not_found":         "Not found, or not visible to you.",
 	"request.invalid":          "The request has invalid fields.",
+	"precondition.failed":      "This changed after you opened it. Reload to see the latest.",
+	"precondition.required":    "Send If-Match with the ETag you read.",
+	"identity.last_method":     "At least one sign-in method has to stay enabled.",
+	"identity.local_fixed":     "Local accounts can only be turned on and off.",
+	"auth.method_disabled":     "Signing in with a password is turned off on this server.",
 	"rate.limited":             "Too many requests. Try again in a moment.",
 
 	"device.authorization_pending": "Waiting for confirmation in the browser.",
@@ -170,13 +177,15 @@ var details = map[string]string{
 }
 
 var statusOf = map[authn.Kind]int{
-	authn.KindInvalid:         http.StatusBadRequest,
-	authn.KindUnauthenticated: http.StatusUnauthorized,
-	authn.KindDenied:          http.StatusForbidden,
-	authn.KindNotFound:        http.StatusNotFound,
-	authn.KindConflict:        http.StatusConflict,
-	authn.KindLocked:          http.StatusTooManyRequests,
-	authn.KindDeviceFlow:      http.StatusBadRequest, // RFC 8628, 3.5
+	authn.KindInvalid:              http.StatusBadRequest,
+	authn.KindUnauthenticated:      http.StatusUnauthorized,
+	authn.KindDenied:               http.StatusForbidden,
+	authn.KindNotFound:             http.StatusNotFound,
+	authn.KindConflict:             http.StatusConflict,
+	authn.KindLocked:               http.StatusTooManyRequests,
+	authn.KindDeviceFlow:           http.StatusBadRequest, // RFC 8628, 3.5
+	authn.KindPrecondition:         http.StatusPreconditionFailed,
+	authn.KindPreconditionRequired: http.StatusPreconditionRequired,
 }
 
 // newProblem is a problem document with this package's detail text and the

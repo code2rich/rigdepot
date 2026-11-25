@@ -101,6 +101,19 @@ func TestLoggerNeverWritesTheSecret(t *testing.T) {
 	}
 }
 
+// TestDisclosedIsWritten: the setup code is logged on purpose under a name that is otherwise
+// redacted; the same name with a plain value is still redacted.
+func TestDisclosedIsWritten(t *testing.T) {
+	line := logLine(t, func(l *slog.Logger) { l.Warn("setup", "setup_code", Disclosed(marker)) })
+	if !strings.Contains(line, `"setup_code":"`+marker+`"`) {
+		t.Errorf("the disclosed value is not in the log: %s", line)
+	}
+	line = logLine(t, func(l *slog.Logger) { l.Warn("setup", "setup_code", marker) })
+	if strings.Contains(line, marker) {
+		t.Errorf("a plain setup_code reached the log: %s", line)
+	}
+}
+
 type valuer struct{}
 
 func (valuer) LogValue() slog.Value { return slog.StringValue("token=" + marker) }

@@ -7,11 +7,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
+
+	"github.com/code2rich/rigdepot/ext/identity"
 
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
+	"github.com/code2rich/rigdepot/internal/server/masterkey"
 )
 
 // Kind is what sort of failure an Error is. The HTTP layer maps each kind to
@@ -20,13 +24,15 @@ type Kind int
 
 // The kinds of failure.
 const (
-	KindInvalid         Kind = iota + 1 // the input is not valid; Fields says which
-	KindUnauthenticated                 // no valid credential
-	KindDenied                          // signed in, but not allowed
-	KindNotFound                        // not there, or not the caller's
-	KindConflict                        // the state does not allow it
-	KindLocked                          // too many wrong passwords; RetryAfter says how long
-	KindDeviceFlow                      // an answer to polling in the device code flow (RFC 8628, 3.5)
+	KindInvalid              Kind = iota + 1 // the input is not valid; Fields says which
+	KindUnauthenticated                      // no valid credential
+	KindDenied                               // signed in, but not allowed
+	KindNotFound                             // not there, or not the caller's
+	KindConflict                             // the state does not allow it
+	KindLocked                               // too many wrong passwords; RetryAfter says how long
+	KindDeviceFlow                           // an answer to polling in the device code flow (RFC 8628, 3.5)
+	KindPrecondition                         // the object changed since the caller read it
+	KindPreconditionRequired                 // a change without the version it is based on
 )
 
 // Error is a failure the caller can act on. Code is the stable identifier of
@@ -118,6 +124,16 @@ type Options struct {
 	MaxConcurrentHashes int
 	// Now is the clock; nil is time.Now.
 	Now func() time.Time
+	// Keys seals the identity sources' client secrets and the encrypted
+	// state of a sign-in through one. Nil: identity sources cannot be
+	// used.
+	Keys *masterkey.Keyring
+	// Sources are the kinds of identity sources compiled in; nil is the
+	// registry (identity.All).
+	Sources []identity.Provider
+	// BaseURL is the server's public address, for the callback addresses
+	// of identity sources and the pages a sign-in lands on.
+	BaseURL *url.URL
 }
 
 // Service signs people in and keeps their sessions and access tokens.
@@ -128,6 +144,11 @@ type Service struct {
 	devices DeviceTokens
 	hasher  *hasher
 	now     func() time.Time
+
+	keys     *masterkey.Keyring
+	baseURL  *url.URL
+	kindList []identity.Provider
+	kinds    map[string]identity.Provider
 }
 
 // New returns the service on db.
@@ -141,10 +162,18 @@ func New(db *dbx.DB, o Options) *Service {
 	if o.MaxConcurrentHashes <= 0 {
 		o.MaxConcurrentHashes = 4
 	}
-	return &Service{
+	if o.Sources == nil {
+		o.Sources = identity.All()
+	}
+	s := &Service{
 		db: db, access: o.Access, audit: o.Audit, devices: o.Devices,
 		hasher: newHasher(o.Hash, o.MaxConcurrentHashes), now: o.Now,
+		keys: o.Keys, baseURL: o.BaseURL, kindList: o.Sources, kinds: map[string]identity.Provider{},
 	}
+	for _, p := range o.Sources {
+		s.kinds[p.ID()] = p
+	}
+	return s
 }
 
 func (s *Service) millis() int64 { return dbx.Millis(s.now()) }

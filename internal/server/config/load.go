@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	toml "github.com/pelletier/go-toml/v2"
+
+	"github.com/code2rich/rigdepot/internal/brand"
 )
 
 // Setting describes one startup setting: where it can be given and whether
@@ -42,6 +44,7 @@ var settings = []Setting{
 	{Key: "tls.key_file", Env: EnvName("TLS_KEY_FILE"), Flag: "tls-key-file", InFile: true, Help: "TLS private key file"},
 	{Key: "tls.acme_domains", Env: EnvName("TLS_ACME_DOMAINS"), Flag: "tls-acme-domains", InFile: true, Help: "domains to get certificates for automatically, comma-separated"},
 	{Key: "tls.acme_email", Env: EnvName("TLS_ACME_EMAIL"), Flag: "tls-acme-email", InFile: true, Help: "contact address for the certificate authority"},
+	{Key: "tls.acme_directory_url", Env: EnvName("TLS_ACME_DIRECTORY_URL"), Flag: "tls-acme-directory-url", InFile: true, Help: "ACME directory of the certificate authority (default Let's Encrypt)"},
 	{Key: "tls.http_redirect_listen", Env: EnvName("HTTP_REDIRECT_LISTEN"), Flag: "http-redirect-listen", InFile: true, Help: "plain HTTP address that only redirects to HTTPS, such as :80"},
 	{Key: "trusted_proxies", Env: EnvName("TRUSTED_PROXIES"), Flag: "trusted-proxies", InFile: true, Help: "address ranges of the reverse proxy, comma-separated"},
 	{Key: "insecure_http", Env: EnvName("INSECURE_HTTP"), Flag: "insecure-http", Help: "allow plain HTTP on a network address (isolated trials only)"},
@@ -52,8 +55,8 @@ var settings = []Setting{
 	{Key: "git", Env: EnvName("GIT"), Flag: "git", InFile: true, Help: "git executable (default git)"},
 	{Key: "source_sync_interval", Env: EnvName("SOURCE_SYNC_INTERVAL"), Flag: "source-sync-interval", InFile: true, Help: "how often to fetch resource repositories (default 10m)"},
 	{Key: "max_bundle_mb", Env: EnvName("MAX_BUNDLE_MB"), Flag: "max-bundle-mb", InFile: true, Help: "largest resource bundle in MB (default 5)"},
-	{Key: "cli_dist_dir", Env: EnvName("CLI_DIST_DIR"), Flag: "cli-dist-dir", InFile: true, Help: "directory with the command-line program for each platform"},
-	{Key: "cli_download_base", Env: EnvName("CLI_DOWNLOAD_BASE"), Flag: "cli-download-base", InFile: true, Help: "where install scripts download from when the directory above is empty"},
+	{Key: "cli_dist_dir", Env: EnvName("CLI_DIST_DIR"), Flag: "cli-dist-dir", InFile: true, Help: "directory with the release archives of the command-line program to hand out (default: <data_dir>/cli, then /usr/share/" + brand.CLILong + "/cli)"},
+	{Key: "cli_download_base", Env: EnvName("CLI_DOWNLOAD_BASE"), Flag: "cli-download-base", InFile: true, Help: "URL of a directory with a release's checksums.txt and archives, for the install scripts when no archives are on this machine"},
 	{Key: "backup.dir", Env: EnvName("BACKUP_DIR"), Flag: "backup-dir", InFile: true, Help: "directory for daily backups (default off)"},
 	{Key: "backup.keep", Env: EnvName("BACKUP_KEEP"), Flag: "backup-keep", InFile: true, Help: "how many backups to keep (default 14)"},
 	{Key: "web_dev_proxy", Env: EnvName("WEB_DEV_PROXY"), Flag: "web-dev-proxy", Help: "development only: serve the console from this local development server (such as http://127.0.0.1:5173) instead of the embedded files"},
