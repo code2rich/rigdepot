@@ -496,6 +496,10 @@ func setupCode(t *testing.T, logs string) string {
 			Code string `json:"setup_code"`
 		}
 		if json.Unmarshal([]byte(line), &rec) == nil && rec.Code != "" {
+			// The person installing the server types it from here.
+			if rec.Code == logging.Redacted {
+				t.Fatalf("the setup code is redacted in the log:\n%s", line)
+			}
 			return rec.Code
 		}
 	}
