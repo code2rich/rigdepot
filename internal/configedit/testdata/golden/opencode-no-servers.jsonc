@@ -1,0 +1,21 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // No MCP servers yet.
+  "model": "example/model-large", // trailing comment on the last member
+  "mcp": {
+    "servers": {
+      "rgd-jira": {
+        "command": [
+          "/opt/example/bin/rgd",
+          "mcp",
+          "run",
+          "jira"
+        ],
+        "environment": {
+          "JIRA_URL": "https://jira.example.com"
+        },
+        "type": "local"
+      }
+    }
+  }
+}

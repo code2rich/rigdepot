@@ -1,0 +1,41 @@
+﻿{
+  "numStartups": 42,
+  "installMethod": "native",
+  "autoUpdates": false,
+  "theme": "dark",
+  "tipsHistory": {
+    "new-user-warmup": 1,
+    "memory-command": 7
+  },
+  "mcpServers": {
+    "docs": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@example/docs-mcp"
+      ],
+      "env": {
+        "DOCS_TOKEN": "<placeholder: token>"
+      }
+    },
+    "rgd-jira": {
+      "args": [
+        "mcp",
+        "run",
+        "jira"
+      ],
+      "command": "/opt/example/bin/rgd",
+      "env": {},
+      "type": "stdio"
+    }
+  },
+  "projects": {
+    "/home/example/work/app": {
+      "allowedTools": [],
+      "hasTrustDialogAccepted": true,
+      "mcpServers": {}
+    }
+  },
+  "userID": "<placeholder: user id>"
+}

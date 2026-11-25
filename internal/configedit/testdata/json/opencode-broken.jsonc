@@ -1,0 +1,10 @@
+{
+  "mcp": {
+    "servers": {
+      "docs": { "type": "remote", "url": "https://mcp.example.com/docs" }
+    }
+  },
+  // unterminated block comment /*
+  "model": "example/model-large",
+  /* oops
+}

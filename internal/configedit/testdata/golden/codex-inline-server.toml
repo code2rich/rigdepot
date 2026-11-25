@@ -1,0 +1,11 @@
+model = "example-model"
+
+[mcp_servers]
+docs = { command = "npx", args = ["-y", "@example/docs-mcp"] }
+
+[mcp_servers.rgd-jira]
+args = ["mcp", "run", "jira"]
+command = "/opt/example/bin/rgd"
+
+[mcp_servers.rgd-jira.env]
+JIRA_URL = "https://jira.example.com"

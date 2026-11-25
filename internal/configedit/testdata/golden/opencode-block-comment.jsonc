@@ -1,0 +1,18 @@
+{
+  "mcp": {
+    "servers": {
+      "rgd-jira": {
+        "command": [
+          "/opt/example/bin/rgd",
+          "mcp",
+          "run",
+          "jira"
+        ],
+        "environment": {
+          "JIRA_URL": "https://jira.example.com"
+        },
+        "type": "local"
+      }
+    } /* nothing here */
+  }
+}

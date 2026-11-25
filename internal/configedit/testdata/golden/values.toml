@@ -1,0 +1,20 @@
+[tables."with space".rgd-jira]
+"beyond 2^53" = 100000000000000020.0
+bool = true
+control = "tab\tnew\nline\u0001\u007F"
+"empty list" = []
+float = 0.1
+huge = 1e+300
+int = 7
+int64 = -9223372036854775808
+"mixed list" = ["a", 1, { "dotted.key" = [], k = "v" }, {}]
+plain = "abc"
+quotes = "say \"hi\" \\ bye"
+tiny = 1e-09
+unicode = "中文 ✓"
+"whole float" = 3.0
+
+[tables."with space".rgd-jira."a.b"]
+
+[tables."with space".rgd-jira.sub.deeper]
+x = 1

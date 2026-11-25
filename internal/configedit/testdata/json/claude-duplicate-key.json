@@ -1,0 +1,4 @@
+{
+  "mcpServers": {},
+  "mcpServers": {"docs": {"type": "http", "url": "https://mcp.example.com/docs"}}
+}
