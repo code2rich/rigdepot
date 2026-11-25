@@ -412,8 +412,8 @@ func TestEventToMail(t *testing.T) {
 		_ = bus.Close(context.Background())
 		_ = sched.Stop(context.Background())
 	})
-	f.svc.On(bus, []string{"thing.done"}, func(_ context.Context, ev events.Event) ([]Mail, error) {
-		return []Mail{testMail(ev.Payload.(thingDone).Owner)}, nil
+	f.svc.On(bus, []string{"thing.done"}, func(_ context.Context, ev events.Event, _ *People) ([]Notice, error) {
+		return []Notice{{Address: ev.Payload.(thingDone).Owner, Template: TemplateTest, Mail: true}}, nil
 	})
 	sched.Start()
 	// The first run of the job happens at start; wait for it so that only the trigger can send.

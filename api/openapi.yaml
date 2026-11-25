@@ -685,6 +685,7 @@ paths:
                     link: /catalog/unit-testing
                     created_at: '2026-11-25T09:51:00Z'
                 next_cursor: eyJiIjoiMDE5M2E0YjIifQ
+                unread: 3
         default: { $ref: '#/components/responses/Problem' }
 
   /api/v1/me/notifications/mark-read:
@@ -699,7 +700,7 @@ paths:
             schema: { $ref: '#/components/schemas/MarkNotificationsReadRequest' }
             example: { ids: [0193a4b2-6c1e-7a00-8000-000000000401] }
       responses:
-        '204': { description: Marked. }
+        '204': { description: 'Marked. Ids that are not mine, or not notifications, are ignored.' }
         default: { $ref: '#/components/responses/Problem' }
 
   # ---------------------------------------------------------------- device
@@ -3509,10 +3510,11 @@ components:
         read_at: { type: string, format: date-time }
     NotificationPage:
       type: object
-      required: [items]
+      required: [items, unread]
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/Notification' } }
         next_cursor: { type: string }
+        unread: { type: integer, minimum: 0, description: 'How many of my notifications are unread, over all pages: the number on the bell.' }
     MarkNotificationsReadRequest:
       type: object
       description: Either `ids`, or `all` to mark everything read.

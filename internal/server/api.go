@@ -48,6 +48,7 @@ type api struct {
 	*modulesAPI
 	*toolsAPI
 	*catalogAPI
+	*notificationsAPI
 }
 
 // fallback puts notImplemented's methods one embedding level below the
@@ -107,19 +108,26 @@ func apiMounts(app *App) Mounts {
 	if err != nil {
 		panic(err) // the catalogues are embedded and checked by tools/dev check
 	}
+	accessOpts := accessapi.Options{
+		BaseURL:        app.cfg.BaseURL,
+		SignIns:        authnapi.SignIns(app.authn),
+		ResourceCounts: app.catalog.ResourceCounts,
+	}
+	if bg := app.bg; bg != nil && bg.Notify != nil {
+		// Invitations go out by mail once mail is set up; until then the
+		// administrator gets the link (notify.ErrMailOff).
+		accessOpts.MailInvite = bg.Notify.MailInvite
+	}
 	impl := api{
-		Handlers: accessapi.New(app.access, accessapi.Options{
-			BaseURL:        app.cfg.BaseURL,
-			SignIns:        authnapi.SignIns(app.authn),
-			ResourceCounts: app.catalog.ResourceCounts,
-		}),
-		Ops:         app.authnOps,
-		settingsAPI: &settingsAPI{settings: app.settings, hooks: &app.hooks},
-		setupAPI:    &setupAPI{settings: app.settings, hooks: &app.hooks},
-		auditAPI:    &auditAPI{log: app.audit, hooks: &app.hooks},
-		modulesAPI:  &modulesAPI{settings: app.settings},
-		toolsAPI:    &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
-		catalogAPI:  &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
+		Handlers:         accessapi.New(app.access, accessOpts),
+		Ops:              app.authnOps,
+		settingsAPI:      &settingsAPI{settings: app.settings, hooks: &app.hooks},
+		setupAPI:         &setupAPI{settings: app.settings, hooks: &app.hooks},
+		auditAPI:         &auditAPI{log: app.audit, hooks: &app.hooks},
+		modulesAPI:       &modulesAPI{settings: app.settings},
+		toolsAPI:         &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
+		catalogAPI:       &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
+		notificationsAPI: &notificationsAPI{access: app.access},
 	}
 	if impl.toolsAPI.version == "" {
 		impl.toolsAPI.version = buildinfo.Get().Version
@@ -131,6 +139,9 @@ func apiMounts(app *App) Mounts {
 		impl.modulesAPI.host = bg.Modules
 		impl.modulesAPI.text = bg.text
 		modules = bg.Modules.Handler(http.HandlerFunc(notFound))
+	}
+	if bg := app.bg; bg != nil && bg.Notify != nil {
+		impl.notificationsAPI.notify = bg.Notify
 	}
 	uploadLimit := int64(app.cfg.MaxBundleMB) << 20
 	mux := http.NewServeMux()

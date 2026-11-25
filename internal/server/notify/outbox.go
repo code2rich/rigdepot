@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/mail"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/logging"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
-	"github.com/code2rich/rigdepot/internal/server/events"
 	"github.com/code2rich/rigdepot/internal/server/jobs"
 )
 
@@ -92,6 +92,12 @@ type Options struct {
 	Log      *slog.Logger
 	// Now is the clock; nil means time.Now. Tests move it.
 	Now func() time.Time
+	// People finds the recipients of the rules (Subscribe, On). Nil: the rules see nobody, and
+	// only notices to e-mail addresses are delivered.
+	People Directory
+	// BaseURL is the server's public address; mail links to the console under it. Nil leaves
+	// the links as paths.
+	BaseURL *url.URL
 }
 
 // Service is the outbox and the dispatch to channels.
@@ -106,6 +112,8 @@ type Service struct {
 	retryFor time.Duration
 	log      *slog.Logger
 	now      func() time.Time
+	people   Directory
+	baseURL  *url.URL
 
 	mu sync.Mutex // one RunOnce at a time in this process
 }
@@ -119,6 +127,7 @@ func New(o Options) (*Service, error) {
 		db: o.DB, jobs: o.Jobs, config: o.Config, channels: o.Channels,
 		render: renderer{cat: o.Catalog, defaultLocale: o.DefaultLocale},
 		sender: o.Sender, limit: o.HourlyLimit, retryFor: o.RetryFor, log: o.Log, now: o.Now,
+		people: o.People, baseURL: o.BaseURL,
 	}
 	if s.channels == nil {
 		s.channels = extnotify.Lookup
@@ -147,23 +156,6 @@ func New(o Options) (*Service, error) {
 		}
 	}
 	return s, nil
-}
-
-// Rule decides which mails an event causes. It runs on the event's subscriber goroutine after
-// the change was committed.
-type Rule func(ctx context.Context, ev events.Event) ([]Mail, error)
-
-// On queues the mails rule returns for each event with one of the given names, all in one
-// transaction.
-// A rule that fails is logged by the bus; the change that caused the event stands.
-func (s *Service) On(bus *events.Bus, names []string, rule Rule) (unsubscribe func()) {
-	return bus.Subscribe("notify", names, func(ctx context.Context, ev events.Event) error {
-		mails, err := rule(ctx, ev)
-		if err != nil || len(mails) == 0 {
-			return err
-		}
-		return s.db.InTx(ctx, func(tx *dbx.Tx) error { return s.Enqueue(ctx, tx, mails...) })
-	})
 }
 
 // Enqueue queues mails in tx. A mail to an address that is not one e-mail address is skipped
@@ -398,6 +390,12 @@ func (s *Service) markSent(ctx context.Context, rows []row) error {
 			if _, err := tx.ExecContext(ctx, `UPDATE mail_outbox SET status = ?, sent_at = ?, batch = ?, attempts = attempts + 1, last_error = ''
 				WHERE id = ?`, statusSent, now, rows[0].id, r.id); err != nil {
 				return err
+			}
+			// A link that grants something by itself is kept no longer than needed.
+			if templates[r.template].SecretLink {
+				if _, err := tx.ExecContext(ctx, `UPDATE mail_outbox SET link = '' WHERE id = ?`, r.id); err != nil {
+					return err
+				}
 			}
 		}
 		return nil

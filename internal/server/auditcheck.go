@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/code2rich/rigdepot/internal/server/events"
 	"github.com/code2rich/rigdepot/internal/server/jobs"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
@@ -17,7 +18,8 @@ import (
 // run checks the rows added since the last one, from the row after the last one found intact
 // and anchored at its hash, so that a row changed, removed or inserted since, and an end of the
 // log cut off, are noticed. The outcome is kept in the settings; a broken chain makes /readyz
-// report "audit_chain" as degraded, every day until the log is restored from a backup.
+// report "audit_chain" as degraded and the administrators are notified (events.AuditChainBroken),
+// every day until the log is restored from a backup.
 // "audit verify" checks the whole chain on demand.
 
 // auditCheckJob is the job's name.
@@ -56,6 +58,10 @@ func (a *App) checkAudit(ctx context.Context) error {
 		return err
 	}
 	if rep.Broken != nil {
+		if a.bg != nil {
+			// notify tells the administrators, every day until the log is restored.
+			a.bg.Events.PublishCommitted(events.AuditChainBroken{Seq: rep.Broken.Seq, IntactThrough: next.LastSeq, Problem: rep.Broken.Problem})
+		}
 		a.log.Error("the audit log was tampered with: restore it from a backup and find out who could write to the database",
 			"seq", rep.Broken.Seq, "problem", rep.Broken.Problem, "intact_through", next.LastSeq)
 		return fmt.Errorf("%w: %v", errAuditBroken, rep.Broken)
