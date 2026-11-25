@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
+	"go/build/constraint"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -406,6 +407,54 @@ func checkStructure(s *sandbox) ([]violation, error) {
 	out = append(out, checkTestIsolation(module, goFiles)...)
 	out = append(out, checkBrandLiterals(b, goFiles)...)
 	out = append(out, checkLicenseHeaders(files)...)
+	out = append(out, checkModuleTags(files)...)
 	sort.SliceStable(out, func(i, j int) bool { return out[i].String() < out[j].String() })
 	return out, nil
+}
+
+// moduleRegistry is where optional modules are registered, one file each.
+const moduleRegistry = "modules/all"
+
+// omitTag returns the build tag that leaves a module out: rgd_omit_<id>,
+// with the hyphens of the ID as underscores (build tags have no hyphens).
+func omitTag(id string) string {
+	return strings.TrimSuffix(coreOnlyTag, "core_only") + "omit_" + strings.ReplaceAll(id, "-", "_")
+}
+
+// checkModuleTags makes sure every module can be compiled out: each file of
+// the module registry other than doc.go is maybe_<id>.go and carries the
+// constraint !rgd_omit_<id> && !rgd_core_only, so that the core builds and
+// passes its tests without any module.
+func checkModuleTags(files []sourceFile) []violation {
+	var out []violation
+	for _, f := range files {
+		if path.Dir(f.rel) != moduleRegistry || path.Ext(f.rel) != ".go" || strings.HasSuffix(f.rel, "_test.go") || path.Base(f.rel) == "doc.go" {
+			continue
+		}
+		id, ok := strings.CutPrefix(strings.TrimSuffix(path.Base(f.rel), ".go"), "maybe_")
+		if !ok || id == "" {
+			out = append(out, violation{Rule: "module tags", From: f.rel, To: moduleRegistry,
+				Why: "the module registry holds one file per module, named maybe_<id>.go, and doc.go"})
+			continue
+		}
+		want := "!" + omitTag(id) + " && !" + coreOnlyTag
+		got := ""
+		scanner := bufio.NewScanner(bytes.NewReader(f.data))
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if strings.HasPrefix(line, "package ") {
+				break
+			}
+			if constraint.IsGoBuild(line) {
+				if expr, err := constraint.Parse(line); err == nil {
+					got = expr.String()
+				}
+			}
+		}
+		if got != want {
+			out = append(out, violation{Rule: "module tags", From: f.rel, To: moduleRegistry,
+				Why: fmt.Sprintf("the file must start with the build constraint //go:build %s (found %q)", want, got)})
+		}
+	}
+	return out
 }

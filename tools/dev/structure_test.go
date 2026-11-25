@@ -280,3 +280,27 @@ func TestWalkSourceSkipsBuildOutput(t *testing.T) {
 		t.Errorf("files = %v, want %q", got, want)
 	}
 }
+
+func TestModuleTags(t *testing.T) {
+	const good = "// SPDX-License-Identifier: Apache-2.0\n\n//go:build !rgd_omit_ai_review && !rgd_core_only\n\npackage all\n"
+	for name, tc := range map[string]struct {
+		rel, src string
+		bad      bool
+	}{
+		"correct":                     {"modules/all/maybe_ai-review.go", good, false},
+		"doc.go needs no tag":         {"modules/all/doc.go", "package all\n", false},
+		"tests need no tag":           {"modules/all/all_test.go", "package all\n", false},
+		"no constraint":               {"modules/all/maybe_insights.go", "package all\n", true},
+		"only the omit tag":           {"modules/all/maybe_insights.go", "//go:build !rgd_omit_insights\n\npackage all\n", true},
+		"another module's tag":        {"modules/all/maybe_insights.go", "//go:build !rgd_omit_review && !rgd_core_only\n\npackage all\n", true},
+		"a file that is not maybe_*":  {"modules/all/register.go", "package all\n", true},
+		"constraint after the clause": {"modules/all/maybe_insights.go", "package all\n\n//go:build !rgd_omit_insights && !rgd_core_only\n", true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := checkModuleTags([]sourceFile{{rel: tc.rel, data: []byte(tc.src)}})
+			if tc.bad != (len(got) == 1) || len(got) > 1 {
+				t.Errorf("violations = %v, want bad=%v", got, tc.bad)
+			}
+		})
+	}
+}
