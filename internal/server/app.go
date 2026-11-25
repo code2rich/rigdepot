@@ -11,11 +11,13 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/ext/identity"
 	"github.com/code2rich/rigdepot/ext/module"
 	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/server/access"
@@ -33,12 +35,13 @@ import (
 
 // Mounts are the handlers the server root does not build itself.
 type Mounts struct {
-	// API serves everything under /api/. It receives the full path
+	// API serves everything under /api/, and /install.sh, /install.ps1 and
+	// /downloads/. It receives the full path
 	// (/api/v1/…), with the base URL's path already removed. Nil means no
 	// API yet: /api/ answers 404 with a problem document.
 	API http.Handler
-	// Web serves the console: every path that is not /api/, /healthz or
-	// /readyz. Nil means 404.
+	// Web serves the console: every path that is not /api/, /healthz,
+	// /readyz, /install.sh, /install.ps1 or /downloads/. Nil means 404.
 	Web http.Handler
 }
 
@@ -77,14 +80,28 @@ type App struct {
 	// adapters are the tool adapters compiled in; nil means the registry
 	// (ext/adapter). Tests put adapters made from profiles here.
 	adapters []adapter.Adapter
+	// identitySources are the kinds of identity sources compiled in; nil
+	// means the registry (ext/identity). Tests put the OIDC source here.
+	identitySources []identity.Provider
+	// signInRate limits signing in per client address; the zero value is
+	// authnapi's default. Tests that sign in often raise it.
+	signInRate authnapi.Rate
 	// version is this server's version; "" means the build's (buildinfo).
 	version string
+	// cli reads the command-line program this server hands out.
+	cli *cliDist
 
 	checks   []ReadyCheck
 	draining atomic.Bool
 
 	// requests counts the requests for the metrics (M1-41).
 	requests *requestMetrics
+
+	// hangup delivers SIGHUP, which reloads the certificate files (tls.go); nil never does.
+	hangup <-chan os.Signal
+	// certCheckEvery is how often the certificate files are checked for a change; zero is
+	// certCheckEvery. Tests shorten it.
+	certCheckEvery time.Duration
 }
 
 // ReadyCheck is one item of /readyz. A failing critical check makes the
@@ -100,7 +117,7 @@ type ReadyCheck struct {
 
 // NewApp assembles the server around an open, migrated database.
 func NewApp(cfg *config.Config, log *slog.Logger, db *dbx.DB, mounts Mounts) *App {
-	a := &App{cfg: cfg, log: log, db: db, mounts: mounts, requests: newRequestMetrics()}
+	a := &App{cfg: cfg, log: log, db: db, mounts: mounts, requests: newRequestMetrics(), cli: newCLIDist(cfg.CLIDistDirs, log)}
 	a.AddReadyCheck(ReadyCheck{Name: "database", Critical: true, Check: db.Ping})
 	a.AddReadyCheck(ReadyCheck{Name: "migrations", Critical: true, Check: func(ctx context.Context) error {
 		pending, err := migrations.Pending(ctx, db)
@@ -137,6 +154,11 @@ func (a *App) Handler() http.Handler {
 		api = http.HandlerFunc(notFound)
 	}
 	inner.Handle("/api/", api)
+	// The install scripts and the command line are operations of the contract too, outside
+	// /api/ so that the commands to type stay short.
+	inner.Handle("GET /install.sh", api)
+	inner.Handle("GET /install.ps1", api)
+	inner.Handle("GET /downloads/", api)
 	web := a.mounts.Web
 	if web == nil {
 		web = http.HandlerFunc(notFound)
@@ -172,17 +194,28 @@ func (a *App) Serve(ctx context.Context, ln net.Listener) error {
 	}
 	var redirect *http.Server
 	if a.cfg.ServesTLS() {
-		tlsCfg, err := a.tlsConfig()
+		setup, err := a.tlsSetup()
 		if err != nil {
+			ln.Close()
 			return err
 		}
-		ln = tls.NewListener(ln, tlsCfg)
+		ln = tls.NewListener(ln, setup.config)
+		if setup.watch != nil {
+			wctx, stopWatch := context.WithCancel(ctx)
+			defer stopWatch()
+			go setup.watch(wctx)
+		}
 		if addr := a.cfg.TLS.HTTPRedirectListen; addr != "" {
 			rln, err := net.Listen("tcp", addr)
 			if err != nil {
+				ln.Close()
 				return fmt.Errorf("listen %s (HTTP redirect): %w", addr, err)
 			}
-			redirect = &http.Server{Handler: a.redirectToHTTPS(), ReadHeaderTimeout: 10 * time.Second}
+			h := a.redirectToHTTPS()
+			if setup.redirect != nil {
+				h = setup.redirect(h)
+			}
+			redirect = &http.Server{Handler: h, ReadHeaderTimeout: 10 * time.Second}
 			go func() {
 				if err := redirect.Serve(rln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 					a.log.Error("HTTP redirect listener stopped", "err", err)
@@ -216,23 +249,6 @@ func (a *App) Serve(ctx context.Context, ln net.Listener) error {
 		err = errors.Join(err, serveErr)
 	}
 	return err
-}
-
-// tlsConfig loads the certificate given in the configuration. Reloading it
-// on SIGHUP and ACME are task M1-40.
-func (a *App) tlsConfig() (*tls.Config, error) {
-	if len(a.cfg.TLS.ACMEDomains) > 0 {
-		return nil, errors.New("automatic certificates (tls.acme_domains) are not implemented in this version yet; use tls.cert_file and tls.key_file or a reverse proxy")
-	}
-	cert, err := tls.LoadX509KeyPair(a.cfg.TLS.CertFile, a.cfg.TLS.KeyFile)
-	if err != nil {
-		return nil, fmt.Errorf("load the TLS certificate: %w", err)
-	}
-	return &tls.Config{
-		MinVersion:   tls.VersionTLS12,
-		Certificates: []tls.Certificate{cert},
-		NextProtos:   []string{"h2", "http/1.1"},
-	}, nil
 }
 
 // redirectToHTTPS sends every plain HTTP request to the same path on the

@@ -32,7 +32,9 @@ import (
 //   - builds everything a second time, in a fresh clone at another path with an empty build
 //     cache, and fails unless the archives have the same checksums (reproducible builds);
 //   - installs rgd from dist/ into a temporary directory with scripts/install.sh, offline,
-//     and checks that it reports the version that was built.
+//     and checks that it reports the version that was built;
+//   - exports the server's image for both architectures into dist/, loads and runs them, and
+//     installs the Debian and RPM packages into clean containers (releaseimages.go).
 //
 // It ends with a table of what passed, failed or did not run. The first run compiles
 // goreleaser, which takes a while; the second build compiles everything from scratch.
@@ -58,11 +60,15 @@ func runReleaseSnapshot(root string, args []string) error {
 		{"goreleaser", r.buildGoreleaser},
 		{"web console", r.buildWeb},
 		{"SBOM", r.sbom},
-		{"build", func() (string, error) { return r.goreleaser(root, nil) }},
+		{"docker", r.dockerCheck},
+		{"build", func() (string, error) { return r.goreleaser(root, nil, r.skip...) }},
 		{"artifacts", r.verifyDist},
 		{"reproducible", r.rebuild},
 		{"install.sh", r.installSh},
 		{"install.ps1", r.installPs1},
+		{"image exports", r.imageExports},
+		{"images", r.runImages},
+		{"packages", r.installPackages},
 	}
 	var results []result
 	failed := false
@@ -106,6 +112,10 @@ type rehearsal struct {
 	sboms         bool
 	meta          releaseMeta
 	sums          map[string]string // archive name -> sha256, from the first build
+
+	docker bool              // Docker with buildx is there: goreleaser builds the image
+	skip   []string          // goreleaser --skip flags, for what this machine cannot build
+	images map[string]string // architecture -> the image goreleaser loaded
 }
 
 // releaseMeta is what goreleaser writes into dist/metadata.json.
@@ -170,9 +180,9 @@ func (r *rehearsal) sbom() (string, error) {
 	return "syft found; an SPDX SBOM per archive", nil
 }
 
-// goreleaser runs goreleaser release --snapshot --clean in dir with the switches and extra
-// variables.
-func (r *rehearsal) goreleaser(dir string, extra map[string]string) (string, error) {
+// goreleaser runs goreleaser release --snapshot --clean in dir with the switches, extra
+// variables and extra arguments.
+func (r *rehearsal) goreleaser(dir string, extra map[string]string, args ...string) (string, error) {
 	vars := map[string]string{}
 	for k, v := range r.env {
 		vars[k] = v
@@ -186,7 +196,7 @@ func (r *rehearsal) goreleaser(dir string, extra map[string]string) (string, err
 		name, _, _ := strings.Cut(kv, "=")
 		return name == "PACKAGES_GITHUB_TOKEN" || name == "GITHUB_TOKEN" || name == "GORELEASER_KEY"
 	})
-	cmd := exec.Command(r.goreleaserBin, "release", "--snapshot", "--clean")
+	cmd := exec.Command(r.goreleaserBin, append([]string{"release", "--snapshot", "--clean"}, args...)...)
 	cmd.Dir = dir
 	cmd.Env = env
 	cmd.Stdout = os.Stdout
@@ -194,7 +204,7 @@ func (r *rehearsal) goreleaser(dir string, extra map[string]string) (string, err
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("goreleaser release --snapshot in %s: %w", dir, err)
 	}
-	return "goreleaser release --snapshot --clean", nil
+	return strings.Join(append([]string{"goreleaser release --snapshot --clean"}, args...), " "), nil
 }
 
 // expectedArchives lists the archive names of a release of version v.
@@ -271,6 +281,15 @@ func (r *rehearsal) verifyDist() (string, error) {
 			problems = append(problems, "dist/"+f+": missing")
 		}
 	}
+	problems = append(problems, r.checkPackagesListed()...)
+	// The images goreleaser loaded, read now: a second build in place replaces dist/.
+	if r.docker {
+		images, err := r.snapshotImages()
+		if err != nil {
+			problems = append(problems, err.Error())
+		}
+		r.images = images
+	}
 	// The server was built with the console exactly when web/dist was built.
 	for _, t := range targets {
 		if t.os != "linux" {
@@ -293,7 +312,7 @@ func (r *rehearsal) verifyDist() (string, error) {
 	if len(problems) > 0 {
 		return "", fmt.Errorf("%d problem(s) in dist/:\n  %s", len(problems), strings.Join(problems, "\n  "))
 	}
-	detail := fmt.Sprintf("%s: %d archives with their files, checksums.txt, Homebrew cask, Scoop manifest", r.meta.Version, len(archives))
+	detail := fmt.Sprintf("%s: %d archives with their files, Debian and RPM packages, checksums.txt, Homebrew cask, Scoop manifest", r.meta.Version, len(archives))
 	if r.sboms {
 		detail += ", SBOMs"
 	}
@@ -325,7 +344,9 @@ func (r *rehearsal) rebuild() (string, error) {
 		}
 	}
 	cache := filepath.Join(r.tmp, "gocache")
-	if _, err := r.goreleaser(dir, map[string]string{"GOCACHE": cache}); err != nil {
+	// The image is built from the packages, which are compared here; building it again would
+	// only replace the one the first build loaded.
+	if _, err := r.goreleaser(dir, map[string]string{"GOCACHE": cache}, "--skip=docker"); err != nil {
 		return "", err
 	}
 	second, err := readChecksums(filepath.Join(dir, "dist", "checksums.txt"))
@@ -349,7 +370,13 @@ func (r *rehearsal) rebuild() (string, error) {
 		// The second build replaced dist/; it is identical, but read it again for the steps after.
 		r.sums = second
 	}
-	return fmt.Sprintf("second build %s with an empty build cache: all %d archives identical", where, len(r.expectedArchives(r.meta.Version))), nil
+	compared := 0
+	for name := range r.sums {
+		if !strings.HasSuffix(name, ".sbom.json") {
+			compared++
+		}
+	}
+	return fmt.Sprintf("second build %s with an empty build cache: all %d files of checksums.txt identical (archives, packages, install scripts)", where, compared), nil
 }
 
 // installSh installs rgd from dist/ with scripts/install.sh, offline (file://), into a

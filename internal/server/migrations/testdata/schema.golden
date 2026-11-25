@@ -118,6 +118,18 @@ identities
   created_at bigint not null
   last_login_at bigint
 
+identity_providers
+  id text not null pk
+  kind text not null
+  name text not null
+  enabled boolean not null
+  position integer not null
+  config text not null
+  client_secret text not null
+  revision integer not null
+  created_at bigint not null
+  updated_at bigint not null
+
 installs
   device_id text not null pk
   resource_id text not null pk

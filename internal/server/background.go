@@ -97,6 +97,9 @@ func startBackground(ctx context.Context, app *App) (func(), error) {
 			return nil, err
 		}
 	}
+	if err := app.addBackupJob(); err != nil {
+		return nil, err
+	}
 	if app.authn != nil {
 		if err := b.Jobs.Add(jobs.Job{Name: "sessions-purge", Every: time.Hour, Timeout: time.Minute, Run: app.authn.PurgeSessions}); err != nil {
 			return nil, err

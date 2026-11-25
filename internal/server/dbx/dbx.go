@@ -57,6 +57,8 @@ type DB struct {
 	dialect Dialect
 	write   *sql.DB
 	read    *sql.DB
+	// path is the SQLite database file; "" on PostgreSQL.
+	path string
 }
 
 var (
@@ -120,7 +122,7 @@ func openSQLite(ctx context.Context, path string) (*DB, error) {
 		read.Close()
 		return nil, fmt.Errorf("dbx: open %s: %w", path, err)
 	}
-	return &DB{dialect: SQLite, write: write, read: read}, nil
+	return &DB{dialect: SQLite, write: write, read: read, path: path}, nil
 }
 
 func openPostgres(ctx context.Context, rawURL string) (*DB, error) {
