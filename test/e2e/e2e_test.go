@@ -22,6 +22,10 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	if dump := os.Getenv(fakeMCPDump); dump != "" {
+		// Started by rgd as the MCP server of TestMVPPath, not as the tests.
+		os.Exit(fakeStdioMCP(dump))
+	}
 	if err := binary.RecordGoEnv(); err != nil {
 		fmt.Fprintln(os.Stderr, "e2e:", err)
 		os.Exit(1)
@@ -62,10 +66,17 @@ type world struct {
 
 func newWorld(t *testing.T) *world {
 	t.Helper()
+	return newWorldNamed(t, "")
+}
+
+// newWorldNamed is newWorld for a test with several people, each on a computer of their own:
+// name tells the worlds apart.
+func newWorldNamed(t *testing.T, name string) *world {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("builds and runs the real program")
 	}
-	root := filepath.Join(testenv.Current(t).Home, t.Name())
+	root := filepath.Join(testenv.Current(t).Home, t.Name(), name)
 	w := &world{
 		t:     t,
 		home:  filepath.Join(root, "home"),
@@ -175,10 +186,16 @@ type result struct {
 // in a script.
 func (w *world) run(args ...string) result {
 	w.t.Helper()
+	return w.runInput("", args...)
+}
+
+// runInput runs the program with stdin as its standard input.
+func (w *world) runInput(stdin string, args ...string) result {
+	w.t.Helper()
 	cmd := exec.Command(w.rgd, args...)
 	cmd.Dir = w.home
 	cmd.Env = w.env
-	cmd.Stdin = strings.NewReader("")
+	cmd.Stdin = strings.NewReader(stdin)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()
@@ -198,7 +215,13 @@ func (w *world) run(args ...string) result {
 // must runs the program and fails the test unless it exits with want.
 func (w *world) must(want int, args ...string) result {
 	w.t.Helper()
-	r := w.run(args...)
+	return w.mustInput(want, "", args...)
+}
+
+// mustInput is must with stdin as the program's standard input.
+func (w *world) mustInput(want int, stdin string, args ...string) result {
+	w.t.Helper()
+	r := w.runInput(stdin, args...)
 	if r.code != want {
 		w.t.Fatalf("%s %s: exit code %d, want %d\nstdout:\n%s\nstderr:\n%s", brand.CLI, strings.Join(args, " "), r.code, want, r.stdout, r.stderr)
 	}
