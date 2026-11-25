@@ -8,6 +8,7 @@ import (
 	"github.com/code2rich/rigdepot/builtin/checks/dangerous"
 	"github.com/code2rich/rigdepot/builtin/checks/description"
 	"github.com/code2rich/rigdepot/builtin/checks/injection"
+	"github.com/code2rich/rigdepot/builtin/checks/overlap"
 	"github.com/code2rich/rigdepot/builtin/checks/personalpath"
 	"github.com/code2rich/rigdepot/builtin/checks/secrets"
 	"github.com/code2rich/rigdepot/builtin/checks/structure"
@@ -29,6 +30,7 @@ func init() {
 	check.Register(dangerous.New())
 	check.Register(description.New())
 	check.Register(injection.New())
+	check.Register(overlap.New())
 	check.Register(personalpath.New())
 	check.Register(secrets.New())
 	check.Register(structure.New())
