@@ -80,6 +80,7 @@ func samples() map[string]sample {
 		"cli_download_base":        {"https://downloads.example.com/rgd/", `"https://downloads.example.com/rgd/"`, func(c *Config) string { return c.CLIDownloadBase }, "https://downloads.example.com/rgd"},
 		"backup.dir":               {"/srv/backups", `"/srv/backups"`, func(c *Config) string { return c.BackupDir }, "/srv/backups"},
 		"backup.keep":              {"3", `3`, func(c *Config) string { return fmt.Sprint(c.BackupKeep) }, "3"},
+		"web_dev_proxy":            {"http://127.0.0.1:5173/", "", func(c *Config) string { return c.WebDevProxy.String() }, "http://127.0.0.1:5173"},
 		"modules_disabled":         {"insights, ai-review", `["insights", "ai-review"]`, func(c *Config) string { return strings.Join(c.ModulesDisabled, "|") }, "insights|ai-review"},
 	}
 }
@@ -308,6 +309,8 @@ func TestRejections(t *testing.T) {
 		"metrics on listen":    {env: map[string]string{EnvName("METRICS_ADDR"): "127.0.0.1:8080"}, want: "public port"},
 		"short interval":       {env: map[string]string{EnvName("SOURCE_SYNC_INTERVAL"): "5s"}, want: "at least 1m"},
 		"bad module":           {env: map[string]string{EnvName("MODULES_DISABLED"): "Insights"}, want: "module identifier"},
+		"remote dev proxy":     {env: map[string]string{EnvName("WEB_DEV_PROXY"): "http://dev.example.com:5173"}, want: "on this machine"},
+		"dev proxy with path":  {env: map[string]string{EnvName("WEB_DEV_PROXY"): "http://127.0.0.1:5173/app"}, want: "web_dev_proxy"},
 		"http download base":   {env: map[string]string{EnvName("CLI_DOWNLOAD_BASE"): "http://downloads.example.com"}, want: "https://"},
 		"unknown file key":     {file: "base_url = \"https://hub.example.com\"\nlisten_addr = \"x\"\n", want: `unknown key "listen_addr"`},
 		"secret in file":       {file: "base_url = \"https://hub.example.com\"\nmaster_key = \"x\"\n", want: "only be given as " + EnvName("MASTER_KEY")},

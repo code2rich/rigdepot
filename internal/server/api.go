@@ -14,10 +14,10 @@ package server
 // context that carries a logging.Request: calling logging.SetRoute with the
 // route template and logging.SetUser with the user's ID puts them on the
 // request log line. Domain services that have a readiness item register it
-// with app.AddReadyCheck. The console (internal/server/webui, M1-15) goes in
-// Mounts.Web the same way.
+// with app.AddReadyCheck. The console is not built here: serve mounts it
+// (webMount, web.go) when Mounts.Web is left nil.
 //
-// Until then nothing is mounted: /api/ and everything else answer 404.
+// Until then the API is not mounted: /api/ answers 404.
 func apiMounts(app *App) Mounts {
 	_ = app
 	return Mounts{}

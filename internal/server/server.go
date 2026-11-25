@@ -235,6 +235,11 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 		mounts = e.mounts
 	}
 	app.mounts = mounts(app)
+	if app.mounts.Web == nil {
+		if app.mounts.Web, err = app.webMount(); err != nil {
+			return err
+		}
+	}
 
 	ln, err := net.Listen("tcp", cfg.Listen)
 	if err != nil {
