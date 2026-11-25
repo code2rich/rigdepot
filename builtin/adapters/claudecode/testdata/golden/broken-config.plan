@@ -1,4 +1,5 @@
 op write-tree ~/.claude/skills/rgd-contract-skill (skill/contract-skill@3): SKILL.md, scripts/check.sh*
+op write-tree ~/.claude/skills/rgd-contract-agent (agent/contract-agent@1): SKILL.md, memory/README.md, skills/review/SKILL.md local memory, workspace
 op write-file ~/.claude/commands/rgd-contract-command.md (workflow/contract-command@1)
 op write-file ~/.claude/agents/rgd-contract-agent.md (agent/contract-agent@1)
 skip mcp/contract-stdio@2 config_unreadable: ~/.claude.json: not valid json at byte 611

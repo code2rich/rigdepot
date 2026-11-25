@@ -26,6 +26,7 @@ const (
 	checkOthers        check = "others"        // nothing that was there before is changed, but for our keys
 	checkIdempotent    check = "idempotent"    // a second sync does nothing
 	checkDrift         check = "drift"         // a file changed by hand is reported and left alone
+	checkLocal         check = "local"         // what is written into local directories is neither drift nor overwritten
 	checkUninstall     check = "uninstall"     // uninstalling restores the home byte for byte
 	checkUnreadable    check = "unreadable"    // broken-config: nothing written, ConfigUnreadable reported
 	checkOccupied      check = "occupied"      // occupied: nothing overwritten, the taken names reported

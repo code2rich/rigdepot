@@ -1,0 +1,6 @@
+{
+  "digest": "sha256:0638bf11125d37f52a8b88f662f7357de6a3c48625d5d5826a2cf7343a8760e1",
+  "note": "managed-by: Rigdepot",
+  "resource": "agent/contract-agent@1",
+  "tool": "fakecode"
+}

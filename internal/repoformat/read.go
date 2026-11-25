@@ -43,6 +43,10 @@ type Options struct {
 	// Version is the version of the running program, checked against requires.rgd in
 	// rigdepot.yaml. Empty, or a development build, skips the check.
 	Version string
+	// Alone reads every resource on its own: a reference to another resource of the repository
+	// (kind.Referrer) is not checked. It is for reading one resource without the rest of its
+	// repository, as the kind test suite does.
+	Alone bool
 }
 
 // Repo is a resource repository as read: its configuration, the resources that can be used, the
@@ -148,6 +152,9 @@ func Read(fsys fs.FS, opt Options) (*Repo, error) {
 		}
 	}
 	r.dedupe()
+	if !opt.Alone {
+		r.checkRefs()
+	}
 	repo := r.repo
 	slices.SortFunc(repo.Resources, func(a, b Resource) int { return cmp.Compare(a.Ref.Code, b.Ref.Code) })
 	slices.SortFunc(repo.Failed, func(a, b Failure) int { return cmp.Compare(a.Path, b.Path) })
@@ -324,6 +331,13 @@ func (r *reader) readOne(k kind.Kind, ref resource.Ref, p string, kindSchema *js
 	if err != nil {
 		return Resource{}, []Issue{{File: p, Code: CodeParse, Message: err.Error()}}, notices
 	}
+	if lk, ok := spec.(kind.LocalKeeper); ok && len(lk.Local()) > 0 {
+		// What belongs to the person's computer once delivered (an agent's memory) is not part
+		// of the content, here as on the computer.
+		if digest, err = bundle.Digest(files, lk.Local()...); err != nil {
+			return Resource{}, []Issue{{File: p, Code: CodeRead, Message: err.Error()}}, notices
+		}
+	}
 	effective := cfg.Effective(meta)
 	if su, ok := spec.(kind.SecretUser); ok {
 		// Secrets referred to in the resource's own files, such as ${secret:NAME} in an MCP
@@ -396,6 +410,56 @@ func readIssues(p string, single bool, err error) []Issue {
 		out = append(out, Issue{File: file, Field: string(pr.Rule), Code: CodeUnsafePath, Message: pr.Detail})
 	}
 	return out
+}
+
+// checkRefs fails every resource that refers to a code the repository does not have, or to a
+// resource that cannot be used; a failure can make another one fail, so it repeats until nothing
+// changes.
+func (r *reader) checkRefs() {
+	for {
+		ok := map[string]bool{}
+		for _, res := range r.repo.Resources {
+			ok[res.Ref.Code] = true
+		}
+		failed := map[string]string{}
+		for _, f := range r.repo.Failed {
+			failed[f.Ref.Code] = f.Path
+		}
+		kept := r.repo.Resources[:0]
+		var newly []Failure
+		for _, res := range r.repo.Resources {
+			ref, is := res.Spec.(kind.Referrer)
+			if !is {
+				kept = append(kept, res)
+				continue
+			}
+			var issues []Issue
+			for _, code := range ref.Refs() {
+				switch {
+				case code == res.Ref.Code:
+					issues = append(issues, Issue{File: res.Path, Code: CodeUndefinedRef,
+						Message: fmt.Sprintf("refers to itself (%q)", code)})
+				case ok[code]:
+				case failed[code] != "":
+					issues = append(issues, Issue{File: res.Path, Code: CodeUndefinedRef,
+						Message: fmt.Sprintf("refers to %q, which cannot be used (%s)", code, failed[code])})
+				default:
+					issues = append(issues, Issue{File: res.Path, Code: CodeUndefinedRef,
+						Message: fmt.Sprintf("refers to %q, which is not a resource of this repository", code)})
+				}
+			}
+			if len(issues) > 0 {
+				newly = append(newly, Failure{Path: res.Path, Ref: res.Ref, Issues: issues})
+				continue
+			}
+			kept = append(kept, res)
+		}
+		r.repo.Resources = kept
+		if len(newly) == 0 {
+			return
+		}
+		r.repo.Failed = append(r.repo.Failed, newly...)
+	}
 }
 
 // dedupe fails every resource whose code another resource also has: the code is unique across

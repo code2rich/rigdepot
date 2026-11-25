@@ -40,6 +40,7 @@
   "check.structure.repo.parse": "The resource cannot be read as its kind: {{detail}}",
   "check.structure.repo.read": "The files cannot be read: {{detail}}",
   "check.structure.repo.schema": "Does not match the format: {{detail}}",
+  "check.structure.repo.undefined_ref": "Refers to a resource the repository does not have, or one that cannot be used: {{detail}}",
   "check.structure.repo.undefined_secret": "Refers to a secret the repository does not define: {{detail}}",
   "check.structure.repo.undefined_stage": "Names a stage the repository does not have: {{detail}}",
   "check.structure.repo.unknown_dir": "A directory no resource kind uses, skipped: {{detail}}",

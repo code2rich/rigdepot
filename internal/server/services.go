@@ -9,9 +9,11 @@ import (
 	"fmt"
 
 	"github.com/code2rich/rigdepot/internal/brand"
+	"github.com/code2rich/rigdepot/internal/buildinfo"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/authn"
+	"github.com/code2rich/rigdepot/internal/server/catalog"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/events"
@@ -57,7 +59,9 @@ func (a *App) openServices(ctx context.Context) error {
 	}
 	a.access = access.New(a.db, accessOpts)
 	if a.hooks.authorize == nil {
-		a.hooks.authorize = accessAuthorizer(a.access)
+		a.hooks.authorize = accessAuthorizer(a.access, func(ctx context.Context, code string) (access.Target, bool, error) {
+			return a.catalog.Target(ctx, code)
+		})
 	}
 	if a.hooks.names == nil {
 		a.hooks.names = accessNames{a.access}
@@ -71,6 +75,14 @@ func (a *App) openServices(ctx context.Context) error {
 	}
 	if a.hooks.firstAdmin == nil {
 		a.hooks.firstAdmin = a.authnOps
+	}
+	co := a.catalogOptions
+	co.Auditor, co.Version = log, buildinfo.Version
+	if a.bg != nil {
+		co.Events = a.bg.Events
+	}
+	if a.catalog, err = catalog.New(a.db, a.access, co); err != nil {
+		return err
 	}
 
 	// The master key is loaded and is the one the database was sealed with.

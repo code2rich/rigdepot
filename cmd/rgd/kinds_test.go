@@ -46,7 +46,7 @@ func readWithProgramKinds(t *testing.T, dir string) map[string]string {
 		}
 	}
 	caps := adapter.Capabilities{Skills: true, MCP: adapter.MCPCaps{Stdio: true, HTTP: true, EnvRef: true}}
-	opt := kind.RenderOptions{Prefix: brand.Prefix, CLI: brand.CLI}
+	opt := kind.RenderOptions{Prefix: brand.Prefix, CLI: brand.CLI, Data: "~/" + brand.Home}
 	got := map[string]string{}
 	for _, res := range repo.Resources {
 		for _, f := range res.Kind.Forms() {
@@ -107,8 +107,8 @@ func TestProgramReadsTheExampleRepository(t *testing.T) {
 		}
 	}
 	slices.Sort(kinds)
-	if !slices.Equal(kinds, []string{"mcp", "skill"}) {
-		t.Errorf("rendered %v; want skills and MCP servers", got)
+	if !slices.Equal(kinds, []string{"agent", "knowledge", "mcp", "skill", "workflow"}) {
+		t.Errorf("rendered %v; want every kind the program has", got)
 	}
 }
 
