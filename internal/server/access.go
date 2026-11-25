@@ -84,8 +84,8 @@ func accessAuthorizer(svc *access.Service) func(ctx context.Context, a audit.Act
 	}
 }
 
-// accessNames is auditNames from the users access keeps. Devices belong to
-// authn (M1-20): until then their ids stand in.
+// accessNames is auditNames from the users access keeps. Devices come with
+// the device code flow (authn, M1-22): until then their ids stand in.
 type accessNames struct{ svc *access.Service }
 
 func (n accessNames) User(ctx context.Context, id string) (string, string, bool) {

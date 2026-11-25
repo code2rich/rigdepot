@@ -51,6 +51,11 @@ func startBackground(ctx context.Context, app *App) (*Background, func(), error)
 	if err != nil {
 		return nil, nil, err
 	}
+	if app.authn != nil {
+		if err := b.Jobs.Add(jobs.Job{Name: "sessions-purge", Every: time.Hour, Timeout: time.Minute, Run: app.authn.PurgeSessions}); err != nil {
+			return nil, nil, err
+		}
+	}
 	b.Jobs.Start()
 	if err := b.Modules.Start(ctx); err != nil {
 		app.log.Error("modules", "err", err)

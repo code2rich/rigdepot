@@ -11,15 +11,17 @@ import (
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
+	"github.com/code2rich/rigdepot/internal/server/authn"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
+	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
 
 // openServices builds the domain services on the open, migrated database:
-// the master key, the audit log, access and the settings, then gets the
-// setup wizard ready. Other domains add theirs here, and set what they provide in
+// the master key, the audit log, access, the settings and signing in, then
+// gets the setup wizard ready. Other domains add theirs here, and set what they provide in
 // a.hooks.
 func (a *App) openServices(ctx context.Context) error {
 	keys, err := loadKeys(ctx, a.cfg, a.db, true)
@@ -52,6 +54,15 @@ func (a *App) openServices(ctx context.Context) error {
 		a.hooks.names = accessNames{a.access}
 	}
 	a.settings = settings.New(a.db, keys, log, settings.Options{Authorize: a.hooks.settingsAuthorizer(), SetupToken: a.cfg.SetupToken})
+	// Device tokens are refused until the device code flow (M1-22) sets
+	// hooks.devices.
+	a.authn = authn.New(a.db, authn.Options{Access: a.access, Audit: log, Devices: a.hooks.devices})
+	if a.authnOps, err = authnapi.New(a.authn, authnapi.Options{BaseURL: a.cfg.BaseURL, TrustedProxies: a.cfg.TrustedProxies, Log: a.log}); err != nil {
+		return err
+	}
+	if a.hooks.firstAdmin == nil {
+		a.hooks.firstAdmin = a.authnOps
+	}
 
 	// The master key is loaded and is the one the database was sealed with.
 	a.AddReadyCheck(ReadyCheck{Name: "master_key", Critical: true, Check: func(ctx context.Context) error {
