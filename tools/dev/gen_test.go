@@ -74,12 +74,37 @@ func TestBrandFileProblemsAreErrors(t *testing.T) {
 	}
 	for name, content := range tests {
 		t.Run(name, func(t *testing.T) {
-			if _, err := generate(writeBrand(t, content)); err == nil {
+			if _, err := generate(writeBrand(t, content), nil); err == nil {
 				t.Error("generate succeeded")
 			}
 		})
 	}
-	if _, err := generate(t.TempDir()); err == nil {
+	if _, err := generate(t.TempDir(), nil); err == nil {
 		t.Error("generate succeeded without a brand file")
+	}
+}
+
+func TestGenWithoutTheContractGeneratesOnlyTheBrand(t *testing.T) {
+	files, err := generate(writeBrand(t, sampleBrand), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 1 || files[0].path != "internal/brand/brand_gen.go" {
+		t.Errorf("generated %v, want only the brand constants", files)
+	}
+}
+
+func TestGenRefusesOutputsWithoutTheirContract(t *testing.T) {
+	root := writeBrand(t, sampleBrand)
+	out := filepath.Join(root, filepath.FromSlash(apiTargets[1].output))
+	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(out, []byte("package apiclient\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := generate(root, nil)
+	if err == nil || !strings.Contains(err.Error(), apiSpec) {
+		t.Errorf("generate with an orphaned %s: err = %v, want it to name %s", apiTargets[1].output, err, apiSpec)
 	}
 }

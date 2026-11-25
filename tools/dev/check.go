@@ -50,7 +50,7 @@ func checkSteps() []step {
 		}},
 		{"staticcheck", stepStaticcheck},
 		{"generated files", func(s *sandbox) (string, error) {
-			return "regenerated and compared", runGen(s.root, []string{"--check"})
+			return "brand.json and api/openapi.yaml regenerated and compared", gen(s.root, s.env, true)
 		}},
 		{"structure rules", stepStructure},
 		{"messages", func(s *sandbox) (string, error) {

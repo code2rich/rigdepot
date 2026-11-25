@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+#
+# oapi-codegen configuration for the server side: the types and a strict
+# handler interface on the standard library's net/http router. Run through
+# "go run ./tools/dev gen", which writes the result to
+# internal/server/httpapi/api.gen.go; there is deliberately no "output" here.
+package: httpapi
+generate:
+  std-http-server: true
+  strict-server: true
+  models: true
+output-options:
+  skip-prune: true
