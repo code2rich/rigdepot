@@ -193,6 +193,7 @@ func TestSetRejectsInvalidRequests(t *testing.T) {
 		{"nested nil", adapter.JSON, path, map[string]any{"env": nil}},
 		{"NaN", adapter.JSON, path, map[string]any{"n": nanValue()}},
 		{"invalid UTF-8", adapter.JSON, path, "\xff"},
+		{"TOML scalar", adapter.TOML, path, "x"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

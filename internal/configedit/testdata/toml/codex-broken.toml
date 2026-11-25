@@ -1,0 +1,3 @@
+model = "example-model"
+[mcp_servers.docs
+command = "npx"

@@ -27,7 +27,7 @@ import (
 //
 //	go test ./internal/configedit -run '^$' -fuzz FuzzSetRevert -fuzztime 10m
 
-var fuzzFormats = []adapter.Format{adapter.JSON, adapter.JSONC}
+var fuzzFormats = []adapter.Format{adapter.JSON, adapter.JSONC, adapter.TOML}
 
 func formatIndex(f adapter.Format) uint8 {
 	for i, g := range fuzzFormats {
@@ -43,6 +43,7 @@ func fuzzSeeds(f *testing.F, add func(format adapter.Format, src []byte, path, v
 	paths := map[adapter.Format][]string{
 		adapter.JSON:  {"mcpServers/" + ours, "projects//home/example/work/app/mcpServers/" + ours, "a"},
 		adapter.JSONC: {"mcp/servers/" + ours, "mcp/" + ours, "a/b/c"},
+		adapter.TOML:  {"mcp_servers/" + ours, "mcp_servers/docs", "a.b/c d"},
 	}
 	values := []string{
 		`{"type":"stdio","command":"/opt/example/bin/tool","args":["mcp","run"],"env":{}}`,
@@ -50,7 +51,7 @@ func fuzzSeeds(f *testing.F, add func(format adapter.Format, src []byte, path, v
 		`"x"`,
 		`{}`,
 	}
-	for _, dir := range []string{"json"} {
+	for _, dir := range []string{"json", "toml"} {
 		files, err := filepath.Glob(filepath.Join("testdata", dir, "*"))
 		if err != nil {
 			f.Fatal(err)
@@ -60,7 +61,10 @@ func fuzzSeeds(f *testing.F, add func(format adapter.Format, src []byte, path, v
 			if err != nil {
 				f.Fatal(err)
 			}
-			formats := []adapter.Format{adapter.JSON, adapter.JSONC}
+			formats := []adapter.Format{adapter.TOML}
+			if dir == "json" {
+				formats = []adapter.Format{adapter.JSON, adapter.JSONC}
+			}
 			for _, format := range formats {
 				for _, p := range paths[format] {
 					for _, v := range values {
@@ -122,6 +126,9 @@ func FuzzSetRevert(f *testing.F) {
 		if !ok {
 			return
 		}
+		if _, isMap := value.(map[string]any); format == adapter.TOML && !isMap {
+			value = map[string]any{"value": value}
+		}
 
 		out, e, err := Set(format, src, path, value)
 		if err != nil {
@@ -171,6 +178,12 @@ func FuzzDelete(f *testing.F) {
 	} {
 		f.Add(formatIndex(adapter.JSONC), []byte(s), "k")
 	}
+	for _, s := range []string{
+		"[k]\nx = 1\n# about z\n[z]\n[k.sub]\ny = 2\n",
+		"a = 1\r\n\r\n[k]\r\nx = 1\r\n\r\n[k.env]\r\nK = \"v\"",
+	} {
+		f.Add(formatIndex(adapter.TOML), []byte(s), "k")
+	}
 	f.Fuzz(func(t *testing.T, kind uint8, src []byte, pathSpec string) {
 		format := fuzzFormats[int(kind)%len(fuzzFormats)]
 		path := strings.Split(pathSpec, "/")
@@ -193,7 +206,7 @@ func FuzzDelete(f *testing.F) {
 		}
 		if err != nil {
 			if errors.Is(err, ErrUnwritable) {
-				return // a duplicated key
+				return // a duplicated JSON key, or a TOML table not written as a block
 			}
 			t.Fatalf("Delete: %v", err)
 		}

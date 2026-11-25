@@ -28,6 +28,26 @@ Modelled on what the tools write; account data replaced by placeholders.
 | `opencode-tabs.jsonc` | indented with tabs |
 | `opencode-broken.jsonc` | an unterminated block comment: does not parse |
 
+## toml/
+
+Modelled on `~/.codex/config.toml` of codex-cli 0.167 as `codex mcp add` leaves it.
+
+| File | Models |
+| --- | --- |
+| `codex-user.toml` | settings, a project, two servers of the person's own (one with an `env` sub-table), comments |
+| `codex-user-crlf-bom.toml` | the same with CRLF and a byte order mark |
+| `codex-no-mcp.toml` | no `mcp_servers` yet; ends with a comment |
+| `codex-no-final-newline.toml` | no line ending after the last line |
+| `codex-trailing-blank.toml` | ends with an empty line |
+| `codex-inline-server.toml` | `[mcp_servers]` with a server written as an inline table: a new `[mcp_servers.x]` is still allowed |
+| `codex-inline-table.toml` | `mcp_servers = { … }`: TOML does not allow adding to it, so it cannot be written |
+| `codex-dotted-keys.toml` | `mcp_servers.docs.command = …` at the top level |
+| `codex-array-of-tables.toml` | `[[mcp_servers]]`: cannot be written |
+| `codex-not-a-table.toml` | `mcp_servers = "none"`: cannot be written |
+| `codex-multiline-string.toml` | a multi-line string containing lines that look like table headers |
+| `codex-broken.toml` | an unclosed header: does not parse |
+| `empty.toml` | a file that does not exist yet |
+
 ## golden/
 
 What `Set` makes of each fixture, byte for byte. `go test ./internal/configedit -update` rewrites

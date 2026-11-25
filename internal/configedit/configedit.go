@@ -26,6 +26,10 @@ var (
 	// the path appears twice.
 	ErrUnwritable = errors.New("configedit: the key cannot be written without rewriting the person's own entries")
 
+	// ErrInlineTable: a TOML table on the path is an inline table (mcp_servers = { … }), which
+	// TOML does not allow to be extended. It wraps ErrUnwritable.
+	ErrInlineTable = fmt.Errorf("%w: a table on the path is an inline table", ErrUnwritable)
+
 	// ErrInvalid: the request itself is wrong: an unknown format, an empty key path, or a value
 	// of a type that is not allowed. This is a defect in the caller.
 	ErrInvalid = errors.New("configedit: invalid request")
@@ -95,7 +99,7 @@ func (u Undone) String() string {
 // it. Parents that do not exist are created. An empty src is a file that does not exist yet.
 //
 // value must be a string, bool, int, int64 or float64 (finite), or a []any or map[string]any of
-// those, nested as needed.
+// those, nested as needed. For TOML, value must be a map: it becomes a table.
 func Set(format adapter.Format, src []byte, path []string, value any) ([]byte, Edit, error) {
 	if err := checkPath(path); err != nil {
 		return nil, Edit{}, err
@@ -112,6 +116,8 @@ func Set(format adapter.Format, src []byte, path []string, value any) ([]byte, E
 	switch format {
 	case adapter.JSON, adapter.JSONC:
 		sp, created, err = jsonSet(format, body, path, value)
+	case adapter.TOML:
+		sp, created, err = tomlSet(body, path, value)
 	default:
 		return nil, Edit{}, fmt.Errorf("%w: unknown format %q", ErrInvalid, format)
 	}
@@ -163,6 +169,8 @@ func Delete(format adapter.Format, src []byte, path []string) ([]byte, error) {
 	switch format {
 	case adapter.JSON, adapter.JSONC:
 		out, err = jsonDelete(body, path)
+	case adapter.TOML:
+		out, err = tomlDelete(body, path)
 	}
 	if err != nil {
 		return nil, err
@@ -264,13 +272,15 @@ func Get(format adapter.Format, src []byte, path []string) (any, bool, error) {
 
 // Decode parses src and returns its meaning: objects and tables as map[string]any, arrays as
 // []any, numbers as int64 when they are integers that fit and float64 otherwise, and strings and
-// booleans as themselves. An empty src is an empty
+// booleans as themselves. TOML dates and times keep go-toml's types. An empty src is an empty
 // document. A file that does not parse, or whose top level is not an object, is ErrSyntax.
 func Decode(format adapter.Format, src []byte) (map[string]any, error) {
 	_, body := splitBOM(src)
 	switch format {
 	case adapter.JSON, adapter.JSONC:
 		return jsonDecode(format, body)
+	case adapter.TOML:
+		return tomlDecode(body)
 	}
 	return nil, fmt.Errorf("%w: unknown format %q", ErrInvalid, format)
 }
@@ -282,6 +292,11 @@ func deleteIfEmpty(format adapter.Format, src []byte, path []string) ([]byte, er
 		return src, err
 	}
 	if m, isMap := v.(map[string]any); !isMap || len(m) > 0 {
+		return src, nil
+	}
+	if format == adapter.TOML {
+		// An empty TOML table with its own header is the person's; ours are implicit and
+		// disappear with their last child.
 		return src, nil
 	}
 	return Delete(format, src, path)
@@ -297,6 +312,15 @@ func previousValue(e Edit) (any, error) {
 			return nil, fmt.Errorf("%w: the recorded previous value does not parse", ErrInvalid)
 		}
 		v = doc["v"]
+	case adapter.TOML:
+		doc, err := tomlDecode(e.Old)
+		if err != nil {
+			return nil, fmt.Errorf("%w: the recorded previous value does not parse", ErrInvalid)
+		}
+		var ok bool
+		if v, ok = lookup(doc, e.Path); !ok {
+			return nil, fmt.Errorf("%w: the recorded previous value is not at the key", ErrInvalid)
+		}
 	default:
 		return nil, fmt.Errorf("%w: unknown format %q", ErrInvalid, e.Format)
 	}
@@ -485,7 +509,24 @@ func pruneCreated(doc map[string]any, path []string, created int) {
 	}
 }
 
-// semanticEqual compares two decoded documents.
-func semanticEqual(_ adapter.Format, a, b map[string]any, _ []string) bool {
+// semanticEqual compares two decoded documents. In TOML a table that exists only because it has
+// a sub-table disappears with its last sub-table, so empty tables along path are not a
+// difference there.
+func semanticEqual(format adapter.Format, a, b map[string]any, path []string) bool {
+	if format == adapter.TOML {
+		a = deepCopy(a).(map[string]any)
+		b = deepCopy(b).(map[string]any)
+		dropEmptyAlong(a, path)
+		dropEmptyAlong(b, path)
+	}
 	return reflect.DeepEqual(a, b)
+}
+
+func dropEmptyAlong(doc map[string]any, path []string) {
+	for i := len(path); i >= 1; i-- {
+		v, ok := lookup(doc, path[:i])
+		if m, isMap := v.(map[string]any); ok && isMap && len(m) == 0 {
+			removeIn(doc, path[:i])
+		}
+	}
 }

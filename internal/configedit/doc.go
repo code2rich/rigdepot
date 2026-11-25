@@ -29,6 +29,15 @@
 // siblings when the object spans several lines, inline otherwise. Parents that do not exist yet
 // are created. Strict JSON (Format JSON) must parse as standard JSON before and after.
 //
+// # TOML
+//
+// The parser is github.com/pelletier/go-toml/v2. The value of a TOML key must be a table (a
+// map), and Set appends it at the end of the file as "[a.b]" followed by its keys, with nested
+// tables as their own "[a.b.c]" headers. A table that was written with a header can be replaced
+// or deleted as a block; a table written in any other way, in particular an inline table such as
+// mcp_servers = { … }, cannot be extended without rewriting the person's own text, and Set
+// reports ErrInlineTable or ErrUnwritable instead.
+//
 // # Undoing
 //
 // Revert first tries to put the recorded bytes back. That succeeds byte for byte when nobody
