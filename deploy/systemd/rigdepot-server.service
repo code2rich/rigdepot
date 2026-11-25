@@ -3,7 +3,7 @@
 #
 # systemd unit for rgd-server. The deb and rpm packages install it as
 # /usr/lib/systemd/system/rigdepot-server.service; by hand, put it into
-# /etc/systemd/system/. See deploy/README.md.
+# /etc/systemd/system/. See docs/deploy.md.
 
 [Unit]
 Description=Rigdepot server
