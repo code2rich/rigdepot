@@ -208,7 +208,6 @@ type world struct {
 	data  home.Dir
 	eng   *Engine
 	log   *opLog
-	keys  *keyStore
 	env   map[string]string
 	tools []adapter.Adapter
 }
@@ -223,7 +222,7 @@ func newWorld(t *testing.T, tools ...adapter.Adapter) *world {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w := &world{t: t, home: h, data: data, log: &opLog{}, keys: &keyStore{byHome: map[string]map[string]string{}}, env: map[string]string{}, tools: tools}
+	w := &world{t: t, home: h, data: data, log: &opLog{}, env: map[string]string{}, tools: tools}
 	for _, a := range tools {
 		w.mkdir("~/." + a.ID()) // the tool has been used here
 	}
@@ -254,7 +253,7 @@ func (w *world) engine() *Engine {
 			if r.Home == w.home {
 				name = "real"
 			}
-			return &watched{Executor: real, name: name, log: w.log, keys: w.keys, home: r.Home, journal: st.Journal}, nil
+			return &watched{Executor: real, name: name, log: w.log}, nil
 		},
 		Now:      fixedNow,
 		LockWait: 2 * time.Second,
@@ -469,84 +468,25 @@ func (l *opLog) reset() {
 	l.ops = nil
 }
 
-// keyStore stands in for configuration keys until the executor can set them (M0-20): per home
-// directory, the digest of each key.
-type keyStore struct {
-	mu     stdsync.Mutex
-	byHome map[string]map[string]string
-}
-
-// watched is the real executor, with every operation recorded and configuration keys kept in
-// a keyStore.
+// watched is the real executor, with every operation recorded.
 type watched struct {
 	Executor
-	name    string
-	log     *opLog
-	keys    *keyStore
-	home    string
-	journal executor.Journal
+	name string
+	log  *opLog
 }
 
 func keyID(t executor.Target) string { return t.Path + "#" + strings.Join(t.Key, ".") }
-
-func (x *watched) Observe(t executor.Target) executor.Observed {
-	if t.Op != manifest.OpKey {
-		return x.Executor.Observe(t)
-	}
-	x.keys.mu.Lock()
-	defer x.keys.mu.Unlock()
-	if d, ok := x.keys.byHome[x.home][keyID(t)]; ok {
-		return executor.Observed{State: executor.Present, Digest: d}
-	}
-	return executor.Observed{State: executor.Absent}
-}
 
 func (x *watched) Apply(ctx context.Context, tool executor.Tool, op adapter.Op, pre executor.Observed, opt executor.Options) (executor.Applied, error) {
 	t := executor.TargetOf(op)
 	want, _ := executor.Expect(op)
 	x.log.add(x.name, fmt.Sprintf("apply %s %s %s %s keep=%v", tool.ID, t.Op, keyID(t), want, opt.Keep))
-	k, ok := op.(adapter.SetKey)
-	if !ok {
-		return x.Executor.Apply(ctx, tool, op, pre, opt)
-	}
-	en := manifest.Entry{ID: manifest.EntryID(tool.ID, manifest.OpKey, k.File, k.Path), Tool: tool.ID, Resource: k.Resource.Code,
-		Version: k.Resource.Version, Op: manifest.OpKey, Path: k.File, Format: string(k.Format), Key: k.Path, Digest: want, At: fixedNow()}
-	if x.journal != nil {
-		in, err := x.journal.Intend(manifest.Intent{Kind: manifest.Write, Entry: en, After: want})
-		if err != nil {
-			return executor.Applied{}, err
-		}
-		if en, err = x.journal.Commit(in); err != nil {
-			return executor.Applied{}, err
-		}
-	}
-	x.keys.mu.Lock()
-	defer x.keys.mu.Unlock()
-	if x.keys.byHome[x.home] == nil {
-		x.keys.byHome[x.home] = map[string]string{}
-	}
-	x.keys.byHome[x.home][keyID(t)] = want
-	return executor.Applied{Entry: en}, nil
+	return x.Executor.Apply(ctx, tool, op, pre, opt)
 }
 
 func (x *watched) Revert(ctx context.Context, en manifest.Entry) (executor.Reverted, error) {
 	x.log.add(x.name, "revert "+en.ID)
-	if en.Op != manifest.OpKey {
-		return x.Executor.Revert(ctx, en)
-	}
-	if x.journal != nil {
-		in, err := x.journal.Intend(manifest.Intent{Kind: manifest.Remove, Entry: en, Before: en.Digest})
-		if err != nil {
-			return executor.Reverted{}, err
-		}
-		if _, err := x.journal.Commit(in); err != nil {
-			return executor.Reverted{}, err
-		}
-	}
-	x.keys.mu.Lock()
-	defer x.keys.mu.Unlock()
-	delete(x.keys.byHome[x.home], keyID(executor.TargetOfEntry(en)))
-	return executor.Reverted{Outcome: executor.Removed}, nil
+	return x.Executor.Revert(ctx, en)
 }
 
 func unixOnly(t *testing.T) {

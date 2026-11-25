@@ -76,7 +76,7 @@
 // adapter read while planning (every path it gave Env.ReadFile), the adapter plans again in that
 // copy, and the executor carries the plan out there.
 //
-// Status: internal/executor does not set keys in configuration files yet (task M0-20). Until it
-// does, the suite sets JSON and JSONC keys itself as text, reversibly (interimkeys.go), and an
-// adapter that sets TOML keys cannot pass the contract.
+// Keys in configuration files are set by the executor too (package configedit underneath), in
+// JSON, JSONC and TOML. The "others" check reads JSON and JSONC itself; for TOML it relies on
+// configedit, whose own tests check that only our tables are added.
 package adaptertest

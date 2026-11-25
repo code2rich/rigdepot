@@ -3,8 +3,8 @@
 
 package adaptertest
 
-// How the suite reads JSON and JSONC values: to describe a plan, to compare what a sync did to a
-// configuration file with what it was asked to do, and (until M0-20) to set keys.
+// How the suite reads JSON and JSONC values: to describe a plan, and to compare what a sync did
+// to a configuration file with what it was asked to do.
 
 import (
 	"bytes"

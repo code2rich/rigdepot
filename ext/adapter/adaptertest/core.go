@@ -18,7 +18,6 @@ import (
 
 	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/ext/resource"
-	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/bundle"
 	coreexec "github.com/code2rich/rigdepot/internal/executor"
 	"github.com/code2rich/rigdepot/internal/home"
@@ -91,7 +90,7 @@ type entry struct {
 	target target
 	ref    resource.Ref
 	digest string // what the target looked like right after it was written
-	undo   any    // what the executor needs to undo it: a coremanifest.Entry, or an interimUndo
+	undo   any    // what the executor needs to undo it: a coremanifest.Entry
 }
 
 // executor is what the suite needs of internal/executor. All of it works inside one home
@@ -144,10 +143,6 @@ var newSandbox = func(base func() string, credentials []string) sandbox {
 type coreExecutor struct {
 	ex   *coreexec.Executor
 	tool coreexec.Tool
-	// realKeys says whether internal/executor sets keys. Until it does, keys go to the interim
-	// handler in interimkeys.go. TODO(M0-20): remove the field and the interim handler.
-	realKeys bool
-	keys     *interimKeys
 }
 
 func newCoreExecutor(homeDir, stateDir string, tool coreTool) (*coreExecutor, error) {
@@ -177,14 +172,7 @@ func newCoreExecutor(homeDir, stateDir string, tool coreTool) (*coreExecutor, er
 	if err != nil {
 		return nil, err
 	}
-	c := &coreExecutor{
-		ex:   ex,
-		tool: coreexec.Tool{ID: tool.id, Roots: toolRoots},
-		keys: &interimKeys{home: homeDir, places: tool.places},
-	}
-	probe := ex.Observe(coreexec.Target{Op: coremanifest.OpKey, Path: "~/" + brand.Prefix + "probe.json", Format: adapter.JSON, Key: []string{"probe"}})
-	c.realKeys = !errors.Is(probe.Err, coreexec.ErrNotImplemented)
-	return c, nil
+	return &coreExecutor{ex: ex, tool: coreexec.Tool{ID: tool.id, Roots: toolRoots}}, nil
 }
 
 func (c *coreExecutor) Close() error { return c.ex.Close() }
@@ -226,7 +214,9 @@ func toExec(o observed) coreexec.Observed {
 }
 
 // Expect computes the digest the executor records for op: the content digest of a tree
-// (package bundle, which leaves the marker file out) and the sha256 of a file.
+// (package bundle, which leaves the marker file out), the sha256 of a file, and for a key the
+// digest of its value; for a key it asks executor.Expect, which is what reading the key back
+// gives.
 func (c *coreExecutor) Expect(op adapter.Op) (string, error) {
 	switch o := op.(type) {
 	case adapter.WriteTree:
@@ -240,34 +230,22 @@ func (c *coreExecutor) Expect(op adapter.Op) (string, error) {
 		sum := sha256.Sum256(o.Data)
 		return "sha256:" + hex.EncodeToString(sum[:]), nil
 	case adapter.SetKey:
-		if c.realKeys {
-			// TODO(M0-20): take the digest of a key the way internal/executor records it.
-			return "", errors.New("internal/executor sets keys now: the suite has to compute their digest the way it does (TODO(M0-20) in ext/adapter/adaptertest/core.go)")
-		}
-		return c.keys.expect(o)
+		return coreexec.Expect(o)
 	}
 	return "", fmt.Errorf("the suite has no digest for %T", op)
 }
 
 func (c *coreExecutor) Observe(t target) observed {
-	switch {
-	case t.kind == "exec":
+	if t.kind == "exec" {
 		return observed{state: absent}
-	case t.kind == "key" && !c.realKeys:
-		return c.keys.observe(t)
 	}
 	return fromExec(c.ex.Observe(execTarget(t)))
 }
 
 func (c *coreExecutor) Apply(op adapter.Op, pre observed) (entry, error) {
 	t := targetOf(op)
-	switch o := op.(type) {
-	case adapter.Exec:
+	if _, ok := op.(adapter.Exec); ok {
 		return entry{}, errors.New("tests do not run the tool's own commands")
-	case adapter.SetKey:
-		if !c.realKeys {
-			return c.keys.apply(o, pre)
-		}
 	}
 	res, err := c.ex.Apply(context.Background(), c.tool, op, toExec(pre), coreexec.Options{})
 	if err != nil {
@@ -277,12 +255,9 @@ func (c *coreExecutor) Apply(op adapter.Op, pre observed) (entry, error) {
 }
 
 func (c *coreExecutor) Revert(e entry) (bool, error) {
-	switch u := e.undo.(type) {
-	case coremanifest.Entry:
+	if u, ok := e.undo.(coremanifest.Entry); ok {
 		res, err := c.ex.Revert(context.Background(), u)
 		return res.Outcome == coreexec.RemovedKept, err
-	case interimUndo:
-		return c.keys.revert(e, u)
 	}
 	return false, fmt.Errorf("%s: the entry records nothing to undo it with", e.target)
 }

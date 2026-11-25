@@ -17,6 +17,7 @@ import (
 
 	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/internal/bundle"
+	"github.com/code2rich/rigdepot/internal/configedit"
 	"github.com/code2rich/rigdepot/internal/manifest"
 )
 
@@ -108,12 +109,15 @@ func Expect(op adapter.Op) (string, error) {
 	return "", fmt.Errorf("unknown operation %T", op)
 }
 
-// keyDigest is the digest of a configuration value: canonical JSON, then SHA-256.
+// keyDigest is the digest of a configuration value: canonical JSON, then SHA-256. The value is
+// normalised first the way configedit reads values back (an integral float as an integer), so
+// that the value an operation sets and the same value read back from the file give one digest:
+// without it, 2^60 written as a float would read back as an integer with other digits.
 func keyDigest(v any) (string, error) {
 	var b bytes.Buffer
 	enc := json.NewEncoder(&b)
 	enc.SetEscapeHTML(false)
-	if err := enc.Encode(v); err != nil {
+	if err := enc.Encode(configedit.Normalize(v)); err != nil {
 		return "", err
 	}
 	return fileDigest(bytes.TrimSuffix(b.Bytes(), []byte("\n"))), nil
@@ -123,6 +127,8 @@ func keyDigest(v any) (string, error) {
 func (e *Executor) Observe(t Target) Observed {
 	switch t.Op {
 	case manifest.OpTree, manifest.OpFile:
+	case manifest.OpKey:
+		return e.observeKey(t)
 	default:
 		return Observed{Err: fmt.Errorf("observing a %q target: %w", t.Op, ErrNotImplemented)}
 	}

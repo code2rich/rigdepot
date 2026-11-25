@@ -413,6 +413,12 @@ func checkValue(v any, depth int) error {
 	return nil
 }
 
+// Normalize converts a value of the types Set accepts to the form Decode and Get return (int as
+// int64, an integral float as int64), so that a value about to be written and the same value read
+// back compare equal, and serialise to the same bytes. A value already in that form is returned
+// as it is.
+func Normalize(v any) any { return normalize(v) }
+
 // normalize converts a value to the form Decode returns, so that the two can be compared.
 func normalize(v any) any {
 	switch v := v.(type) {

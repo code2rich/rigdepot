@@ -447,6 +447,20 @@ func TestTheSchemaAndTheGoTypesListTheSameFields(t *testing.T) {
 	if err := json.Unmarshal(data, &doc); err != nil {
 		t.Fatal(err)
 	}
+	var edit struct {
+		Defs struct {
+			Entry struct {
+				Properties struct {
+					Edit struct {
+						Properties map[string]any `json:"properties"`
+					} `json:"edit"`
+				} `json:"properties"`
+			} `json:"entry"`
+		} `json:"$defs"`
+	}
+	if err := json.Unmarshal(data, &edit); err != nil {
+		t.Fatal(err)
+	}
 	for _, c := range []struct {
 		name   string
 		schema map[string]any
@@ -454,6 +468,7 @@ func TestTheSchemaAndTheGoTypesListTheSameFields(t *testing.T) {
 	}{
 		{"manifest", doc.Properties, fieldNames(&manifestJSON{})},
 		{"entry", doc.Defs.Entry.Properties, fieldNames(&entryJSON{})},
+		{"edit", edit.Defs.Entry.Properties.Edit.Properties, fieldNames(&keyEditJSON{})},
 	} {
 		for k := range c.schema {
 			if !c.fields[k] {
@@ -465,5 +480,30 @@ func TestTheSchemaAndTheGoTypesListTheSameFields(t *testing.T) {
 				t.Errorf("%s: the Go type has %q and the schema does not describe it", c.name, k)
 			}
 		}
+	}
+}
+
+// An edit that only inserted text has no old bytes; it is written as "" and read back the same,
+// because the schema allows no null there.
+func TestAKeyEditWithoutOldBytesIsWrittenAndReadBack(t *testing.T) {
+	s := newStore(t)
+	l := lock(t, s)
+	en := Entry{
+		ID: EntryID("claude-code", OpKey, "~/.claude.json", []string{"mcpServers", "x"}), Tool: "claude-code", Resource: "jira",
+		Op: OpKey, Path: "~/.claude.json", Format: "json", Key: []string{"mcpServers", "x"},
+		Digest: "sha256:" + strings.Repeat("0", 64), Created: []string{"~/.claude.json"},
+		Edit: &KeyEdit{Offset: 0, New: []byte("{\n  \"mcpServers\": {}\n}\n"), Created: 2},
+		At:   time.Date(2026, 11, 25, 8, 0, 0, 0, time.UTC),
+	}
+	if err := l.Write(&Manifest{Schema: Version, Entries: []Entry{en}}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	m, err := s.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := m.Entries[0].Edit
+	if got == nil || got.Offset != 0 || len(got.Old) != 0 || string(got.New) != string(en.Edit.New) || got.Created != 2 {
+		t.Fatalf("edit read back as %+v", got)
 	}
 }
