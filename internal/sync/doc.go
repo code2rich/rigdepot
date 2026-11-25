@@ -37,6 +37,10 @@
 //	yes       any                      no        ActionRevert     -
 //	          unreadable                         the tool is left out of this run entirely
 //
+// A key of a tool's configuration that gets a new value (ActionUpdate, ActionOverwrite) is undone
+// and set again rather than replaced in place, so that its entry always records the exact bytes
+// it added and uninstall restores the file byte for byte.
+//
 // Not being able to read means not knowing, never "absent" or "equal": a tool whose detection,
 // configuration or any target cannot be read is left out of the run, and nothing of it is written
 // or undone. The same holds for resources: what was written for a resource the repository could

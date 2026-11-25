@@ -412,6 +412,60 @@ func TestUninstallRestoresTheHomeDirectory(t *testing.T) {
 	}
 }
 
+// A key whose value changes is undone and set again, not replaced in place: replacing records no
+// edit, and uninstall could then only remove the key by its meaning instead of restoring the
+// file byte for byte.
+func TestAnUpdatedKeyStillUninstallsByteForByte(t *testing.T) {
+	w := newWorld(t)
+	initial := w.read("~/.fakecode/settings.jsonc")
+	r := newRepo()
+	r["servers/jira/server.txt"] = "jira-mcp\n"
+	r["servers/jira/meta.yaml"] = "name: jira\n"
+	w.run(r.state(t, desired.Filter{}), Options{}, ConsentInput{YesGlobal: true})
+	first, ok := entryByPath(w, "~/.fakecode/settings.jsonc")
+	if !ok || first.Edit == nil {
+		t.Fatalf("the first write recorded no edit: %+v", first)
+	}
+
+	r["servers/jira/server.txt"] = "jira-mcp --verbose\n"
+	p, _ := w.run(r.state(t, desired.Filter{}), Options{}, ConsentInput{})
+	if it := item(t, p, "fakecode", "~/.fakecode/settings.jsonc"); it.Action != ActionUpdate {
+		t.Fatalf("planned %s, want %s", it.Action, ActionUpdate)
+	}
+	if !strings.Contains(w.read("~/.fakecode/settings.jsonc"), "--verbose") {
+		t.Fatal("the key was not updated")
+	}
+	second, _ := entryByPath(w, "~/.fakecode/settings.jsonc")
+	if second.Edit == nil || second.Digest == first.Digest {
+		t.Errorf("the update recorded no edit of its own: %+v", second)
+	}
+
+	s, err := w.eng.Lock(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	up, err := w.eng.PlanUninstall(ctx, UninstallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Apply(ctx, up, up.Approve(ConsentInput{}, fixedNow())); err != nil {
+		t.Fatal(err)
+	}
+	s.Release()
+	if got := w.read("~/.fakecode/settings.jsonc"); got != initial {
+		t.Errorf("after update and uninstall the file is not as it was\nwant:\n%s\ngot:\n%s", initial, got)
+	}
+}
+
+func entryByPath(w *world, path string) (manifest.Entry, bool) {
+	for _, en := range w.manifest().Entries {
+		if en.Path == path && en.Op == manifest.OpKey {
+			return en, true
+		}
+	}
+	return manifest.Entry{}, false
+}
+
 // Status: synced, outdated, modified, deleted, unreadable, to be removed, still to come.
 func TestStatus(t *testing.T) {
 	w := newWorld(t)

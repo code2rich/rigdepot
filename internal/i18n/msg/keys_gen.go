@@ -217,6 +217,16 @@ const (
 	ConfigWarnNotInFile = "config.warn.not_in_file"
 	// ConfigWarnUnknownKey (cli.json): Ignoring "{{key}}" in {{origin}}: this version does not know it.
 	ConfigWarnUnknownKey = "config.warn.unknown_key"
+	// DisableAlready (cli.json): {{resource}} is already off on this computer.
+	DisableAlready = "disable.already"
+	// DisableDone (cli.json): Turned off {{resource}} on this computer.
+	DisableDone = "disable.done"
+	// DisableRequired (cli.json): {{resource}} is required by your team and cannot be turned off. Only t…
+	DisableRequired = "disable.required"
+	// DisableShort (cli.json): Turn off a recommended resource on this computer; the next sync remove…
+	DisableShort = "disable.short"
+	// DisableSyncHint (cli.json): Run "{{command}}" to remove it from your AI tools.
+	DisableSyncHint = "disable.sync_hint"
 	// DoctorConfigEnvInvalid (cli.json): The environment variable {{name}} has the value "{{value}}", which is …
 	DoctorConfigEnvInvalid = "doctor.config.env_invalid"
 	// DoctorConfigEnvInvalidHint (cli.json): Change or unset {{name}}.
@@ -387,6 +397,18 @@ const (
 	DoctorToolsUnknownHint = "doctor.tools.unknown_hint"
 	// DoctorToolsUnverified (cli.json): {{tool}} is installed, but its support has not been checked against th…
 	DoctorToolsUnverified = "doctor.tools.unverified"
+	// EnableAlready (cli.json): {{resource}} is already on.
+	EnableAlready = "enable.already"
+	// EnableDone (cli.json): Turned on {{resource}} on this computer.
+	EnableDone = "enable.done"
+	// EnableNotDelivered (cli.json): {{resource}} is still not installed here: {{reason}}.
+	EnableNotDelivered = "enable.not_delivered"
+	// EnableRequired (cli.json): {{resource}} is required: it is always installed.
+	EnableRequired = "enable.required"
+	// EnableShort (cli.json): Turn on an optional resource on this computer; the next sync installs …
+	EnableShort = "enable.short"
+	// EnableSyncHint (cli.json): Run "{{command}}" to install it.
+	EnableSyncHint = "enable.sync_hint"
 	// ErrorArgCount (cli.json): "{{command}}" takes exactly {{count}} arguments, but got {{got}}.
 	ErrorArgCount = "error.arg_count"
 	// ErrorBadFlag (cli.json): Invalid option: {{detail}}
@@ -403,38 +425,82 @@ const (
 	ErrorEnvInvalid = "error.env_invalid"
 	// ErrorInternal (cli.json): Internal error: {{detail}}. Please report it with the output of "{{cli…
 	ErrorInternal = "error.internal"
+	// ErrorLocked (cli.json): Another {{cli}} is changing things on this computer right now. Nothing…
+	ErrorLocked = "error.locked"
+	// ErrorManifestUnreadable (cli.json): The manifest cannot be read, so what {{cli}} wrote before is unknown: …
+	ErrorManifestUnreadable = "error.manifest_unreadable"
+	// ErrorMaxArgs (cli.json): "{{command}}" takes at most {{count}} arguments, but got {{got}}.
+	ErrorMaxArgs = "error.max_args"
 	// ErrorMissingCommand (cli.json): "{{command}}" needs a command.
 	ErrorMissingCommand = "error.missing_command"
 	// ErrorNoArgs (cli.json): "{{command}}" takes no arguments, but got "{{arg}}".
 	ErrorNoArgs = "error.no_args"
 	// ErrorNoHome (cli.json): Cannot tell where your home directory is. Set {{env}} or use --home.
 	ErrorNoHome = "error.no_home"
+	// ErrorRunDoctor (cli.json): Run "{{cli}} doctor" to see what is wrong.
+	ErrorRunDoctor = "error.run_doctor"
+	// ErrorSelectionUnreadable (cli.json): The record of what you turned on and off cannot be read: {{detail}}. N…
+	ErrorSelectionUnreadable = "error.selection_unreadable"
+	// ErrorStalePlan (cli.json): The manifest changed while the plan was made. Nothing was changed; run…
+	ErrorStalePlan = "error.stale_plan"
 	// ErrorStartedFromExplorer (cli.json): This is a command-line program. Open a terminal (PowerShell or Command…
 	ErrorStartedFromExplorer = "error.started_from_explorer"
 	// ErrorUnknownCommand (cli.json): Unknown command "{{name}}" for "{{command}}".
 	ErrorUnknownCommand = "error.unknown_command"
+	// ErrorUnknownTool (cli.json): {{detail}}. The tools this {{cli}} knows: {{tools}}.
+	ErrorUnknownTool = "error.unknown_tool"
 	// ErrorUsageHint (cli.json): Run "{{command}} --help" to see how to use it.
 	ErrorUsageHint = "error.usage_hint"
 	// ErrorVerboseAndQuiet (cli.json): -v and -q cannot be used together.
 	ErrorVerboseAndQuiet = "error.verbose_and_quiet"
+	// FlagBranch (cli.json): Branch, tag or commit of the resource repository (default: repo.branch…
+	FlagBranch = "flag.branch"
+	// FlagDiff (cli.json): Show how changed files differ from what the resource repository wants
+	FlagDiff = "flag.diff"
+	// FlagDir (cli.json): Directory inside the resource repository that holds the resources
+	FlagDir = "flag.dir"
+	// FlagExitCode (cli.json): With --plan: exit with 5 when there is something to change
+	FlagExitCode = "flag.exit_code"
 	// FlagHelp (cli.json): Show help
 	FlagHelp = "flag.help"
 	// FlagHome (cli.json): Local data directory (default ~/{{home}})
 	FlagHome = "flag.home"
 	// FlagJSON (cli.json): Print one machine-readable JSON document on standard output
 	FlagJSON = "flag.json"
+	// FlagKeepHome (cli.json): Do not delete {{dir}} afterwards
+	FlagKeepHome = "flag.keep_home"
 	// FlagLang (cli.json): Interface language, such as en or zh-CN
 	FlagLang = "flag.lang"
 	// FlagNoColor (cli.json): Do not use colours
 	FlagNoColor = "flag.no_color"
 	// FlagNonInteractive (cli.json): Never ask; treat every question as answered "no"
 	FlagNonInteractive = "flag.non_interactive"
+	// FlagOverwrite (cli.json): Overwrite this resource even where it was changed on this computer; yo…
+	FlagOverwrite = "flag.overwrite"
+	// FlagProduct (cli.json): Product whose resources you want, by its code (repeatable; default: re…
+	FlagProduct = "flag.product"
 	// FlagQuiet (cli.json): Say less: only warnings and errors
 	FlagQuiet = "flag.quiet"
+	// FlagRepo (cli.json): Resource repository to sync from: an https or ssh address, or a local …
+	FlagRepo = "flag.repo"
+	// FlagSkipGlobal (cli.json): Write only new files; change no tool's global configuration
+	FlagSkipGlobal = "flag.skip_global"
+	// FlagStatusExitCode (cli.json): Exit with 5 when a sync would change anything
+	FlagStatusExitCode = "flag.status_exit_code"
+	// FlagSyncPlan (cli.json): Only show what would be written; change nothing
+	FlagSyncPlan = "flag.sync_plan"
+	// FlagTool (cli.json): Only this AI tool, by its identifier (repeatable)
+	FlagTool = "flag.tool"
+	// FlagUninstallPlan (cli.json): Only show what would be removed; change nothing
+	FlagUninstallPlan = "flag.uninstall_plan"
+	// FlagUninstallTool (cli.json): Only undo what was written for this AI tool (repeatable)
+	FlagUninstallTool = "flag.uninstall_tool"
 	// FlagVerbose (cli.json): Say more
 	FlagVerbose = "flag.verbose"
 	// FlagVersion (cli.json): Show the version
 	FlagVersion = "flag.version"
+	// FlagYesGlobal (cli.json): Agree to every change of global configuration in this sync, without be…
+	FlagYesGlobal = "flag.yes_global"
 	// HelpCommands (cli.json): Commands:
 	HelpCommands = "help.commands"
 	// HelpFlags (cli.json): Options:
@@ -461,8 +527,256 @@ const (
 	MailTestSubject = "mail.test.subject"
 	// MCPAsSkill (catalog.json): This tool cannot connect to the MCP server directly, so it gets a skil…
 	MCPAsSkill = "mcp.as_skill"
+	// PlanDetected (cli.json): Detected AI tools: {{tools}}
+	PlanDetected = "plan.detected"
+	// PlanGroupAttention (cli.json): Left alone: needs you
+	PlanGroupAttention = "plan.group.attention"
+	// PlanGroupGlobal (cli.json): Needs your consent: changing global configuration (the original files …
+	PlanGroupGlobal = "plan.group.global"
+	// PlanGroupGlobalAgreed (cli.json): Changing global configuration you agreed to before (the original files…
+	PlanGroupGlobalAgreed = "plan.group.global_agreed"
+	// PlanGroupNew (cli.json): New files and directories (all start with {{prefix}})
+	PlanGroupNew = "plan.group.new"
+	// PlanGroupRemoved (cli.json): Removed (no longer wanted)
+	PlanGroupRemoved = "plan.group.removed"
+	// PlanGroupSkipped (cli.json): Skipped
+	PlanGroupSkipped = "plan.group.skipped"
+	// PlanGroupUpdated (cli.json): Updated (written by {{cli}} before)
+	PlanGroupUpdated = "plan.group.updated"
+	// PlanNoTools (cli.json): No AI tool found on this computer
+	PlanNoTools = "plan.no_tools"
+	// PlanNoteDeleted (cli.json): deleted on this computer, not put back; to restore it: {{command}}
+	PlanNoteDeleted = "plan.note.deleted"
+	// PlanNoteFiles (cli.json): {{count}} files
+	PlanNoteFiles = "plan.note.files"
+	// PlanNoteKeyAdd (cli.json): {{key}}: new key
+	PlanNoteKeyAdd = "plan.note.key_add"
+	// PlanNoteKeyChange (cli.json): {{key}}: new value
+	PlanNoteKeyChange = "plan.note.key_change"
+	// PlanNoteKeyRemove (cli.json): {{key}}: removed
+	PlanNoteKeyRemove = "plan.note.key_remove"
+	// PlanNoteModified (cli.json): changed on this computer, not overwritten; to overwrite it (your versi…
+	PlanNoteModified = "plan.note.modified"
+	// PlanNoteNewDir (cli.json): new directory
+	PlanNoteNewDir = "plan.note.new_dir"
+	// PlanNoteNewFile (cli.json): new file
+	PlanNoteNewFile = "plan.note.new_file"
+	// PlanNoteOverwrite (cli.json): changed on this computer; your version is kept in {{kept}} first
+	PlanNoteOverwrite = "plan.note.overwrite"
+	// PlanNoteRemove (cli.json): {{resource}} for {{tool}}
+	PlanNoteRemove = "plan.note.remove"
+	// PlanNoteRemoveKept (cli.json): changed on this computer; a copy goes to {{kept}}
+	PlanNoteRemoveKept = "plan.note.remove_kept"
+	// PlanNoteRestore (cli.json): deleted on this computer, put back
+	PlanNoteRestore = "plan.note.restore"
+	// PlanNoteSharedLoses (cli.json): {{tools}} read it too and lose it until their next sync
+	PlanNoteSharedLoses = "plan.note.shared_loses"
+	// PlanNoteSharedReads (cli.json): also read by {{tools}}
+	PlanNoteSharedReads = "plan.note.shared_reads"
+	// PlanNoteTaken (cli.json): already there and not written by {{cli}}: it is yours, so it is left a…
+	PlanNoteTaken = "plan.note.taken"
+	// PlanNoteUpdateDir (cli.json): new version
+	PlanNoteUpdateDir = "plan.note.update_dir"
+	// PlanNoteUpdateFile (cli.json): new version
+	PlanNoteUpdateFile = "plan.note.update_file"
+	// PlanNothing (cli.json): Nothing to change: everything is as wanted
+	PlanNothing = "plan.nothing"
+	// PlanResourceFailed (cli.json): cannot be read from the repository ({{issues}}); what was written for …
+	PlanResourceFailed = "plan.resource_failed"
+	// PlanRunHint (cli.json): Run "{{command}}" to write this
+	PlanRunHint = "plan.run_hint"
+	// PlanRunHintGlobal (cli.json): Run "{{command}}" to write this; "{{skip}}" writes only the new files
+	PlanRunHintGlobal = "plan.run_hint_global"
+	// PlanSkipNameTaken (cli.json): the name is taken by something of yours
+	PlanSkipNameTaken = "plan.skip.name_taken"
+	// PlanSkipNeedsSecret (cli.json): needs a personal secret this tool cannot be given without a server yet
+	PlanSkipNeedsSecret = "plan.skip.needs_secret"
+	// PlanSkipOther (cli.json): not delivered ({{reason}})
+	PlanSkipOther = "plan.skip.other"
+	// PlanSkipPathTooLong (cli.json): the path would be too long for Windows
+	PlanSkipPathTooLong = "plan.skip.path_too_long"
+	// PlanSkipUnsupported (cli.json): this tool has no place for it
+	PlanSkipUnsupported = "plan.skip.unsupported"
+	// PlanSkipUnwritable (cli.json): the tool's configuration file cannot be written
+	PlanSkipUnwritable = "plan.skip.unwritable"
+	// PlanToolDisabled (cli.json): {{tool}}: switched off in the local configuration ({{key}})
+	PlanToolDisabled = "plan.tool_disabled"
+	// PlanToolFailed (cli.json): {{tool}}: could not be planned, nothing written or removed: {{detail}}
+	PlanToolFailed = "plan.tool_failed"
+	// PlanToolNotSelected (cli.json): {{tool}}: not this time (--tool)
+	PlanToolNotSelected = "plan.tool_not_selected"
+	// PlanToolUnknown (cli.json): {{tool}}: cannot tell whether it is installed ({{detail}}); left as it…
+	PlanToolUnknown = "plan.tool_unknown"
+	// PlanToolUnreadable (cli.json): {{tool}}: left as it is, because something it needs cannot be read: {{…
+	PlanToolUnreadable = "plan.tool_unreadable"
+	// PlanToolsNotInstalled (cli.json): Not installed: {{tools}}
+	PlanToolsNotInstalled = "plan.tools_not_installed"
+	// PlanTotal (cli.json): To be written: {{count}} places · nothing has been changed yet
+	PlanTotal = "plan.total"
+	// PlanUntouched (cli.json): Not changed: your own skills, your own MCP servers, hooks (not install…
+	PlanUntouched = "plan.untouched"
 	// RootShort (cli.json): Sync your team's AI coding resources into the AI tools on this compute…
 	RootShort = "root.short"
+	// SelectionNoSuchResource (cli.json): There is no resource {{resource}} in {{url}}.
+	SelectionNoSuchResource = "selection.no_such_resource"
+	// SelectionReasonAudience (cli.json): it is for another audience
+	SelectionReasonAudience = "selection.reason.audience"
+	// SelectionReasonDisabled (cli.json): you turned it off
+	SelectionReasonDisabled = "selection.reason.disabled"
+	// SelectionReasonNotEnabled (cli.json): it is optional and not turned on
+	SelectionReasonNotEnabled = "selection.reason.not_enabled"
+	// SelectionReasonPersonal (cli.json): it is someone's personal resource, which needs a server
+	SelectionReasonPersonal = "selection.reason.personal"
+	// SelectionReasonProduct (cli.json): it belongs to a product you did not choose (--product or repo.products…
+	SelectionReasonProduct = "selection.reason.product"
+	// SelectionUnreadable (cli.json): {{resource}} cannot be read from the repository ({{path}}), so whether…
+	SelectionUnreadable = "selection.unreadable"
+	// SelectionWriteFailed (cli.json): Cannot save what you turned on and off: {{detail}}
+	SelectionWriteFailed = "selection.write_failed"
+	// SourceAddress (cli.json): {{cli}} does not read the repository {{url}}: {{detail}}
+	SourceAddress = "source.address"
+	// SourceIncompatible (cli.json): The resource repository {{url}} needs a newer {{cli}}: {{detail}}. Not…
+	SourceIncompatible = "source.incompatible"
+	// SourceNoGit (cli.json): Syncing from a resource repository needs Git: {{detail}}. Install it, …
+	SourceNoGit = "source.no_git"
+	// SourceNoRef (cli.json): The resource repository {{url}} has no such branch, tag, commit or dir…
+	SourceNoRef = "source.no_ref"
+	// SourceNone (cli.json): There is nothing to sync from: give --repo <address>, or set it once w…
+	SourceNone = "source.none"
+	// SourceNotARepo (cli.json): {{url}} is not a resource repository: it has no {{file}}.
+	SourceNotARepo = "source.not_a_repo"
+	// SourceUnreachable (cli.json): Cannot reach the resource repository {{url}}: {{detail}}. Nothing was …
+	SourceUnreachable = "source.unreachable"
+	// SourceUnreadable (cli.json): Cannot read the resource repository {{url}}: {{detail}}. Nothing was c…
+	SourceUnreadable = "source.unreadable"
+	// StatusDiffAdded (cli.json): {{file}}: only on this computer
+	StatusDiffAdded = "status.diff.added"
+	// StatusDiffBinary (cli.json): (not text; the lines are not shown)
+	StatusDiffBinary = "status.diff.binary"
+	// StatusDiffHeading (cli.json): {{path}}  (- as the repository has it, + as it is on this computer)
+	StatusDiffHeading = "status.diff.heading"
+	// StatusDiffModified (cli.json): {{file}}: changed
+	StatusDiffModified = "status.diff.modified"
+	// StatusDiffMore (cli.json): … {{count}} more lines; see --json
+	StatusDiffMore = "status.diff.more"
+	// StatusDiffRemoved (cli.json): {{file}}: missing on this computer
+	StatusDiffRemoved = "status.diff.removed"
+	// StatusDiffUnavailable (cli.json): Nothing to compare with: the repository was not read, or this is a con…
+	StatusDiffUnavailable = "status.diff.unavailable"
+	// StatusEmpty (cli.json): Nothing has been written on this computer.
+	StatusEmpty = "status.empty"
+	// StatusGroupDeleted (cli.json): Deleted on this computer (a sync does not put it back)
+	StatusGroupDeleted = "status.group.deleted"
+	// StatusGroupKept (cli.json): Your changed versions, kept
+	StatusGroupKept = "status.group.kept"
+	// StatusGroupModified (cli.json): Changed on this computer (a sync does not overwrite it)
+	StatusGroupModified = "status.group.modified"
+	// StatusGroupOutdated (cli.json): Newer in the repository (a sync updates it)
+	StatusGroupOutdated = "status.group.outdated"
+	// StatusGroupPending (cli.json): Not here yet (a sync writes it)
+	StatusGroupPending = "status.group.pending"
+	// StatusGroupRemoving (cli.json): No longer wanted (a sync removes it)
+	StatusGroupRemoving = "status.group.removing"
+	// StatusGroupSynced (cli.json): Installed
+	StatusGroupSynced = "status.group.synced"
+	// StatusGroupUnreadable (cli.json): Cannot be read: state unknown
+	StatusGroupUnreadable = "status.group.unreadable"
+	// StatusHintDeleted (cli.json): to put it back: {{command}}
+	StatusHintDeleted = "status.hint.deleted"
+	// StatusHintModified (cli.json): to overwrite it (your version is kept): {{command}}
+	StatusHintModified = "status.hint.modified"
+	// StatusNoDiff (cli.json): Nothing differs from what the repository wants.
+	StatusNoDiff = "status.no_diff"
+	// StatusNoSource (cli.json): No resource repository configured: compared with what was written only
+	StatusNoSource = "status.no_source"
+	// StatusNoSuchResource (cli.json): Nothing is known about {{resource}}: it is neither installed nor in th…
+	StatusNoSuchResource = "status.no_such_resource"
+	// StatusShort (cli.json): Show what is installed, where, and whether it was changed since
+	StatusShort = "status.short"
+	// StatusSource (cli.json): Resource repository: {{source}}
+	StatusSource = "status.source"
+	// StatusSourceFailed (cli.json): The resource repository could not be read, so only what was written is…
+	StatusSourceFailed = "status.source_failed"
+	// StatusSourceUnavailable (cli.json): Resource repository not available: compared with what was written only
+	StatusSourceUnavailable = "status.source_unavailable"
+	// StatusSyncHint (cli.json): Run "{{command}}" to see what a sync would change.
+	StatusSyncHint = "status.sync_hint"
+	// StatusTotal (cli.json): {{count}} places written by {{cli}} · {{synced}} as written
+	StatusTotal = "status.total"
+	// SyncAsk (cli.json): Change {{file}} for {{tool}} ({{keys}})? The original is backed up to …
+	SyncAsk = "sync.ask"
+	// SyncAskYes (cli.json): y,yes
+	SyncAskYes = "sync.ask_yes"
+	// SyncDeferredHint (cli.json): These wait for your consent. Run "{{command}}" to make them, or run th…
+	SyncDeferredHint = "sync.deferred_hint"
+	// SyncDeferredSkipped (cli.json): These were left out (--skip-global). Run "{{command}}" without it to m…
+	SyncDeferredSkipped = "sync.deferred_skipped"
+	// SyncDone (cli.json): Done: {{count}} places changed · the manifest is {{manifest}}
+	SyncDone = "sync.done"
+	// SyncExitCodeNeedsPlan (cli.json): --exit-code goes with --plan.
+	SyncExitCodeNeedsPlan = "sync.exit_code_needs_plan"
+	// SyncGroupDeferred (cli.json): Waiting for your consent: not changed
+	SyncGroupDeferred = "sync.group.deferred"
+	// SyncGroupRetry (cli.json): Changed by another program while syncing: not written
+	SyncGroupRetry = "sync.group.retry"
+	// SyncKept (cli.json): Your changed versions are kept in {{path}}
+	SyncKept = "sync.kept"
+	// SyncNothing (cli.json): Nothing to change: everything is as wanted
+	SyncNothing = "sync.nothing"
+	// SyncOverwriteUnknown (cli.json): --overwrite {{resource}}: the repository has no such resource.
+	SyncOverwriteUnknown = "sync.overwrite_unknown"
+	// SyncPreviewFailed (cli.json): Trying the plan out in a temporary copy failed, so nothing was written…
+	SyncPreviewFailed = "sync.preview_failed"
+	// SyncRetryHint (cli.json): Run "{{command}}" again to write them.
+	SyncRetryHint = "sync.retry_hint"
+	// SyncShort (cli.json): Write your team's resources into the AI tools on this computer (--plan…
+	SyncShort = "sync.short"
+	// SyncSkipAndYes (cli.json): --skip-global and --yes-global contradict each other; give one of them…
+	SyncSkipAndYes = "sync.skip_and_yes"
+	// SyncUndoHint (cli.json): To undo everything: {{command}}
+	SyncUndoHint = "sync.undo_hint"
+	// SyncWriteFailed (cli.json): Writing stopped: {{detail}}
+	SyncWriteFailed = "sync.write_failed"
+	// SyncWriteFailedHint (cli.json): What was written so far is in the manifest; the next sync goes on from…
+	SyncWriteFailedHint = "sync.write_failed_hint"
+	// UninstallDone (cli.json): Done: {{count}} places undone
+	UninstallDone = "uninstall.done"
+	// UninstallFailed (cli.json): Undoing stopped: {{detail}}. What is left is still in the manifest; ru…
+	UninstallFailed = "uninstall.failed"
+	// UninstallGroupGlobal (cli.json): Global configuration: only the keys {{cli}} added are removed (the ori…
+	UninstallGroupGlobal = "uninstall.group.global"
+	// UninstallGroupRemoved (cli.json): Removed
+	UninstallGroupRemoved = "uninstall.group.removed"
+	// UninstallGroupRetry (cli.json): Changed by another program while uninstalling: left as it is
+	UninstallGroupRetry = "uninstall.group.retry"
+	// UninstallGroupSkipped (cli.json): Left as it is
+	UninstallGroupSkipped = "uninstall.group.skipped"
+	// UninstallHomeEntriesLeft (cli.json): {{home}} stays: the manifest still records writes that were not undone…
+	UninstallHomeEntriesLeft = "uninstall.home_entries_left"
+	// UninstallHomeKeep (cli.json): {{home}} stays (--keep-home).
+	UninstallHomeKeep = "uninstall.home_keep"
+	// UninstallHomeKept (cli.json): Everything else is gone, but your changed versions are still in {{kept…
+	UninstallHomeKept = "uninstall.home_kept"
+	// UninstallHomeNotEmpty (cli.json): {{home}} stays: it holds things {{cli}} did not put there ({{names}}).
+	UninstallHomeNotEmpty = "uninstall.home_not_empty"
+	// UninstallHomeRemoved (cli.json): Deleted {{home}}.
+	UninstallHomeRemoved = "uninstall.home_removed"
+	// UninstallHomeTool (cli.json): {{home}} stays: other tools' writes are still recorded in it.
+	UninstallHomeTool = "uninstall.home_tool"
+	// UninstallNothing (cli.json): Nothing to undo: the manifest records nothing.
+	UninstallNothing = "uninstall.nothing"
+	// UninstallRunHint (cli.json): Run "{{command}}" to undo this; {{home}} is deleted afterwards.
+	UninstallRunHint = "uninstall.run_hint"
+	// UninstallRunHintKeep (cli.json): Run "{{command}}" to undo this; {{home}} stays.
+	UninstallRunHintKeep = "uninstall.run_hint_keep"
+	// UninstallRunHintTool (cli.json): Run "{{command}}" with the same --tool to undo this.
+	UninstallRunHintTool = "uninstall.run_hint_tool"
+	// UninstallShort (cli.json): Undo everything written to the AI tools on this computer, by the manif…
+	UninstallShort = "uninstall.short"
+	// UninstallTotal (cli.json): To be undone: {{count}} places · nothing has been changed yet
+	UninstallTotal = "uninstall.total"
+	// UninstallUntouched (cli.json): Not touched: anything not in the manifest, even with the prefix {{pref…
+	UninstallUntouched = "uninstall.untouched"
 	// VersionShort (cli.json): Show the version, commit, build time and platform
 	VersionShort = "version.short"
 )

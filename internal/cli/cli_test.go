@@ -27,7 +27,7 @@ import (
 func TestMain(m *testing.M) { testenv.Main(m) }
 
 // Two hidden commands exist only in the test binary. exit-test ends with any
-// exit code, the way the commands still to come will (check, status, sync
+// exit code, the way the commands still to come will (check, login
 // ...). consent-test shows how a command takes --yes-global.
 func init() {
 	register("", func(a *app) *cobra.Command {
@@ -319,7 +319,11 @@ func TestUsageErrors(t *testing.T) {
 		want []string // in the message on standard error
 	}{
 		{nil, []string{"needs a command", "--help"}},
-		{[]string{"sync"}, []string{`Unknown command "sync"`}},
+		{[]string{"sync"}, []string{"nothing to sync from", "--repo"}},
+		{[]string{"sync", "extra"}, []string{"takes no arguments"}},
+		{[]string{"sync", "--repo", "x", "--yes-global", "--skip-global"}, []string{"contradict"}},
+		{[]string{"status", "a", "b"}, []string{"takes at most 1 argument, but got 2"}},
+		{[]string{"enable"}, []string{"takes exactly 1 argument, but got 0"}},
 		{[]string{"confg"}, []string{`Unknown command "confg"`, "Did you mean: config"}},
 		{[]string{"config"}, []string{`"` + brand.CLI + ` config" needs a command`}},
 		{[]string{"config", "remove", "x"}, []string{`Unknown command "remove"`}},

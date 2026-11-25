@@ -13,6 +13,7 @@ import (
 	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/internal/executor"
 	"github.com/code2rich/rigdepot/internal/home"
+	"github.com/code2rich/rigdepot/internal/manifest"
 	"github.com/code2rich/rigdepot/internal/sandbox"
 )
 
@@ -106,7 +107,21 @@ func (a *previewApplier) Apply(ctx context.Context, box *sandbox.Sandbox, ops []
 			}
 			tool := executor.Tool{ID: it.Tool, Roots: roots}
 			pre := ex.Observe(executor.TargetOf(op))
-			if _, err := ex.Apply(ctx, tool, op, pre, executor.Options{Keep: it.Action == ActionOverwrite}); err != nil {
+			var en *manifest.Entry
+			if it.Entry != nil {
+				mapped := *it.Entry
+				if mapped.Path, err = inBox(mapped.Path); err != nil {
+					return err
+				}
+				mapped.Created = nil
+				for _, c := range it.Entry.Created {
+					if q, err := inBox(c); err == nil {
+						mapped.Created = append(mapped.Created, q)
+					}
+				}
+				en = &mapped
+			}
+			if _, err := write(ctx, ex, tool, it, op, en, pre); err != nil {
 				return fmt.Errorf("writing %s in the preview: %w", it.ID, err)
 			}
 		}

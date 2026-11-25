@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -17,7 +18,16 @@ import (
 	"github.com/code2rich/rigdepot/internal/testenv"
 )
 
-func TestMain(m *testing.M) { testenv.Main(m) }
+func TestMain(m *testing.M) {
+	os.Exit(testenv.Run(m, func(env *testenv.Env) error {
+		// The end-to-end tests make resource repositories with the real git: keep it away from
+		// the system and global configuration of the machine.
+		if err := os.Setenv("GIT_CONFIG_NOSYSTEM", "1"); err != nil {
+			return err
+		}
+		return os.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(env.Home, ".gitconfig"))
+	}))
+}
 
 // readWithProgramKinds reads a resource repository with the kinds this program links, the way
 // rgd will, and renders every resource for a tool that takes everything.
