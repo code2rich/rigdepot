@@ -180,6 +180,10 @@ mail_outbox
   last_error text not null
   created_at bigint not null
   sent_at bigint
+  recipient_name text not null
+  link text not null
+  first_attempt_at bigint
+  batch text not null
 
 memberships
   product_id text not null pk

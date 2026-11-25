@@ -181,13 +181,16 @@ func (db *DB) Stats() (write, read sql.DBStats) {
 
 // Tx is a write transaction.
 type Tx struct {
-	dialect Dialect
-	tx      *sql.Tx
+	dialect     Dialect
+	tx          *sql.Tx
+	afterCommit []func()
 }
 
 // InTx runs fn in a write transaction and commits it when fn returns nil. It
 // rolls back when fn returns an error or panics; the panic continues. On
 // SQLite the transaction holds the database's write lock from the start.
+// Functions registered with Tx.AfterCommit run once the commit succeeded,
+// before InTx returns.
 func (db *DB) InTx(ctx context.Context, fn func(*Tx) error) (err error) {
 	sqlTx, err := db.write.BeginTx(ctx, nil)
 	if err != nil {
@@ -209,8 +212,17 @@ func (db *DB) InTx(ctx context.Context, fn func(*Tx) error) (err error) {
 	if err := sqlTx.Commit(); err != nil {
 		return fmt.Errorf("dbx: commit: %w", err)
 	}
+	for _, f := range tx.afterCommit {
+		f()
+	}
 	return nil
 }
+
+// AfterCommit registers f to run after the transaction has committed, in the
+// order of registration. When the transaction rolls back, f never runs. Domain
+// events use it so that nobody hears of a change that did not happen. f runs
+// on the goroutine that called InTx and must not block.
+func (tx *Tx) AfterCommit(f func()) { tx.afterCommit = append(tx.afterCommit, f) }
 
 // Dialect implements Querier.
 func (tx *Tx) Dialect() Dialect { return tx.dialect }

@@ -233,6 +233,12 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 	if err := app.openServices(ctx); err != nil {
 		return err
 	}
+	bg, stopBackground, err := startBackground(ctx, app)
+	if err != nil {
+		return err
+	}
+	defer stopBackground()
+	app.bg = bg
 	mounts := apiMounts
 	if e.mounts != nil {
 		mounts = e.mounts

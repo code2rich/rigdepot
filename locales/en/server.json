@@ -1,0 +1,9 @@
+{
+  "mail.digest.intro": "You have reached the limit of {{limit}} messages an hour, so the rest are collected in this one:",
+  "mail.digest.subject_one": "{{count}} more notification",
+  "mail.digest.subject_other": "{{count}} more notifications",
+  "mail.footer": "This message was sent automatically by {{product}}. Replies are not read.",
+  "mail.link": "Details: {{link}}",
+  "mail.test.body": "This is a test message. If you can read it, {{product}} can send mail with the current settings.",
+  "mail.test.subject": "Test message from {{product}}"
+}

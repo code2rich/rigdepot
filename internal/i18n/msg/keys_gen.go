@@ -447,6 +447,18 @@ const (
 	HelpShort = "help.short"
 	// HelpUsage (cli.json): Usage:
 	HelpUsage = "help.usage"
+	// MailDigestIntro (server.json): You have reached the limit of {{limit}} messages an hour, so the rest …
+	MailDigestIntro = "mail.digest.intro"
+	// MailDigestSubject (server.json): {{count}} more notifications
+	MailDigestSubject = "mail.digest.subject"
+	// MailFooter (server.json): This message was sent automatically by {{product}}. Replies are not re…
+	MailFooter = "mail.footer"
+	// MailLink (server.json): Details: {{link}}
+	MailLink = "mail.link"
+	// MailTestBody (server.json): This is a test message. If you can read it, {{product}} can send mail …
+	MailTestBody = "mail.test.body"
+	// MailTestSubject (server.json): Test message from {{product}}
+	MailTestSubject = "mail.test.subject"
 	// MCPAsSkill (catalog.json): This tool cannot connect to the MCP server directly, so it gets a skil…
 	MCPAsSkill = "mcp.as_skill"
 	// RootShort (cli.json): Sync your team's AI coding resources into the AI tools on this compute…
