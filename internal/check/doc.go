@@ -9,6 +9,17 @@
 // and hands a rule nothing but that: the rule's Input.Files is an in-memory, read-only file
 // system, so a rule cannot see any other file, whatever it tries.
 //
+// # From a repository
+//
+// FromRepo turns what internal/repoformat accepted into the engine's resources. What the reader
+// refused (unsafe paths, missing metadata, a file that does not match its schema, a kind that
+// cannot parse it) never reaches a rule; Refused reports every reason as a must-fix finding of
+// the structure rule, so that rgd check and the server's import give one list of problems
+// whichever of the two found them. The keys of those findings are check.structure.repo.<code>.
+//
+// FindingIDs gives each finding the identifier a waiver refers to: it follows the content the
+// finding is about, not its line number.
+//
 // # What the engine guarantees
 //
 //   - Every result carries the version of the rule set that produced it, and an engine refuses a

@@ -123,7 +123,13 @@ func (e *Engine) Check(ctx context.Context, res Resource, peers extcheck.Peers) 
 			out.Findings = append(out.Findings, f)
 		}
 	}
-	slices.SortStableFunc(out.Findings, func(a, b extcheck.Finding) int {
+	sortFindings(out.Findings)
+	return out, nil
+}
+
+// sortFindings puts findings in the order results have: by file, line, rule and message.
+func sortFindings(found []extcheck.Finding) {
+	slices.SortStableFunc(found, func(a, b extcheck.Finding) int {
 		return cmp.Or(
 			cmp.Compare(a.File, b.File),
 			cmp.Compare(a.Line, b.Line),
@@ -131,7 +137,6 @@ func (e *Engine) Check(ctx context.Context, res Resource, peers extcheck.Peers) 
 			cmp.Compare(a.Message, b.Message),
 		)
 	})
-	return out, nil
 }
 
 // CheckAll checks every resource, each against all the others as its peers: resources that are
