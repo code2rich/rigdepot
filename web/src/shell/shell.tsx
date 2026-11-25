@@ -23,6 +23,9 @@ export function Shell(props: { children: ComponentChildren }) {
   const { path, route } = useLocation()
   const here = stripBase(path)
   const page = findPage(here)
+  // A page and the paths under it (/manage/resources/<code>) are one screen: moving between them keeps the
+  // page mounted and scrolled where it was; only a different page starts afresh.
+  const screen = page?.id ?? here
   const code = page && pageCode(page.id)
   const [navOpen, setNavOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -36,7 +39,7 @@ export function Shell(props: { children: ComponentChildren }) {
     if (main.current) main.current.scrollTop = 0
     if (innerWidth <= 760) scrollTo(0, 0)
     document.title = page ? `${t(page.label)} · ${BRAND.name}` : BRAND.name
-  }, [here, page])
+  }, [screen])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -143,7 +146,7 @@ export function Shell(props: { children: ComponentChildren }) {
           )}
         </aside>
         <main class="main" ref={main}>
-          <div key={here} class="wrap pg-in" tabIndex={-1} ref={wrap}>
+          <div key={screen} class="wrap pg-in" tabIndex={-1} ref={wrap}>
             {props.children}
           </div>
         </main>

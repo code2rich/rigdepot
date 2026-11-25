@@ -1,0 +1,17 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* Status squares, the AI tip and code blocks. From the prototype (通用部件: .sq, .ok-t, .aitip, pre.code). */
+
+.sq { width: 7px; height: 7px; display: inline-block; flex: none; background: var(--ink-3) } .sq.ok { background: var(--ok) } .sq.warn { background: var(--warn) } .sq.bad { background: var(--bad) } .sq.off { background: none; border: 1px solid var(--ink-3) }
+.ok-t { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2) }
+.aitip { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 12px; border-radius: var(--r-2); border: 1px solid var(--line-2); background: var(--panel-2); font-size: 13px; min-width: 0 }
+.aitip .lab { display: inline-flex; align-items: center; gap: 5px; flex: none; font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .06em; color: var(--ink-3); padding-right: 12px; border-right: 1px solid var(--line-2); align-self: stretch }
+.aitip .lab svg { width: 12px; height: 12px; color: var(--ink-2) }
+.aitip .say { flex: 1; min-width: 0; color: var(--ink) } .aitip .note { display: block; font-size: 12px; color: var(--ink-3); margin-top: 1px }
+.aitip .btn.icon { width: 28px; height: 28px }
+pre.code { margin: 0; padding: 14px 16px; border-radius: var(--r-2); background: var(--sunken); border: 1px solid var(--line); color: var(--ink); font-family: var(--code); font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-x: auto; max-height: 380px }
+
+@media (max-width: 760px) {
+  .aitip { flex-wrap: wrap } .aitip .lab { border-right: 0; padding-right: 0; width: 100% }
+}

@@ -74,8 +74,14 @@ function Routes() {
     <Shell>
       <Router>
         {[
+          // A page also owns the paths under its own (/manage/resources/<code>): one route, so that moving
+          // between them keeps the page mounted. The page reads the rest from useRoute().params.sub.
           ...NAV.flatMap((g) => g.pages).map((p) => (
-            <Route key={p.id} path={href(p.path)} component={p.component} />
+            <Route
+              key={p.id}
+              path={p.path === '/' ? href(p.path) : `${href(p.path)}/:sub*`}
+              component={p.component}
+            />
           )),
           <Route key="404" default component={NotFound} />,
         ]}

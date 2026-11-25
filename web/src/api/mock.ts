@@ -8,6 +8,7 @@
 // ?mock=admin (default), ?mock=owner, ?mock=member pick who is signed in; ?mock=signed-out has nobody.
 
 import type { Schemas } from './client'
+import { adminRoutes } from './mock-admin'
 
 type Who = 'admin' | 'owner' | 'member' | 'signed-out'
 
@@ -98,6 +99,8 @@ export function mockServer(): (request: Request) => Promise<Response> {
         sessionStorage.setItem('mock', current)
         return new Response(null, { status: 204 })
     }
+    const admin = adminRoutes(request, current)
+    if (admin) return admin
     return problem(404, 'mock.not_implemented')
   }
 }
