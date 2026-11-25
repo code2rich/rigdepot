@@ -108,3 +108,35 @@ func TestFeedbackAPI(t *testing.T) {
 		t.Errorf("summary: %s", rec.Body)
 	}
 }
+
+// TestFeedbackNotifications: through the bus and notify, resolving tells the submitter, and the
+// submitter's low score tells the handler; nobody hears of their own action.
+func TestFeedbackNotifications(t *testing.T) {
+	f := newAPIWith(t, fixtureOptions{background: true})
+	cf := &catalogFixture{apiFixture: f, t: t}
+	rec := cf.call("POST", "/api/v1/feedback", testMember, []byte(`{"type":"bug","title":"x","body":"y"}`), nil, http.StatusCreated)
+	path := "/api/v1/feedback/" + strconv.Itoa(decode[httpapi.Feedback](t, rec).Number)
+	cf.call("PATCH", path, testAdmin, jsonBody(map[string]string{"status": "resolved"}), nil, http.StatusOK)
+	drain(t, f)
+	kinds := func(user string) []string {
+		var out []string
+		for _, it := range myNotifications(t, f, user, "").Items {
+			out = append(out, it.Kind)
+		}
+		return out
+	}
+	if got := kinds(testMember); len(got) != 1 || got[0] != "feedback.status_changed" {
+		t.Errorf("the submitter after resolving: %v", got)
+	}
+	if got := kinds(testAdmin); len(got) != 0 {
+		t.Errorf("the handler heard of their own change: %v", got)
+	}
+	cf.call("POST", path+"/rate", testMember, jsonBody(map[string]int{"score": 2}), nil, http.StatusOK)
+	drain(t, f)
+	if got := kinds(testAdmin); len(got) != 1 || got[0] != "feedback.status_changed" {
+		t.Errorf("the handler after a low score: %v", got)
+	}
+	if got := kinds(testMember); len(got) != 1 {
+		t.Errorf("the submitter heard of their own score: %v", got)
+	}
+}
