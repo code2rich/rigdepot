@@ -49,8 +49,8 @@ type Options struct {
 	// believed, for limits by client address.
 	TrustedProxies []netip.Prefix
 	// SignInRate limits signing in (with a password, and through identity
-	// providers, separately) and opening invitation links per client
-	// address; UserRate limits every other operation per account. The zero
+	// providers, separately), opening invitation links and starting rgd
+	// login per client address; UserRate limits every other operation per account. The zero
 	// value is DefaultSignInRate and DefaultUserRate; a negative Burst
 	// turns a limit off.
 	SignInRate, UserRate Rate
@@ -58,6 +58,9 @@ type Options struct {
 	Now func() time.Time
 	// Log receives faults while authenticating; nil discards them.
 	Log *slog.Logger
+	// Devices runs the device code flow and keeps the devices (rgd login,
+	// the confirmation page, my devices). Nil: those operations answer 501.
+	Devices *authn.Devices
 	// Protected are path prefixes outside the contract (the optional
 	// modules' routes, /api/v1/x/) whose requests are authenticated like an
 	// operation that accepts a session, a device token or an access token
@@ -71,18 +74,20 @@ type Options struct {
 type Ops struct {
 	protected []string
 	svc       *authn.Service
+	devices   *authn.Devices
+	base      string // the public address without a trailing slash, for verification_uri and redirects
 	log       *slog.Logger
 	ops       *operations
 	cop       *http.CrossOriginProtection
 	secure    bool
 	path      string
-	base      string // the public address without a trailing slash, for redirects
 
-	trusted  []netip.Prefix
-	signIn   *limiter
-	invite   *limiter
-	provider *limiter
-	user     *limiter
+	trusted    []netip.Prefix
+	signIn     *limiter
+	invite     *limiter
+	deviceCode *limiter
+	provider   *limiter
+	user       *limiter
 }
 
 // New returns the operations on svc. It fails when the contract built into
@@ -105,9 +110,9 @@ func New(svc *authn.Service, o Options) (*Ops, error) {
 		o.UserRate = DefaultUserRate
 	}
 	h := &Ops{
-		protected: o.Protected,
-		svc:       svc, log: o.Log, ops: ops, cop: http.NewCrossOriginProtection(), path: "/", trusted: o.TrustedProxies,
-		signIn: newLimiter(o.SignInRate, o.Now), invite: newLimiter(o.SignInRate, o.Now), provider: newLimiter(o.SignInRate, o.Now), user: newLimiter(o.UserRate, o.Now),
+		protected: o.Protected, devices: o.Devices,
+		svc: svc, log: o.Log, ops: ops, cop: http.NewCrossOriginProtection(), path: "/", trusted: o.TrustedProxies,
+		signIn: newLimiter(o.SignInRate, o.Now), invite: newLimiter(o.SignInRate, o.Now), deviceCode: newLimiter(o.SignInRate, o.Now), provider: newLimiter(o.SignInRate, o.Now), user: newLimiter(o.UserRate, o.Now),
 	}
 	if b := o.BaseURL; b != nil {
 		h.secure = b.Scheme == "https"
@@ -159,6 +164,12 @@ var details = map[string]string{
 	"identity.local_fixed":     "Local accounts can only be turned on and off.",
 	"auth.method_disabled":     "Signing in with a password is turned off on this server.",
 	"rate.limited":             "Too many requests. Try again in a moment.",
+
+	"device.authorization_pending": "Waiting for confirmation in the browser.",
+	"device.slow_down":             "Polling too fast; wait longer between requests.",
+	"device.expired":               "This sign-in request has expired or was already used. Start again.",
+	"device.denied":                "The sign-in request was refused in the browser.",
+	"device.decided":               "This sign-in request was already approved or refused.",
 }
 
 var statusOf = map[authn.Kind]int{
@@ -168,6 +179,7 @@ var statusOf = map[authn.Kind]int{
 	authn.KindNotFound:             http.StatusNotFound,
 	authn.KindConflict:             http.StatusConflict,
 	authn.KindLocked:               http.StatusTooManyRequests,
+	authn.KindDeviceFlow:           http.StatusBadRequest, // RFC 8628, 3.5
 	authn.KindPrecondition:         http.StatusPreconditionFailed,
 	authn.KindPreconditionRequired: http.StatusPreconditionRequired,
 }
@@ -202,6 +214,13 @@ func fail(ctx context.Context, err error) error {
 				fields[i] = httpapi.FieldError{Field: f.Field, Code: f.Code}
 			}
 			p.Errors = &fields
+		}
+		if len(e.Params) > 0 {
+			params := make(map[string]any, len(e.Params))
+			for k, v := range e.Params {
+				params[k] = v
+			}
+			p.Params = &params
 		}
 		if e.RetryAfter > 0 {
 			setRetryAfter(ctx, e.RetryAfter)

@@ -42,6 +42,8 @@ const (
 	opSetupAdmin  = "createSetupAdmin"
 	opStartIdP    = "startProviderLogin"
 	opFinishIdP   = "finishProviderLogin"
+	opDeviceCode  = "requestDeviceCode"
+	opDevicePoll  = "pollDeviceToken"
 	maxSmallBody  = 64 << 10
 	headerViaTool = "X-Via-Tool"
 )
@@ -51,7 +53,12 @@ const (
 var smallBodies = map[string]bool{
 	opLogin: true, opAcceptInv: true, opSetupAdmin: true, "changeMyPassword": true, "createAccessToken": true,
 	"createIdentityProvider": true, "updateIdentityProvider": true,
+	opDeviceCode: true, opDevicePoll: true,
 }
+
+// noStore are the operations whose answers carry a credential or the code
+// that leads to one: no cache may keep them (RFC 6749, 5.1).
+var noStore = map[string]bool{opDeviceCode: true, opDevicePoll: true}
 
 // viaTool is the form of X-Via-Tool: a tool adapter's id.
 var viaTool = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
@@ -63,8 +70,8 @@ var viaTool = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
 //     (http.CrossOriginProtection: Sec-Fetch-Site, then Origin), on top of
 //     SameSite=Lax; requests with an Authorization header are not browser
 //     sessions and are not checked.
-//   - Public operations get no caller. Signing in and invitation links are
-//     limited by client address.
+//   - Public operations get no caller. Signing in, invitation links and
+//     starting rgd login are limited by client address.
 //   - Otherwise the credential is a bearer token (device token or access
 //     token, told apart by the prefix) or the session cookie. None, or one
 //     that is not valid, is 401 auth.required; a kind of credential the
@@ -112,10 +119,15 @@ func (h *Ops) Middleware(next http.Handler) http.Handler {
 			byAddr = h.provider
 		case opGetInvite, opAcceptInv:
 			byAddr = h.invite
+		case opDeviceCode:
+			byAddr = h.deviceCode
 		}
 		if wait, ok := byAddr.allow(clientAddr(r, h.trusted)); !ok {
 			h.tooMany(w, r, wait)
 			return
+		}
+		if noStore[op.id] {
+			w.Header().Set("Cache-Control", "no-store")
 		}
 		if op.public {
 			next.ServeHTTP(w, r)

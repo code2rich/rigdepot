@@ -58,7 +58,8 @@ type App struct {
 	audit    *audit.Log
 	access   *access.Service
 	authn    *authn.Service
-	authnOps *authnapi.Ops // the sign-in operations and middleware
+	devices  *authn.Devices // the device code flow and the devices
+	authnOps *authnapi.Ops  // the sign-in operations and middleware
 	settings *settings.Service
 	catalog  *catalog.Service
 	hooks    hooks

@@ -75,7 +75,7 @@ function Routes() {
       <Router>
         {[
           ...NAV.flatMap((g) => g.pages).map((p) => (
-            <Route key={p.id} path={href(p.path)} component={p.component} />
+            <Route key={p.id} path={href(p.route ?? p.path)} component={p.component} />
           )),
           <Route key="404" default component={NotFound} />,
         ]}

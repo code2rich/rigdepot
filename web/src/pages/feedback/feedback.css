@@ -1,0 +1,22 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* A-05 问题反馈: the detail panel, its timeline and the rating stars. From the prototype (抽屉与对话框:
+   .timeline, .tl, .bubble, .stars). */
+
+.fb-head { padding: 16px 20px; border-bottom: 1px solid var(--line) }
+.fb-head h2 { font-size: 17px; font-weight: 600; letter-spacing: -.01em }
+.fb-head a.badge { text-decoration: none }
+.fb-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 20px }
+.timeline::before { content: ""; position: absolute; left: 13.5px; top: 6px; bottom: 6px; width: 1px; background: var(--line) }
+.tl { display: flex; gap: 12px; align-items: flex-start; position: relative }
+.tl .mk { width: 28px; display: grid; place-items: center; flex: none; padding-top: 6px } .tl .mk i { width: 7px; height: 7px; background: var(--panel); border: 1px solid var(--ink-3) }
+.tl .sys { font-size: 12px; color: var(--ink-3); padding-top: 2px; min-width: 0 }
+.bubble { padding: 9px 12px; border-radius: var(--r-2); border: 1px solid var(--line); background: var(--panel-2); font-size: 13px; line-height: 1.6; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere }
+.bubble .who-l { font-size: 11.5px; color: var(--ink-3); margin-bottom: 2px; white-space: normal }
+.stars { display: inline-flex; gap: 2px } .stars span, .stars button { display: grid; place-items: center; width: 22px; height: 22px; color: var(--line-3) }
+.stars svg { width: 16px; height: 16px } .stars .on { color: var(--warn) } .stars .on svg { fill: currentColor }
+
+@media (max-width: 760px) {
+  .fb-head, .fb-body { padding-left: 16px; padding-right: 16px }
+}
