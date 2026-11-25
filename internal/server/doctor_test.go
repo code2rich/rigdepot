@@ -100,7 +100,7 @@ func doctorLines(t *testing.T, e *env) (int, map[string]string, string) {
 	lookup := e.lookupEnv
 	e.lookupEnv = func(k string) (string, bool) {
 		if k == config.EnvName("GIT") {
-			return "rgd-test-no-such-git", true
+			return "no-such-git-for-tests", true
 		}
 		return lookup(k)
 	}

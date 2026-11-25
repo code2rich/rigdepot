@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/server/config"
 )
 
@@ -27,8 +28,8 @@ func TestKeysRotateAndAuditVerifyFailures(t *testing.T) {
 	}{
 		{"rotate: no database", []string{"keys", "rotate"}, []string{config.EnvName("DATA_DIR"), missing}, "there is no database"},
 		{"verify: no database", []string{"audit", "verify"}, []string{config.EnvName("DATA_DIR"), missing}, "there is no database"},
-		{"rotate: not migrated", []string{"keys", "rotate"}, []string{config.EnvName("DATA_DIR"), older}, "run rgd-server migrate first"},
-		{"verify: not migrated", []string{"audit", "verify"}, []string{config.EnvName("DATA_DIR"), older}, "run rgd-server migrate first"},
+		{"rotate: not migrated", []string{"keys", "rotate"}, []string{config.EnvName("DATA_DIR"), older}, "run " + brand.Server + " migrate first"},
+		{"verify: not migrated", []string{"audit", "verify"}, []string{config.EnvName("DATA_DIR"), older}, "run " + brand.Server + " migrate first"},
 		{"rotate: key lost", []string{"keys", "rotate"}, []string{config.EnvName("MASTER_KEY_FILE"), filepath.Join(t.TempDir(), "lost.key")}, "restore the key file"},
 		{"verify: key lost", []string{"audit", "verify"}, []string{config.EnvName("MASTER_KEY_FILE"), filepath.Join(t.TempDir(), "lost.key")}, "restore the key file"},
 		{"reset-admin: no database", []string{"reset-admin"}, []string{config.EnvName("DATA_DIR"), missing}, "there is no database"},
