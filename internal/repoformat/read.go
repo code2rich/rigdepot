@@ -4,6 +4,7 @@
 package repoformat
 
 import (
+	"bytes"
 	"cmp"
 	"errors"
 	"fmt"
@@ -68,7 +69,8 @@ type Resource struct {
 	// Path is where the resource is in the repository: "skills/unit-testing" or
 	// "mcp/jira.yaml".
 	Path string
-	// Effective is Meta with the repository's defaults filled in.
+	// Effective is Meta with the repository's defaults filled in, and with the secrets the
+	// resource's own files refer to added to Secrets.
 	Effective resource.Meta
 	// Kind is the kind that parsed the resource, and Spec what its Parse returned. The Spec is
 	// handed back unchanged to the kind's forms to render the resource.
@@ -322,13 +324,47 @@ func (r *reader) readOne(k kind.Kind, ref resource.Ref, p string, kindSchema *js
 	if err != nil {
 		return Resource{}, []Issue{{File: p, Code: CodeParse, Message: err.Error()}}, notices
 	}
+	effective := cfg.Effective(meta)
+	if su, ok := spec.(kind.SecretUser); ok {
+		// Secrets referred to in the resource's own files, such as ${secret:NAME} in an MCP
+		// server's headers, need a definition as much as the listed ones, and count as needed
+		// without being listed.
+		effective.Secrets = slices.Clone(meta.Secrets)
+		for _, s := range su.Secrets() {
+			if _, ok := cfg.Secrets[s]; !ok {
+				line := 0
+				if l.File {
+					line = firstLine(data, "secret:"+s)
+				}
+				issues = append(issues, Issue{File: p, Line: line, Code: CodeUndefinedSecret,
+					Message: fmt.Sprintf("the secret %q is referred to but not defined under secrets in %s", s, brand.RepoConfig)})
+				continue
+			}
+			if !slices.Contains(effective.Secrets, s) {
+				effective.Secrets = append(effective.Secrets, s)
+			}
+		}
+		if len(issues) > 0 {
+			return Resource{}, issues, notices
+		}
+	}
 	return Resource{
 		Bundle:    resource.Bundle{Ref: ref, Meta: meta, Digest: digest, Files: files},
 		Path:      p,
-		Effective: cfg.Effective(meta),
+		Effective: effective,
 		Kind:      k,
 		Spec:      spec,
 	}, nil, notices
+}
+
+// firstLine returns the line of the first occurrence of s in data, from 1, or 0 when it is not
+// there.
+func firstLine(data []byte, s string) int {
+	i := bytes.Index(data, []byte(s))
+	if i < 0 {
+		return 0
+	}
+	return bytes.Count(data[:i], []byte("\n")) + 1
 }
 
 func isYAML(ext string) bool {
