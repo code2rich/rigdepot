@@ -25,7 +25,7 @@ Badges to revisit:
   repository is public and the first version is released.
 -->
 
-> **Status: design complete, M0 (the command-line core) in development.** Nothing is released yet and no command does real work so far. See [Status](#status) for exactly what exists today.
+> **Status: M0 (the command line) is complete and M1 (the team server) is mostly built.** Nothing is released yet; build from source to try it. See [Status](#status) for exactly what exists today.
 
 ## Why
 
@@ -89,23 +89,26 @@ flowchart LR
     cli -- "each tool's own format" --> tools
 ```
 
-How the code is laid out, and where a given change belongs, is described in [CONTRIBUTING.md](CONTRIBUTING.md#a-map-of-the-repository).
+How the code is laid out, and where a given change belongs, is described in [CONTRIBUTING.md](CONTRIBUTING.md#a-map-of-the-repository) and, in more depth, in [docs/architecture.md](docs/architecture.md).
 
 ## Status
 
-The project is at the very beginning of its implementation. To be exact about what exists:
+M0, the command line, is complete. M1, the team server, is mostly built. No version has been released yet: to use Rigdepot today, [build it from source](#build-from-source). To be exact about what exists:
 
 | | State |
 | --- | --- |
-| Product and engineering design | Complete |
-| Repository skeleton, development entry point (`go run ./tools/dev`), dependency rule checks, test isolation | Done |
-| Extension interfaces for tools, resource kinds and check rules (`ext/`); JSON Schemas of the file formats (`schema/`) | Defined, version v0. **Nothing implements them yet.** |
-| `rgd`, `rgd-server` | Build for all six targets and answer `--version`. **No other command is implemented.** |
-| M0: command-line core | In development |
-| Releases, install scripts, Homebrew, Scoop, container image | Not published. The release tooling is in the repository and has only been run locally. |
-| CI | Workflows are written but have **not yet run on GitHub Actions**. Until they do, checks are run locally with `go run ./tools/dev check`. |
-
-Everything below that describes installation, commands or deployment describes where the project is going, and says so.
+| **`rgd` without a server** | Works. `sync --repo` (a Git address or a local path), `sync --plan`, `status` with drift detection and `--diff`, `uninstall`, `check`, `doctor`, `enable` / `disable`, `flow next`, `config`, `completion`. |
+| **`rgd` with a server** | `login` / `logout` (device code confirmed in the browser) and `sync` from the server's catalog work, including install reports. Not yet: personal secrets on the device and the `rgd mcp` commands (single-entry MCP, secret injection), so an MCP server that needs a secret is still written as a reference to an environment variable you set yourself. |
+| **AI coding tools** | Claude Code, Codex and OpenCode, each verified against the real tool in a temporary home directory (Claude Code 2.1.330, Codex 0.172.0, OpenCode 2.4.1, macOS arm64). |
+| **Resource kinds** | Skill, MCP server, workflow, agent, knowledge base (a Git directory, pulled with each person's own access). |
+| **Check rules** | Eight: credentials, dangerous commands, prompt injection, bundled `.env` files, personal paths, descriptions, overlap between resources, structure. The server runs the same rules on intake. |
+| **`rgd-server`** | Works: setup wizard, local accounts, OIDC and GitLab sign-in, invitations and join requests, products, members and the three roles, access tokens, the catalog with drafts, versions, publishing and rollback, uploading a resource as an archive, registering an MCP server on the web, delivery to `rgd`, in-app and email notifications, the audit log with its hash chain, platform settings, tool adapter switches, HTTPS (certificate files or ACME), backups, the operations commands, metrics, and handing out `rgd` on its own address. |
+| **Not in `rgd-server` yet** | Pulling resource repositories (until then, resources reach the server by upload or by registering them on the web), feedback, personal secrets, unattended setup (`rgd-server setup --from`). The console pages for these are in place and do not work until their server side arrives. |
+| **Web console** | Every page of M1, in English and Chinese, light and dark. |
+| **Deployment** | Docker Compose (SQLite or PostgreSQL), the container image, Debian and RPM packages with systemd. The files are in [deploy/](deploy/); the guide is [docs/deploy.md](docs/deploy.md). |
+| **Releases** | None yet. The release configuration (archives, packages, image, Homebrew, Scoop) is in the repository and has only been run locally. |
+| **CI** | Workflows are written but have **not yet run on GitHub Actions**. Until they do, checks run locally with `go run ./tools/dev check`. |
+| **Later milestones** | Usage insight, quality scores and more adapters (M2); see the [roadmap](#roadmap). |
 
 ## Quick start
 
@@ -117,52 +120,76 @@ Everything below that describes installation, commands or deployment describes w
 | --- | --- |
 | macOS, Linux | `curl -fsSLO https://raw.githubusercontent.com/code2rich/rigdepot/main/scripts/install.sh`, read it, then `sh install.sh` |
 | Windows (PowerShell) | `irm https://raw.githubusercontent.com/code2rich/rigdepot/main/scripts/install.ps1 -OutFile install.ps1`, read it, then `.\install.ps1` |
-| Homebrew | `brew install code2rich/tap/rigdepot` |
-| Scoop | `scoop bucket add code2rich https://github.com/code2rich/scoop-bucket`, then `scoop install rigdepot` |
-| Docker (server only) | `docker pull ghcr.io/code2rich/rigdepot-server` |
+| Homebrew (macOS, Linux) | `brew install --cask code2rich/tap/rigdepot` |
+| Scoop (Windows) | `scoop bucket add code2rich https://github.com/code2rich/scoop-bucket`, then `scoop install code2rich/rigdepot` |
+| From your organisation's server | `curl -fsSL https://hub.example.com/install.sh \| sh`, or on Windows `irm https://hub.example.com/install.ps1 \| iex`, with your server's address. The console's connection guide shows the exact command. |
 
-The install scripts do one thing: download the `rgd` binary for your platform from GitHub Releases, verify its SHA-256 checksum, put it in place and tell you how to add it to `PATH`. They do not sign you in, sync anything or install a background job. `rgd` never upgrades itself.
+The install scripts do one thing: download the `rgd` binary for your platform, verify its SHA-256 checksum, put it in place (`~/.local/bin`, or `%LOCALAPPDATA%\Programs\rigdepot` on Windows) and tell you how to add it to `PATH`. They do not sign you in, sync anything, install a background job or ask for administrator rights. `RGD_VERSION` picks a version and `RGD_INSTALL_DIR` another directory. The copy your organisation's server hands out downloads from that server and checks against the checksums it wrote into the script, so it works on a network that cannot reach the internet. `rgd` never upgrades itself.
+
+The server is installed differently: see [Deploying the server](#deploying-the-server).
 
 ### Build from source
 
-This works today. You need Go (the version in [go.mod](go.mod)) and git.
+You need Go (the version in [go.mod](go.mod)) and git.
 
 ```sh
 git clone https://github.com/code2rich/rigdepot.git
 cd rigdepot
 go build -o rgd ./cmd/rgd
-./rgd --version
+./rgd version
 ```
 
-### First sync
+The server: `go build -o rgd-server ./cmd/rgd-server`. Built this way it carries a one-page stand-in instead of the web console; [CONTRIBUTING.md](CONTRIBUTING.md#the-web-console) says how to build it with the console.
 
-> Planned for M0; not implemented yet.
+### Without a server: sync from a Git repository
+
+The repository has a sample resource repository in [examples/resources](examples/resources): three skills, two MCP servers, a workflow, an agent and a knowledge base of a fictional company. Try it in a throwaway home directory first, so that nothing touches your real AI tools:
 
 ```sh
-rgd sync --repo <git url> --plan   # show every file and config entry that would be written
-rgd sync --repo <git url>          # write, after asking before any global configuration changes
-rgd status                         # what is installed, and whether anything drifted
-rgd uninstall                      # revert everything the manifest lists
+cd rigdepot
+env -u CLAUDE_CONFIG_DIR -u CODEX_HOME -u XDG_CONFIG_HOME HOME="$(mktemp -d)" sh   # a shell with an empty home
+
+rgd sync --repo . --dir examples/resources --plan     # every file and config entry it would write; changes nothing
+rgd sync --repo . --dir examples/resources            # write; asks before changing any tool's global configuration
+rgd status --repo . --dir examples/resources          # what is installed, and whether anything was changed since
+rgd check examples/resources                          # the intake checks, as the server runs them
+rgd uninstall                                         # undo everything the manifest lists
+exit
 ```
+
+`--repo` takes an https or ssh address of any Git repository you can clone, or a local path; `--dir` is the directory inside it that holds the resources. `rgd config set repo.url <address>` saves you from typing it. The resources are read from what is committed, with your own Git access. Only AI tools found on this computer get anything, and `--tool` limits a sync to some of them.
+
+For your team, make your own resource repository in the same layout (a `rigdepot.yaml` and directories such as `skills/` and `mcp/`); [examples/resources](examples/resources) is the place to copy from, and [examples/resources-broken](examples/resources-broken) shows what each check rule catches.
+
+### With a server: sign in, then sync
+
+Once someone has [deployed the server](#deploying-the-server) and published resources in its catalog:
+
+```sh
+rgd login https://hub.example.com    # prints a code; confirm it in the browser where you are signed in
+rgd sync --plan                      # what the server wants on this computer, for the products you belong to
+rgd sync
+rgd status
+```
+
+`rgd login` keeps the address in `~/.rigdepot/config.toml` and the device's token in the system keychain, or in a file only you can read where there is none. After that, `rgd sync` takes its resources from the server: those of the whole organisation and of your products, required and recommended ones by default, optional ones after `rgd enable <code>`. It reports what it installed (no paths, no content), and when the server cannot be reached it works from the last state it received and removes nothing. `--repo` still syncs from a repository instead.
 
 ## Deploying the server
 
-> The server arrives with M1. The files in [deploy/](deploy/) and the [Dockerfile](Dockerfile) are in place and build, but today they package a server that only answers `--version`.
-
-The default path is one executable and one data directory. A team of twenty should be able to deploy it within a day.
+One executable and one data directory. A small team should be able to deploy it within a day, by following [docs/deploy.md](docs/deploy.md).
 
 | Form | For | Database |
 | --- | --- | --- |
-| Single binary + systemd ([unit](deploy/systemd/rigdepot-server.service)) | One Linux machine, no containers | SQLite (default) |
-| Container image ([Dockerfile](Dockerfile)) | Teams already running containers | SQLite on a volume |
-| Docker Compose ([compose.yaml](deploy/compose.yaml)) | One command to start; or PostgreSQL through the `postgres` profile | SQLite or PostgreSQL |
+| Docker Compose ([compose.yaml](deploy/compose.yaml), [compose.postgres.yaml](deploy/compose.postgres.yaml)) | One command to start | SQLite, or PostgreSQL in a second container |
+| Container image ([Dockerfile](Dockerfile)) | Teams that run containers their own way | SQLite on a volume, or an external PostgreSQL |
+| Debian or RPM package, with systemd ([unit](deploy/systemd/rigdepot-server.service)) | One Linux machine, no containers | SQLite, or an external PostgreSQL |
 
 - The server targets Linux on amd64 and arm64. It also runs on macOS for development and trials. Windows is not a supported server platform.
-- Configuration comes from `RGD_*` environment variables; only `RGD_BASE_URL` is required.
+- Configuration comes from `RGD_*` environment variables or a TOML file; only `RGD_BASE_URL` is required.
+- On first start the server prints a one-time setup token in its log; the setup wizard in the browser takes it and creates the first administrator.
 - Two things need a backup: the database and the master key. Keep them in different places.
-- HTTPS is normally left to your reverse proxy. Plain HTTP on a non-loopback address is refused by default.
-
-More in [deploy/README.md](deploy/README.md).
+- HTTPS is normally left to your reverse proxy ([Caddy](deploy/proxy/Caddyfile), [nginx](deploy/proxy/nginx.conf)); the server can also use certificate files or get certificates itself. Plain HTTP on a non-loopback address is refused.
+- The server hands out `rgd` to the team's computers from its own address, so they do not need the internet to install it.
 
 ## Supported platforms and AI tools
 
@@ -173,21 +200,21 @@ More in [deploy/README.md](deploy/README.md).
 
 "Supported" is the goal for the first release. Today all six targets compile, and the test suite runs on macOS and in a Linux container. Nothing has been verified on a real Windows machine yet.
 
-| AI coding tool | Skills | MCP servers | State |
-| --- | --- | --- | --- |
-| Claude Code | Planned | Planned | First batch (M0), in development |
-| Codex | Planned | Planned | First batch (M0), in development |
-| OpenCode | Planned | Planned | First batch (M0), in development |
-| Zcode, Kimi CLI, Gemini CLI | — | — | Planned (M2) |
+| AI coding tool | Skills | MCP servers | Workflows | Agents | Verified against |
+| --- | --- | --- | --- | --- | --- |
+| Claude Code | Yes | Yes | As slash commands | As sub-agents | 2.1.330 |
+| Codex | Yes | Yes | As skills | As skills | 0.172.0 |
+| OpenCode | Yes | Yes | As slash commands | As sub-agents | 2.4.1 |
+| Zcode, Kimi CLI, Gemini CLI | — | — | — | — | Planned (M2) |
 
-Where each tool keeps its configuration is verified against the real tool, not guessed from documentation. A tool without a verification record gets nothing written into it.
+Where each tool keeps its configuration is verified against the real tool, not guessed from documentation, and every adapter records the version, system and date it was verified on. A tool without a verification record gets nothing written into it. What a tool cannot take natively is downgraded to a form it can (a workflow becomes a skill), and `rgd sync --plan` says so.
 
 ## Roadmap
 
 | Milestone | In one sentence |
 | --- | --- |
-| **M0 — command-line core** | Without a server, `rgd sync --repo` installs the skills and MCP servers of a resource repository into Claude Code, Codex and OpenCode, with preview, status, drift detection, intake checks and a clean uninstall. |
-| **M1 — team server** | A self-hosted server adds the catalog and releases, products and scopes, three roles, sign-in (OIDC, GitLab, local accounts), personal secrets injected on the device, workflows, agents, knowledge bases, basic audit and feedback. |
+| **M0 — command-line core** (done) | Without a server, `rgd sync --repo` installs the skills and MCP servers of a resource repository into Claude Code, Codex and OpenCode, with preview, status, drift detection, intake checks and a clean uninstall. |
+| **M1 — team server** (in progress) | A self-hosted server adds the catalog and releases, products and scopes, three roles, sign-in (OIDC, GitLab, local accounts), personal secrets injected on the device, workflows, agents, knowledge bases, basic audit and feedback. |
 | **M2 — closing the loop** | Usage insight with each person's consent, friction rate and automatic issue leads, AI review and quality scores, more adapters. |
 | **M3 — more optional modules** | Environment resources and gates, a browser extension, SAML / LDAP / SCIM, external secret backends, approval flows, audit and insight export, IM notifications — ordered by what users ask for. |
 
@@ -209,7 +236,6 @@ go run ./tools/dev check    # every check: format, static analysis, tests, six c
 ## Community
 
 - **Discord**: <https://discord.gg/feGwwqs7x> — everyday talk, ideas, progress.
-- **Demo site**: <https://rigdepot.code2rich.com> — an interactive prototype of the web console (three roles, three scenarios, all data fictional) and a feedback form.
 - **Issues**: bug reports, feature requests and requests for new tool adapters go to [GitHub Issues](https://github.com/code2rich/rigdepot/issues). General questions are better asked on Discord.
 
 ## License and trademark

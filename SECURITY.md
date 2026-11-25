@@ -48,7 +48,10 @@ Before 1.0, a fix is released as a new patch version of the latest minor release
 - A personal secret reaching a place where an AI tool, a config file, a log or the server's API could show it.
 - A resource bundle or repository that makes `rgd` write outside the locations it announced: path traversal, symbolic links, special file names.
 - Anything in `rgd-server` that lets someone see or do what their role and scope do not allow, or that changes or drops audit records.
-- A way to make the install scripts accept a file that does not match its published checksum.
+- A way to make the install scripts accept a file that does not match its published checksum, including the copies a server hands out with its own address and checksums filled in.
+- Taking over a server that has not finished its setup without the setup token, signing a computer in without the person confirming the code in their browser, or using a device token or access token beyond what it was issued for.
+- Encrypted data on the server (secrets of identity providers, repository tokens, the mail password) that can be read without the master key, or a master key that ends up in a backup, a log or an API response.
+- A request from another site that the server acts on with a person's browser session.
 
 ## Verifying a release
 
