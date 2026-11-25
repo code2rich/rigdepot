@@ -1,0 +1,24 @@
+{
+  "numStartups": 57,
+  "installMethod": "global",
+  "autoUpdates": true,
+  "theme": "dark",
+  "firstStartTime": "2026-10-02T08:14:03.512Z",
+  "firstStartVersion": "2.1.301",
+  "machineID": "<占位：机器标识>",
+  "userID": "<占位：用户标识>",
+  "opusProMigrationComplete": true,
+  "seenNotifications": {},
+  "hasResetAutoModeOptInForDefaultOffer": true,
+  "migrationVersion": 15,
+  "tipsHistory": {
+    "new-user-warmup": 3,
+    "shift-tab": 12
+  },
+  "customApiKeyResponses": {
+    "approved": [],
+    "rejected": []
+  },
+  "lastReleaseNotesSeen": null,
+  "projects": {
+    "/Users/example/src/ap
