@@ -1,0 +1,6 @@
+schema: 1
+locale: zh-CN
+secrets:
+  SHOP_TEST_API_TOKEN:
+    label: 测试环境的接口令牌
+    howto: <占位：去哪申请>

@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"github.com/code2rich/rigdepot/internal/home"
 )
 
 // FileName is the name of the configuration file inside the local data
@@ -417,11 +419,11 @@ func SaveFile(path, key, raw string) (Value, error) {
 		return Value{}, err
 	}
 	if exists {
-		if err := writeAtomic(path+".1", old); err != nil {
+		if err := home.WriteFileAtomic(path+".1", old, home.FilePerm); err != nil {
 			return Value{}, err
 		}
 	}
-	if err := writeAtomic(path, buf.Bytes()); err != nil {
+	if err := home.WriteFileAtomic(path, buf.Bytes(), home.FilePerm); err != nil {
 		return Value{}, err
 	}
 	if raw == "" {
@@ -469,33 +471,4 @@ func setPath(tree map[string]any, parts []string, v Value, remove bool) error {
 		tree[last] = v.Str
 	}
 	return nil
-}
-
-// writeAtomic writes data to a temporary file in the same directory, syncs
-// it and renames it over path, with permissions for the owner only.
-//
-// TODO(M0-13): use the atomic write of internal/home once it exists.
-func writeAtomic(path string, data []byte) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
-	if err != nil {
-		return err
-	}
-	name := tmp.Name()
-	defer os.Remove(name) // after a successful rename there is nothing left to remove
-	if err := tmp.Chmod(0o600); err != nil && !errors.Is(err, errors.ErrUnsupported) {
-		tmp.Close()
-		return err
-	}
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(name, path)
 }

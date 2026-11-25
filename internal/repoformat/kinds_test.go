@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"regexp"
+	"slices"
 
 	"go.yaml.in/yaml/v4"
 
@@ -99,6 +101,7 @@ func (fakeMCP) Parse(ref resource.Ref, files fs.FS) (kind.Spec, error) {
 	var doc struct {
 		Server struct {
 			Type, URL, Command string
+			Env, Headers       map[string]string
 		}
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
@@ -107,8 +110,29 @@ func (fakeMCP) Parse(ref resource.Ref, files fs.FS) (kind.Spec, error) {
 	if doc.Server.Type == "stdio" && doc.Server.Command == "" {
 		return nil, errors.New("a stdio server needs a command")
 	}
-	return doc.Server, nil
+	spec := mcpSpec{typ: doc.Server.Type}
+	for _, values := range []map[string]string{doc.Server.Env, doc.Server.Headers} {
+		for _, v := range values {
+			if m := secretRef.FindStringSubmatch(v); m != nil && !slices.Contains(spec.secrets, m[1]) {
+				spec.secrets = append(spec.secrets, m[1])
+			}
+		}
+	}
+	slices.Sort(spec.secrets)
+	return spec, nil
 }
+
+var secretRef = regexp.MustCompile(`\$\{secret:([A-Z0-9_]+)\}`)
+
+// mcpSpec refers to personal secrets the way the real MCP kind's does.
+type mcpSpec struct {
+	typ     string
+	secrets []string
+}
+
+func (s mcpSpec) Secrets() []string { return s.secrets }
+
+var _ kind.SecretUser = mcpSpec{}
 
 func testKinds() *kind.Registry {
 	r := kind.NewRegistry()

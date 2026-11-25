@@ -1,0 +1,4 @@
+meta: {name: x}
+server:
+  type: stdio
+  args: [serve]

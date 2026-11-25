@@ -115,4 +115,17 @@ type RenderOptions struct {
 	// product writes into a tool carries it, which is how a person, and the product, can tell
 	// its entries from their own. A kind never spells the prefix out.
 	Prefix string
+	// CLI is the name of the command-line program as a person types it. A kind that writes
+	// instructions for an AI, such as how to call an MCP server on demand, takes the command
+	// from here and never spells it out either.
+	CLI string
+}
+
+// SecretUser is implemented by a Spec whose files refer to personal secrets by name, the way an
+// MCP server does with ${secret:NAME} in its environment and headers. The core checks that each
+// name is defined in the repository, as it does for the names in Meta.Secrets, and counts them
+// as secrets the resource needs without the author listing them twice.
+type SecretUser interface {
+	// Secrets returns the names of the secrets the resource refers to, sorted, each once.
+	Secrets() []string
 }

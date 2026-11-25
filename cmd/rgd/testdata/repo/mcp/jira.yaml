@@ -1,0 +1,19 @@
+meta:
+  name: Jira
+  summary: 读写需求、任务和缺陷，查询迭代计划
+  stages: [requirement, develop, test]
+  policy: required
+  try: 查一下我这个迭代还没完成的任务
+
+server:                          # 一条标准的 mcpServers 条目
+  type: http
+  url: https://jira.example.com/mcp
+  headers:
+    Authorization: "Bearer ${secret:JIRA_API_TOKEN}"
+    X-Client: example-ai
+
+delivery: native
+
+tools:
+  - { name: search_issues, summary: 按 JQL 查询事项 }
+  - { name: create_issue,  summary: 新建事项, writes: true }

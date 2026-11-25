@@ -1,0 +1,3 @@
+meta: {name: x}
+server: {type: stdio, command: gitlab-mcp}
+delivery: sometimes

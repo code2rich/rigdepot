@@ -1,0 +1,11 @@
+name: 单元测试
+summary: 为改动生成并运行单元测试，补齐边界用例
+stages: [test]
+when: 要给改动补单元测试时
+try: 给我刚改的这几个类补单元测试
+secrets: [SHOP_TEST_API_TOKEN]
+maintainers: [maintainer-a]
+tags: [java]
+i18n:
+  en:
+    name: Unit testing

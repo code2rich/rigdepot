@@ -1,0 +1,6 @@
+meta: {name: x}
+server:
+  type: stdio
+  command: gitlab-mcp
+  headers:
+    Authorization: "Bearer ${secret:GITLAB_TOKEN}"

@@ -1,0 +1,5 @@
+meta: {name: 本机笔记}
+
+server:
+  type: stdio
+  command: notes-mcp

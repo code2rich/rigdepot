@@ -1,0 +1,14 @@
+meta:
+  name: GitLab
+  summary: 查询仓库、合并请求和流水线
+  stages: [develop, scm]
+  secrets: [GITLAB_TOKEN]
+
+server:
+  type: stdio
+  command: npx
+  args: ["-y", "@example/gitlab-mcp@1.4.2"]
+  env:
+    GITLAB_TOKEN: "${secret:GITLAB_TOKEN}"
+    GITLAB_URL: https://gitlab.example.com
+  x-note: 自己的扩展字段，不认识也不拦

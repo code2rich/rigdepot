@@ -269,6 +269,8 @@ const (
 	HelpShort = "help.short"
 	// HelpUsage (cli.json): Usage:
 	HelpUsage = "help.usage"
+	// MCPAsSkill (catalog.json): This tool cannot connect to the MCP server directly, so it gets a skil…
+	MCPAsSkill = "mcp.as_skill"
 	// RootShort (cli.json): Sync your team's AI coding resources into the AI tools on this compute…
 	RootShort = "root.short"
 	// VersionShort (cli.json): Show the version, commit, build time and platform
