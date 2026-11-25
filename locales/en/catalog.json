@@ -1,4 +1,5 @@
 {
+  "agent.as_skill": "This tool has no sub-agents, so the agent arrives as a skill of the same name, with its own skills and working directories",
   "mcp.as_skill": "This tool cannot connect to the MCP server directly, so it gets a skill that calls the server through {{cli}} mcp call",
   "workflow.as_skill": "This tool has no slash commands, so the workflow arrives as a skill of the same name"
 }

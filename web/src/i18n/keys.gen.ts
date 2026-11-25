@@ -6,6 +6,7 @@
  * with the plural forms (_one, _other …) folded into one key.
  */
 export type MessageKey =
+  | "agent.as_skill"
   | "boot.failed.offline"
   | "boot.failed.retry"
   | "boot.failed.server"

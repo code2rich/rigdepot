@@ -1,4 +1,5 @@
 {
+  "agent.as_skill": "这个工具没有子 Agent，Agent 以同名的 Skill 下发，连同它自带的技能和工作目录",
   "mcp.as_skill": "这个工具不能直接接入这个 MCP，以 Skill 下发，调用经 {{cli}} mcp call",
   "workflow.as_skill": "这个工具没有斜杠命令，工作流以同名的 Skill 下发"
 }

@@ -7,6 +7,8 @@ const (
 	AdapterDetectLookpathFailed = "adapter.detect.lookpath_failed"
 	// AdapterDetectUnreadable (cli.json): A file or directory it needs is there but cannot be read.
 	AdapterDetectUnreadable = "adapter.detect.unreadable"
+	// AgentAsSkill (catalog.json): This tool has no sub-agents, so the agent arrives as a skill of the sa…
+	AgentAsSkill = "agent.as_skill"
 	// CheckBundledenvFound (check.json): {{file}} holds real configuration values and would be handed to everyo…
 	CheckBundledenvFound = "check.bundledenv.found"
 	// CheckCLIBlockedHint (cli.json): A resource with a problem that must be fixed cannot be published.

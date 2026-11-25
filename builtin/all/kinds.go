@@ -4,6 +4,7 @@
 package all
 
 import (
+	"github.com/code2rich/rigdepot/builtin/kinds/agent"
 	"github.com/code2rich/rigdepot/builtin/kinds/mcp"
 	"github.com/code2rich/rigdepot/builtin/kinds/skill"
 	"github.com/code2rich/rigdepot/builtin/kinds/workflow"
@@ -12,6 +13,7 @@ import (
 
 func init() {
 	// One line per resource kind under builtin/kinds, in alphabetical order.
+	kind.Register(agent.New())
 	kind.Register(mcp.New())
 	kind.Register(skill.New())
 	kind.Register(workflow.New())
