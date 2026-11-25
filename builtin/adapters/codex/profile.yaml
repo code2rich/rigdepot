@@ -9,9 +9,10 @@
 # Codex has no slash commands of its own any more (custom prompts are deprecated in favour of
 # skills) and no sub-agent files we could verify, so workflows and agents arrive as skills.
 #
-# What the profile cannot say, and the adapter's code does: the MCP entry's TOML shape
-# (bearer_token_env_var and env_http_headers for secrets), and an mcp_servers that is written as
-# an inline table, which cannot be extended without rewriting it.
+# What the profile cannot say, and the adapter's code does (adapter.go, config.go): reading
+# config.toml, the MCP entry's own TOML shape (no "type"; env_vars, bearer_token_env_var and
+# env_http_headers for secrets), and an mcp_servers that is written as an inline table, which
+# cannot be extended without rewriting it.
 id: codex
 name: Codex
 detect:
@@ -22,12 +23,16 @@ detect:
 roots:
   config: { env: CODEX_HOME, default: "~/.codex" }
 verified:
-  version: "0.167.1"
+  version: "0.172.0"
   os: [darwin]
-  at: "2026-11-24"
+  at: "2026-11-25"
   how: >-
-    ran codex mcp add in a temporary home directory and read the config.toml it wrote, then
-    codex mcp list read our entry back; the skills location from the official documentation and
+    with HOME and CODEX_HOME pointing into a temporary directory, ran codex mcp add (stdio with
+    --env, HTTP with --bearer-token-env-var) and read the config.toml it wrote; wrote entries with
+    env_vars, http_headers and env_http_headers and the entries of this adapter's golden files,
+    and codex mcp list --json read every field back (0.167.1 on 2026-11-24 for the first part);
+    a byte order mark, CRLF and an inline mcp_servers table are accepted by Codex; the skills
+    location from the official documentation (user skills in $HOME/.agents/skills) and
     codex-rs/ext/skills/src/host_roots.rs
 skills: { dir: "~/.agents/skills", layout: dir }
 mcp:

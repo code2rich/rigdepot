@@ -1,0 +1,6 @@
+op write-tree ~/.agents/skills/rgd-contract-skill (skill/contract-skill@3): SKILL.md, scripts/check.sh*
+skip mcp/contract-stdio@2 config_unwritable: ~/.codex/config.toml: mcp_servers is written as an inline table (mcp_servers = { … }); TOML does not allow adding a [mcp_servers.<name>] table to it, and it is not rewritten
+skip mcp/contract-http@1 config_unwritable: ~/.codex/config.toml: mcp_servers is written as an inline table (mcp_servers = { … }); TOML does not allow adding a [mcp_servers.<name>] table to it, and it is not rewritten
+skip mcp/contract-secret@1 config_unwritable: ~/.codex/config.toml: mcp_servers is written as an inline table (mcp_servers = { … }); TOML does not allow adding a [mcp_servers.<name>] table to it, and it is not rewritten
+core:
+  + tree ~/.agents/skills/rgd-contract-skill

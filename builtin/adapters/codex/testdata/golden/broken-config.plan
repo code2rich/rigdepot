@@ -1,0 +1,6 @@
+op write-tree ~/.agents/skills/rgd-contract-skill (skill/contract-skill@3): SKILL.md, scripts/check.sh*
+skip mcp/contract-stdio@2 config_unreadable: ~/.codex/config.toml: not valid TOML at line 6, column 19
+skip mcp/contract-http@1 config_unreadable: ~/.codex/config.toml: not valid TOML at line 6, column 19
+skip mcp/contract-secret@1 config_unreadable: ~/.codex/config.toml: not valid TOML at line 6, column 19
+core:
+  ! tool skipped: ~/.codex/config.toml: not valid TOML at line 6, column 19

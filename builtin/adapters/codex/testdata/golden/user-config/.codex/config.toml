@@ -1,0 +1,49 @@
+# Codex settings. See https://example.com/codex-config for what each key does.
+model = "gpt-5.2-codex"
+model_reasoning_effort = "high"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+file_opener = "none"  # do not open links in an editor
+
+[sandbox_workspace_write]
+network_access = false
+
+[tui]
+notifications = true
+
+[projects."/home/example/work/demo"]
+trust_level = "trusted"
+
+[mcp_servers.docs]
+command = "npx"
+args = ["-y", "@example/docs-mcp"]
+startup_timeout_sec = 20
+
+[mcp_servers.docs.env]
+DOCS_MODE = "local"
+
+[mcp_servers.tracker]
+url = "https://tracker.example.com/mcp"
+bearer_token_env_var = "TRACKER_TOKEN"
+
+# A faster profile for small edits.
+[profiles.fast]
+model = "gpt-5.2-codex-mini"
+model_reasoning_effort = "low"
+
+[mcp_servers.rgd-contract-stdio]
+args = ["--stdio", "--log-level", "info"]
+command = "contract-mcp"
+
+[mcp_servers.rgd-contract-stdio.env]
+CONTRACT_MODE = "read-only"
+
+[mcp_servers.rgd-contract-http]
+url = "https://mcp.example.com/contract"
+
+[mcp_servers.rgd-contract-http.http_headers]
+X-Contract = "yes"
+
+[mcp_servers.rgd-contract-secret]
+bearer_token_env_var = "CONTRACT_TOKEN"
+url = "https://secret.example.com/mcp"

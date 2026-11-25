@@ -1,0 +1,15 @@
+model = "gpt-5.2-codex"
+
+[mcp_servers.rgd-contract-stdio]
+command = "my-own-server"
+args = ["--port", "0"]
+
+[mcp_servers.rgd-contract-http]
+url = "https://mcp.example.com/contract"
+
+[mcp_servers.rgd-contract-http.http_headers]
+X-Contract = "yes"
+
+[mcp_servers.rgd-contract-secret]
+bearer_token_env_var = "CONTRACT_TOKEN"
+url = "https://secret.example.com/mcp"

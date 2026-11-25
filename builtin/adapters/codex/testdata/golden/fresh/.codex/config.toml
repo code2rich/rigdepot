@@ -1,0 +1,16 @@
+[mcp_servers.rgd-contract-stdio]
+args = ["--stdio", "--log-level", "info"]
+command = "contract-mcp"
+
+[mcp_servers.rgd-contract-stdio.env]
+CONTRACT_MODE = "read-only"
+
+[mcp_servers.rgd-contract-http]
+url = "https://mcp.example.com/contract"
+
+[mcp_servers.rgd-contract-http.http_headers]
+X-Contract = "yes"
+
+[mcp_servers.rgd-contract-secret]
+bearer_token_env_var = "CONTRACT_TOKEN"
+url = "https://secret.example.com/mcp"

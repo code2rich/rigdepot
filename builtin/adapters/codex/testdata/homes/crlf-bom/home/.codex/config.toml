@@ -1,0 +1,8 @@
+﻿# Edited by hand on Windows.
+model = "gpt-5.2-codex"
+
+[mcp_servers]
+docs = { command = "npx", args = ["-y", "@example/docs-mcp"] }
+
+[mcp_servers.tracker]
+url = "https://tracker.example.com/mcp"
