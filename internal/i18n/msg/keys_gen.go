@@ -167,8 +167,12 @@ const (
 	DoctorManifestUnknownHint = "doctor.manifest.unknown_hint"
 	// DoctorManifestUnreadable (cli.json): {{path}} exists but cannot be read: {{detail}}
 	DoctorManifestUnreadable = "doctor.manifest.unreadable"
+	// DoctorShort (cli.json): Check this computer: local data directory, manifest, Git and the AI to…
+	DoctorShort = "doctor.short"
 	// DoctorSkippedNoHome (cli.json): Not checked: where the local data directory is is not known.
 	DoctorSkippedNoHome = "doctor.skipped_no_home"
+	// DoctorSummary (cli.json): {{ok}} passed · {{warn}} to look at · {{fail}} failed · {{unknown}} co…
+	DoctorSummary = "doctor.summary"
 	// DoctorToolRootsNone (cli.json): No installed tool to look at.
 	DoctorToolRootsNone = "doctor.tool_roots.none"
 	// DoctorToolRootsOk (cli.json): The directories of {{tool}} can be written to.
