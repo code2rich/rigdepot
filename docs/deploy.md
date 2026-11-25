@@ -473,17 +473,22 @@ Logs are JSON lines on standard output (`journalctl -u rigdepot-server`, `docker
 
 ## Minimum resources
 
-> **These figures are estimates from the design, not measurements.** They will be replaced by load-test results with the method used.
+A machine with **2 CPU cores and 2 GB of memory** carries an organisation of **500 people** with a wide margin, using SQLite. These are measurements, made with the method below.
 
-The target is a machine with **2 CPU cores and 2 GB of memory** for a team of up to a few hundred people.
+| | Measured (500 people, 130 resources, two AI tools each) |
+| --- | --- |
+| Syncs | Up to **40 syncs a second** with p95 under 0.35 s (25 a second: p95 0.08 s); the limit is about 50 a second, where answers start to queue. People who sync every 10 minutes make N/600 syncs a second, so 500 people make under one. No request failed in any phase (77,841 requests). |
+| Everyone's first sync | All 500 computers at once, each downloading all 130 resource bundles: done in 44 s, no errors. 100 at a time: 48 s for all, 12 s each (p95). |
+| Onboarding | 500 people accepting their invitation and signing a computer in: 9 s in all (accept p95 0.13 s, device login p95 0.06 s). |
+| Publishing | A repository of 100 skills imported over HTTPS in 1.8 s; uploading and publishing a resource p95 under 0.05 s. |
+| Console | 10 people and an administrator each loading five API calls a second: every page p95 0.6 s or less, except the administrator's home page figures (*installs summary*, *tool adapters*, *resources*) at about 1 s. Beyond about 25 busy browsers at once the catalog pages slow to over 1 s. |
+| Memory | 50–70 MB at rest; up to about 340 MB at the limit of 50 syncs a second (the container's peak, page cache included, 441 MB). Far past the limit (100 syncs a second) waiting requests pile up and memory reached about 1 GB. |
+| Disk | Tens to hundreds of MB for the database, plus the repository cache and backups. Keep at least 1 GB free: `doctor` warns below 1 GiB and fails below 100 MiB. |
+| Network | Your identity provider, mail server and resource repositories; nothing else. |
 
-| | Estimate | Reasoning |
-| --- | --- | --- |
-| Memory at rest | Tens of MB | One Go process with SQLite |
-| Memory at peak | Up to the unit's 512 MB limit | Password hashing (about 19 MB each, with a limit on how many run at once), `git` processes, uploaded archives (5 MB at most by default) |
-| CPU | Close to idle | 200 people syncing every 10 minutes is less than one request a second; an unchanged state is answered from a cache check |
-| Disk | Tens to hundreds of MB for the database, plus the repository cache and backups | Keep at least 1 GB free: `doctor` warns below 1 GiB and fails below 100 MiB |
-| Network | Your identity provider, mail server and resource repositories | Nothing else |
+The systemd unit limits the process to 512 MB (`MemoryMax`) and sets `GOMEMLIMIT=384MiB`: enough for the load above, not for a sustained overload. Change to PostgreSQL when you run several instances, or when your organisation requires a managed database; the number of people is not the reason at this size.
+
+**How it was measured** (2026-11-25): `go run ./tools/dev load` from the source tree. It builds the server image, runs it with `docker run --cpus 2 --memory 2g --memory-swap 2g` and SQLite, and plays the organisation from outside the container: 500 people accept invitations and sign one computer in each with the device code flow; 30 skills are uploaded and a repository of 100 skills is imported over HTTPS and everything is published; every computer does a first sync (desired state, every bundle, report), 100 at a time; 10 members' browsers and an administrator's read the common pages; then computers sync at a fixed rate (5, 10, 25, 40, 50 a second, 30 s each; desired state with `If-None-Match`, then the report) while the administrator's console is read twice a second. Each request carries the client address of its own person behind the trusted proxy. The host was a Mac with Apple M1 Ultra cores under Docker Desktop; a 2-vCPU cloud machine with slower cores carries proportionally less. `go run ./tools/dev load -h` lists the options to repeat it with other numbers or against a fresh server of your own (`--url`, `--setup-token`).
 
 ## When something goes wrong
 

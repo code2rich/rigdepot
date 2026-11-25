@@ -133,6 +133,9 @@ type Tool struct {
 	// Held lists the resources whose earlier writes were left as they are because their state
 	// this run is unknown (could not be read, rendered or planned), by code.
 	Held []string
+	// BehindEntry are the MCP servers the single entry (SingleEntry) stands for in this tool:
+	// they are where the entry is.
+	BehindEntry []resource.Ref
 }
 
 // Shared is a resource a tool reads from another tool's directory.
@@ -303,7 +306,7 @@ func (e *Engine) Plan(ctx context.Context, st *desired.State, opt Options) (*Pla
 		}
 		caps := t.a.Capabilities(t.det)
 		r := render(st.Resources, caps, e.renderOptions())
-		r.artifacts = launch(r.artifacts, caps, opt)
+		r.artifacts, tp.info.BehindEntry = launch(r.artifacts, caps, opt)
 		tp.info.Degraded = r.degraded
 		tp.info.Skips = append(tp.info.Skips, r.skips...)
 		for code, err := range r.failed {

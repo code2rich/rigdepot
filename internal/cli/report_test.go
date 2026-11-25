@@ -94,3 +94,44 @@ func TestReportCarriesNoPaths(t *testing.T) {
 		t.Errorf("result %s, tools %+v", body.Result, body.Tools)
 	}
 }
+
+// TestReportSingleEntry: the MCP servers behind the single entry are reported where the entry
+// is, each as itself; the entry, which is no resource of the server, is not reported.
+func TestReportSingleEntry(t *testing.T) {
+	mcp := func(code string, v int) resource.Ref { return resource.Ref{Kind: "mcp", Code: code, Version: v} }
+	st := &desired.State{Resources: []desired.Resource{{Ref: mcp("jira", 2)}, {Ref: mcp("gitlab", 1)}}}
+	key := func(p string) executor.Target {
+		return executor.Target{Op: manifest.OpKey, Path: p, Key: []string{"mcpServers", brand.MCPEntry}}
+	}
+	p := &sync.Plan{
+		Tools: []sync.Tool{
+			{ID: "claude-code", Status: sync.ToolPlanned, Detection: adapter.Detection{Status: adapter.Installed},
+				BehindEntry: []resource.Ref{mcp("jira", 0), mcp("gitlab", 0)}},
+			{ID: "codex", Status: sync.ToolPlanned, Detection: adapter.Detection{Status: adapter.Installed},
+				BehindEntry: []resource.Ref{mcp("jira", 0), mcp("gitlab", 0)}},
+		},
+		Items: []sync.Item{
+			{Tool: "claude-code", Resource: sync.SingleEntry, Action: sync.ActionCreate, ID: "w1", Target: key("~/.claude.json")},
+			{Tool: "codex", Resource: sync.SingleEntry, Action: sync.ActionCreate, ID: "w2", Target: key("~/.codex/config.toml")},
+		},
+	}
+	res := &sync.Result{Done: []sync.Done{{Item: p.Items[0]}}, Deferred: []sync.Item{p.Items[1]}}
+	body := buildReport(st, p, res, false, true, time.Date(2026, 11, 25, 10, 31, 0, 0, time.UTC))
+	var got []string
+	for _, in := range body.Installs {
+		s := fmt.Sprintf("%s@%d/%s=%s", in.Code, in.Version, in.Tool, in.Status)
+		if in.Reason != nil {
+			s += ":" + *in.Reason
+		}
+		got = append(got, s)
+	}
+	want := []string{
+		"gitlab@1/claude-code=installed",
+		"gitlab@1/codex=skipped:consent_needed",
+		"jira@2/claude-code=installed",
+		"jira@2/codex=skipped:consent_needed",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("installs:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}

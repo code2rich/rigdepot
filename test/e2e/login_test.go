@@ -34,7 +34,8 @@ type server struct {
 
 const setupToken = "<placeholder: setup token>"
 
-func startServer(t *testing.T, dir string) *server {
+// startServer starts it with its data in dir; env adds to its environment.
+func startServer(t *testing.T, dir string, env ...string) *server {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -50,6 +51,7 @@ func startServer(t *testing.T, dir string) *server {
 		brand.EnvPrefix+"DATA_DIR="+filepath.Join(dir, "server"),
 		brand.EnvPrefix+"SETUP_TOKEN="+setupToken,
 	)
+	s.cmd.Env = append(s.cmd.Env, env...)
 	s.cmd.Stdout, s.cmd.Stderr = &s.log, &s.log
 	if err := s.cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -92,8 +94,7 @@ type browser struct {
 // signs the browser in as them.
 func (s *server) firstAdmin(t *testing.T) *browser {
 	t.Helper()
-	jar, _ := cookiejar.New(nil)
-	b := &browser{t: t, base: s.url, client: &http.Client{Jar: jar, Timeout: 10 * time.Second}}
+	b := s.newBrowser(t)
 	body := `{"username":"admin","display_name":"Administrator","password":"<placeholder: admin password>"}`
 	if code, out := b.do(http.MethodPost, "/api/v1/setup/admin", body, map[string]string{"X-Setup-Token": setupToken}); code != http.StatusCreated {
 		t.Fatalf("first administrator: %d %s", code, out)
@@ -101,7 +102,22 @@ func (s *server) firstAdmin(t *testing.T) *browser {
 	return b
 }
 
+// newBrowser is a browser signed in nowhere yet. It does not follow redirects, so that a test
+// sees where a sign-in sends it.
+func (s *server) newBrowser(t *testing.T) *browser {
+	jar, _ := cookiejar.New(nil)
+	return &browser{t: t, base: s.url, client: &http.Client{Jar: jar, Timeout: 30 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
+}
+
 func (b *browser) do(method, path, body string, header map[string]string) (int, []byte) {
+	b.t.Helper()
+	resp, out := b.send(method, path, body, header)
+	return resp.StatusCode, out
+}
+
+// send makes one request and returns the answer with its body read.
+func (b *browser) send(method, path, body string, header map[string]string) (*http.Response, []byte) {
 	b.t.Helper()
 	req, err := http.NewRequest(method, b.base+path, strings.NewReader(body))
 	if err != nil {
@@ -119,7 +135,7 @@ func (b *browser) do(method, path, body string, header map[string]string) (int, 
 	}
 	defer resp.Body.Close()
 	out, _ := io.ReadAll(resp.Body)
-	return resp.StatusCode, out
+	return resp, out
 }
 
 func (b *browser) devices() []map[string]any {

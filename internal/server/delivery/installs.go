@@ -8,7 +8,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/code2rich/rigdepot/ext/resource"
@@ -262,6 +264,10 @@ func (s *Service) UsageOf(ctx context.Context, users []string) (Usage, error) {
 		}
 		has[user][r.resource] = true
 	}
+	required, err := s.requiredSets(ctx, slices.Collect(maps.Keys(devicesOf)))
+	if err != nil {
+		return u, err
+	}
 	for user, devs := range devicesOf {
 		tools := map[string]bool{}
 		var latest *DeviceSync
@@ -283,29 +289,52 @@ func (s *Service) UsageOf(ctx context.Context, users []string) (Usage, error) {
 		if latest != nil {
 			u.CLIVersions[latest.CLIVersion]++
 		}
-		complete, err := s.requiredComplete(ctx, user, has[user])
-		if err != nil {
-			return u, err
-		}
-		if complete {
+		if !slices.ContainsFunc(required[user], func(id string) bool { return !has[user][id] }) {
 			u.RequiredComplete++
 		}
 	}
 	return u, nil
 }
 
-// requiredComplete reports whether every required resource the person gets is among has.
-func (s *Service) requiredComplete(ctx context.Context, userID string, has map[string]bool) (bool, error) {
-	st, err := s.Desired(ctx, access.Actor{UserID: userID, Origin: access.OriginSystem})
+// requiredSets returns, by user, the ids of the required resources each person gets by policy
+// (not as a dependency). These depend on what the person sees, not on their own choices: on the
+// products they are in, and on their own personal resources. So the desired state is worked out
+// once for each set of products, with one person of it standing for all, and once for each
+// person who has personal resources; a summary of hundreds of people costs a few desired states
+// instead of one each.
+func (s *Service) requiredSets(ctx context.Context, users []string) (map[string][]string, error) {
+	personal, err := s.catalog.PersonalOwners(ctx)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	for _, it := range st.Items {
-		if it.Resource.Policy == resource.PolicyRequired && it.Reason == ReasonPolicy && !has[it.Resource.ID] {
-			return false, nil
+	byClass := map[string][]string{}
+	out := make(map[string][]string, len(users))
+	for _, user := range users {
+		class := "user:" + user
+		if !personal[user] {
+			v, err := s.access.VisibilityOf(ctx, access.Actor{UserID: user})
+			if err != nil {
+				return nil, err
+			}
+			class = fmt.Sprintf("products:%t:%s", v.Active, strings.Join(v.Products, ","))
 		}
+		ids, ok := byClass[class]
+		if !ok {
+			st, err := s.Desired(ctx, access.Actor{UserID: user, Origin: access.OriginSystem})
+			if err != nil {
+				return nil, err
+			}
+			ids = []string{}
+			for _, it := range st.Items {
+				if it.Resource.Policy == resource.PolicyRequired && it.Reason == ReasonPolicy {
+					ids = append(ids, it.Resource.ID)
+				}
+			}
+			byClass[class] = ids
+		}
+		out[user] = ids
 	}
-	return true, nil
+	return out, nil
 }
 
 // Summary is the actor's view of how far people have connected (contract: getInstallsSummary).
