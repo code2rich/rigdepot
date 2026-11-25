@@ -51,7 +51,7 @@ $ rgd sync --plan
 | [总体设计](docs/design.md) | 非目标、架构、部署、开源与企业版边界、MVP 与路线图、待决定的问题 |
 | [子系统](docs/subsystems/README.md) | 资源目录、同步命令行、工具适配器、Skill 检查与评分、密钥、反馈与摩擦、使用洞察、审计与确认、权限与角色、环境资源 |
 | [扩展点](docs/extensibility.md) | 工具适配器、资源类型、身份源、密钥后端、审批流、审计与洞察导出、资源源、策略引擎 |
-| [协议方案](docs/licensing.md) | 开放核心：Apache-2.0 + `ee/` 商业许可（待确认） |
+| [协议方案](docs/licensing.md) | 开放核心：Apache-2.0 + `ee/` 企业版许可 + CLA；商标政策、企业客户常问的问题 |
 | [参考与借鉴](docs/prior-art.md) | 学了什么、刻意不同在哪 |
 
 ## 这个仓库怎么维护
@@ -61,7 +61,7 @@ $ rgd sync --plan
 ```
 ├── AGENTS.md  CLAUDE.md  LESSONS.md  CONTRIBUTING.md
 ├── LICENSE  NOTICE              # Apache-2.0
-├── ee/                          # 企业版，单独许可（目前为空，许可为占位文本）
+├── ee/                          # 企业版，适用 ee/LICENSE（目前没有代码）
 ├── docs/                        # 设计文档与截图
 ├── prototype/                   # 可点击原型（零构建）
 └── site/                        # 产品站：落地页、文档页、反馈页
@@ -69,4 +69,11 @@ $ rgd sync --plan
 
 ## 协议
 
-`ee/` 以外的内容采用 [Apache-2.0](LICENSE)；`ee/` 采用[单独的商业许可](ee/LICENSE)（占位文本，需正式法律文本）。贡献需要签 CLA。产品名称和标识不在协议授权范围内。
+采用开放核心，详见 [docs/licensing.md](docs/licensing.md)。
+
+- `ee/` 以外的全部内容：[Apache-2.0](LICENSE)。可以商用、修改、内部部署、fork，带专利授权。
+- `ee/` 目录：[Rigdepot 企业版许可](ee/LICENSE)（[中文参考译文](ee/LICENSE.zh-CN.md)）。源码可见的商业许可：开发、测试、评估免费，生产使用需要订阅。删掉 `ee/`，剩下的是完整可用的 Apache-2.0 产品。
+- 贡献需要签 CLA：[个人版](docs/CLA.md)、[公司版](docs/CLA-corporate.md)，流程见 [CONTRIBUTING.md](CONTRIBUTING.md#贡献者许可协议cla)。
+- 「Rigdepot」名称和标志不在两份许可的授权范围内，见[商标政策](docs/licensing.md#商标政策)。
+
+`ee/LICENSE` 和 CLA 目前是完整草案，正式启用前请律师审定。
