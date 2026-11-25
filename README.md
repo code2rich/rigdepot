@@ -38,6 +38,7 @@ $ rgd sync --plan
 ## 看一看
 
 - **演示站**：<https://rigdepot.code2rich.com>，有在线原型（可切换三种身份和三种场景，演示数据全部虚构）和问题反馈入口。
+- **社区**：[Discord](https://discord.gg/feGwwqs7x)，日常交流、提想法、看进展。
 
 ## 协议
 
