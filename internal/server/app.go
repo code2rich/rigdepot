@@ -70,6 +70,9 @@ type App struct {
 
 	checks   []ReadyCheck
 	draining atomic.Bool
+
+	// requests counts the requests for the metrics (M1-41).
+	requests *requestMetrics
 }
 
 // ReadyCheck is one item of /readyz. A failing critical check makes the
@@ -85,7 +88,7 @@ type ReadyCheck struct {
 
 // NewApp assembles the server around an open, migrated database.
 func NewApp(cfg *config.Config, log *slog.Logger, db *dbx.DB, mounts Mounts) *App {
-	a := &App{cfg: cfg, log: log, db: db, mounts: mounts}
+	a := &App{cfg: cfg, log: log, db: db, mounts: mounts, requests: newRequestMetrics()}
 	a.AddReadyCheck(ReadyCheck{Name: "database", Critical: true, Check: db.Ping})
 	a.AddReadyCheck(ReadyCheck{Name: "migrations", Critical: true, Check: func(ctx context.Context) error {
 		pending, err := migrations.Pending(ctx, db)

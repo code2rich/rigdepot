@@ -142,11 +142,13 @@ func (a *App) observe(next http.Handler) http.Handler {
 			if route == "" {
 				route = "unmatched"
 			}
+			took := time.Since(start)
+			a.requests.observe(route, rec.status(), took)
 			level := slog.LevelInfo
 			if rec.status() >= 500 {
 				level = slog.LevelError
 			}
-			attrs := []any{"method", r.Method, "route", route, "status", rec.status(), "duration_ms", time.Since(start).Milliseconds()}
+			attrs := []any{"method", r.Method, "route", route, "status", rec.status(), "duration_ms", took.Milliseconds()}
 			if req.UserID != "" {
 				attrs = append(attrs, "user_id", req.UserID)
 			}
