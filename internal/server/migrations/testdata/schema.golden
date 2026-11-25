@@ -123,6 +123,10 @@ installs
   error_code text not null
   reported_at bigint not null
 
+invite_products
+  invite_id text not null pk
+  product_id text not null pk
+
 invites
   id text not null pk
   token_digest text not null
