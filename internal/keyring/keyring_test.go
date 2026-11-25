@@ -544,11 +544,11 @@ func TestProbe(t *testing.T) {
 	})
 }
 
-// Inside a test binary the real keychain is out of reach unless the run asks for it: a test
+// Package testenv keeps the real keychain out of every test binary through EnvKeyring: a test
 // that opens the real store by mistake ends up with files in the temporary home.
 func TestRealKeychainIsOffInTests(t *testing.T) {
-	if os.Getenv(EnvRealKeyring) == "1" {
-		t.Skip(EnvRealKeyring + " is set")
+	if got := os.Getenv(EnvKeyring); got != KeyringFile {
+		t.Fatalf("%s is %q in a test binary, want %q (set by testenv)", EnvKeyring, got, KeyringFile)
 	}
 	dir := dataDir(t)
 	k := Open(dir, Options{})
@@ -573,7 +573,7 @@ func (e Error) Error() string { return e.Name }
 
 func TestUnavailableIsNarrow(t *testing.T) {
 	yes := []error{
-		errTestBinary,
+		errFileForced,
 		errNoSessionBus,
 		fmt.Errorf("fork/exec /usr/bin/security: %w", os.ErrNotExist),
 		fmt.Errorf("dial unix /run/user/1000/bus: %w", errConnRefused),
@@ -602,6 +602,30 @@ func TestUnavailableIsNarrow(t *testing.T) {
 	}
 	if !windowsNoCredentialManager(fmt.Errorf("CredRead: %w", errorNoSuchLogonSession)) || windowsNoCredentialManager(errLocked) {
 		t.Error("windowsNoCredentialManager")
+	}
+}
+
+func TestEnvKeyringValues(t *testing.T) {
+	t.Setenv(EnvKeyring, KeyringFile)
+	if err := reachable(); !errors.Is(err, errFileForced) || !unavailable(err) {
+		t.Errorf("%s=%s: %v", EnvKeyring, KeyringFile, err)
+	}
+	t.Setenv(EnvKeyring, "keychain")
+	if err := reachable(); err == nil || unavailable(err) {
+		t.Errorf("an unknown value must be an error that is not a missing keychain: %v", err)
+	}
+	// Forced to files with the entries recorded as kept in the keychain: unavailable, not absent.
+	dir, f := dataDir(t), newFake()
+	if err := open(dir, f).Set(DeviceKey, deviceKey); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(EnvKeyring, "keychain")
+	if _, err := Open(dir, Options{Service: "test-service"}).Get(DeviceKey); err == nil || errors.Is(err, ErrNotFound) {
+		t.Errorf("Get with an unknown %s = %v, want an error other than ErrNotFound", EnvKeyring, err)
+	}
+	t.Setenv(EnvKeyring, KeyringFile)
+	if _, err := Open(dir, Options{Service: "test-service"}).Get(DeviceKey); !errors.Is(err, ErrUnavailable) {
+		t.Errorf("Get forced to files with the entries in the keychain = %v, want ErrUnavailable", err)
 	}
 }
 

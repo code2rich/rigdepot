@@ -23,6 +23,7 @@ func TestRealKeychain(t *testing.T) {
 	if os.Getenv(EnvRealKeyring) != "1" {
 		t.Skip("set " + EnvRealKeyring + "=1 to run this test against the real system keychain")
 	}
+	t.Setenv(EnvKeyring, "") // testenv keeps the keychain out; this test is the one exception
 	b := make([]byte, 6)
 	if _, err := rand.Read(b); err != nil {
 		t.Fatal(err)

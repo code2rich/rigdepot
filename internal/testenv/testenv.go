@@ -45,6 +45,17 @@ var toolVariables = []string{
 // developer's machine uses.
 var proxyVariables = []string{"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "FTP_PROXY"}
 
+// keyringVariable chooses where the command-line program keeps the device key and token. Set to
+// keyringFiles it keeps the system keychain out, so a test can never read or write the real
+// macOS Keychain, Windows Credential Manager or Linux Secret Service; what it stores lands in
+// the temporary home. It is the variable package keyring reads (keyring.EnvKeyring), written out
+// here because this shared package cannot import that command-line one. The test of the real
+// keychain clears it for itself with t.Setenv.
+const (
+	keyringVariable = brand.EnvPrefix + "KEYRING"
+	keyringFiles    = "file"
+)
+
 // testKnobPrefix marks the variables that configure the tests themselves;
 // they are the only ones with the product's prefix that survive.
 const testKnobPrefix = "TEST_"
@@ -133,6 +144,9 @@ func Setup() (*Env, error) {
 		return nil, err
 	}
 	scrubEnvironment()
+	if err := os.Setenv(keyringVariable, keyringFiles); err != nil {
+		return nil, err
+	}
 	if err := env.blockCommands(); err != nil {
 		return nil, err
 	}
@@ -259,6 +273,9 @@ func (e *Env) Verify() error {
 		if got := os.Getenv(name); got != want {
 			return fmt.Errorf("%s is %q, not the temporary home %q; a test changed it and may have touched real files", name, got, want)
 		}
+	}
+	if got := os.Getenv(keyringVariable); got != keyringFiles {
+		return fmt.Errorf("%s is %q, not %q; a test changed it and may have reached the real system keychain", keyringVariable, got, keyringFiles)
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {

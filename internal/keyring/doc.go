@@ -15,7 +15,8 @@
 // Service on Linux (through D-Bus). When there is none (a server or a container without a desktop
 // session, most WSL installations) it keeps them in files in the secrets directory of the local
 // data directory instead: 0600 on macOS and Linux, encrypted with DPAPI for the current user on
-// Windows. Kind tells which, and Options.OnFallback is told when a value first goes to a file, so
+// Windows. EnvKeyring set to "file" keeps the system keychain out. Kind tells which, and
+// Options.OnFallback is told when a value first goes to a file, so
 // that the command can say so.
 //
 // The choice is recorded in the secrets directory (MarkerFile) when the first value is stored,
@@ -34,8 +35,8 @@
 // # Tests
 //
 // Tests never reach the real system keychain. NewMemory is a Store for the tests of other
-// packages. Inside a test binary the system keychain behaves as if it were not there, so Open
-// falls back to files in the temporary home, unless the test run sets EnvRealKeyring to 1; only
-// the test of the real keychain in this package does, and it uses a service name of its own and
-// removes what it wrote.
+// packages. Package testenv sets EnvKeyring to "file" in every test binary, so the system
+// keychain behaves as if it were not there and Open falls back to files in the temporary home.
+// The one test of the real keychain, in this package, runs only when EnvRealKeyring is 1; it
+// clears EnvKeyring for itself, uses a service name of its own and removes what it wrote.
 package keyring

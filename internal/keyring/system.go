@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"testing"
 	"time"
 
 	gokeyring "github.com/zalando/go-keyring"
@@ -23,8 +22,18 @@ import (
 	"github.com/code2rich/rigdepot/internal/brand"
 )
 
-// EnvRealKeyring is the environment variable that lets a test binary reach the real system
-// keychain when it is "1". Only the opt-in test of this package sets it.
+// EnvKeyring is the environment variable that chooses the store. Unset, empty or "auto": the
+// system keychain when there is one, files otherwise. "file": the system keychain counts as not
+// there and is never called, so entries go to files unless they are recorded as kept in the
+// keychain, which then is ErrUnavailable. Package testenv sets it to "file" for every test
+// binary, which is how tests never reach the real keychain.
+const EnvKeyring = brand.EnvPrefix + "KEYRING"
+
+// KeyringFile is the value of EnvKeyring that keeps the system keychain out.
+const KeyringFile = "file"
+
+// EnvRealKeyring is the environment variable that runs the test of the real system keychain
+// when it is "1". That test clears EnvKeyring for itself.
 const EnvRealKeyring = brand.EnvPrefix + "TEST_REAL_KEYRING"
 
 // DefaultTimeout is how long one call to the system keychain may take. Unlocking a keychain can
@@ -39,8 +48,8 @@ type backend interface {
 }
 
 var (
-	// errTestBinary stands in for the system keychain inside a test binary.
-	errTestBinary = errors.New("keyring: the system keychain is off in tests; " + EnvRealKeyring + "=1 turns it on")
+	// errFileForced: EnvKeyring keeps the system keychain out.
+	errFileForced = errors.New("keyring: " + EnvKeyring + "=" + KeyringFile + " keeps the system keychain out")
 	// errNoSessionBus: on Linux, there is no D-Bus session bus to find a Secret Service on.
 	errNoSessionBus = errors.New("keyring: there is no D-Bus session bus (no desktop session)")
 )
@@ -81,12 +90,17 @@ func (goKeyring) Delete(service, user string) error {
 	return err
 }
 
-// reachable rules out, before go-keyring is called, the cases where calling it would do harm:
-// inside a test binary (the real keychain is not for tests), and on Linux without a session bus,
-// where the D-Bus library would start a bus of its own with dbus-launch.
+// reachable rules out, before go-keyring is called, the cases where calling it would do harm or
+// is not wanted: EnvKeyring says files (every test binary, through package testenv), and Linux
+// without a session bus, where the D-Bus library would start a bus of its own with dbus-launch.
+// An EnvKeyring value it does not know is an error rather than a guess.
 func reachable() error {
-	if testing.Testing() && os.Getenv(EnvRealKeyring) != "1" {
-		return errTestBinary
+	switch v := os.Getenv(EnvKeyring); v {
+	case "", "auto":
+	case KeyringFile:
+		return errFileForced
+	default:
+		return fmt.Errorf("keyring: %s is %q; use \"auto\" or %q", EnvKeyring, v, KeyringFile)
 	}
 	if runtime.GOOS == "linux" && !sessionBusConfigured(os.Getenv, fileExists, strconv.Itoa(os.Getuid())) {
 		return errNoSessionBus
@@ -171,7 +185,7 @@ func unavailable(err error) bool {
 		return false
 	}
 	switch {
-	case errors.Is(err, errTestBinary), errors.Is(err, errNoSessionBus), errors.Is(err, gokeyring.ErrUnsupportedPlatform):
+	case errors.Is(err, errFileForced), errors.Is(err, errNoSessionBus), errors.Is(err, gokeyring.ErrUnsupportedPlatform):
 		return true
 	case errors.Is(err, fs.ErrNotExist), errors.Is(err, exec.ErrNotFound):
 		// macOS: /usr/bin/security is missing. Linux: the bus socket named in the
