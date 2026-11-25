@@ -1,0 +1,1 @@
+server: {type: stdio, command: gitlab-mcp}

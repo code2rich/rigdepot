@@ -1,0 +1,26 @@
+﻿# Codex configuration
+model = "example-model"
+model_reasoning_effort = "high"
+approval_policy = "on-request"
+
+[projects."/home/example/work/app"]
+trust_level = "trusted"
+
+[mcp_servers.docs]
+command = "npx"
+args = ["-y", "@example/docs-mcp"]
+
+[mcp_servers.docs.env]
+DOCS_TOKEN = "<placeholder: token>"
+
+# Remote server, token from the environment
+[mcp_servers.tracker]
+url = "https://mcp.example.com/tracker"
+bearer_token_env_var = "TRACKER_TOKEN"
+
+[mcp_servers.rgd-jira]
+args = ["mcp", "run", "jira"]
+command = "/opt/example/bin/rgd"
+
+[mcp_servers.rgd-jira.env]
+JIRA_URL = "https://jira.example.com"

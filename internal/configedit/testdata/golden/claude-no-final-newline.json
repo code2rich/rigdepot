@@ -1,0 +1,19 @@
+{
+  "numStartups": 3,
+  "mcpServers": {
+    "docs": {
+      "type": "http",
+      "url": "https://mcp.example.com/docs"
+    },
+    "rgd-jira": {
+      "args": [
+        "mcp",
+        "run",
+        "jira"
+      ],
+      "command": "/opt/example/bin/rgd",
+      "env": {},
+      "type": "stdio"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+model = "example-model"
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = false
+# end of my settings
+
+[mcp_servers.rgd-jira]
+args = ["mcp", "run", "jira"]
+command = "/opt/example/bin/rgd"
+
+[mcp_servers.rgd-jira.env]
+JIRA_URL = "https://jira.example.com"

@@ -47,6 +47,11 @@
       "minLength": 1,
       "pattern": "^[^\\\\]*$"
     },
+    "base64": {
+      "description": "Bytes in the standard base64 encoding (RFC 4648, with padding), which is how encoding/json writes a byte slice.",
+      "type": "string",
+      "pattern": "^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+    },
     "argv": {
       "description": "A command and its arguments, run as they are, without a shell.",
       "type": "array",
@@ -113,9 +118,35 @@
           "uniqueItems": true
         },
         "created": {
-          "description": "Directories that did not exist and were created to hold the target, outermost first. Undoing the entry removes them again, innermost first, as long as they are empty. Only for \"tree\" and \"file\".",
+          "description": "Directories that did not exist and were created to hold the target, outermost first. Undoing the entry removes them again, innermost first, as long as they are empty. For \"key\" it also lists the configuration file itself when the file did not exist; undoing removes the file when nothing but the key was in it.",
           "type": "array",
           "items": { "$ref": "#/$defs/path" }
+        },
+        "edit": {
+          "description": "How to take a key that was added out of its file again, byte for byte: in the file as written, \"new\" starts at \"offset\" and replaced \"old\". While \"new\" is still there, undoing puts \"old\" back; otherwise the key is removed by its meaning. Only for \"key\", and only when the key was added rather than changed. Absent in manifests written before it existed: the key is then removed by its meaning.",
+          "type": "object",
+          "required": ["offset", "old", "new", "created"],
+          "properties": {
+            "offset": {
+              "description": "Where \"new\" starts in the file, in bytes, counting a byte order mark.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "old": {
+              "description": "The bytes that were replaced, base64-encoded; empty when the edit only inserted text.",
+              "$ref": "#/$defs/base64"
+            },
+            "new": {
+              "description": "The bytes that were written, base64-encoded.",
+              "$ref": "#/$defs/base64",
+              "minLength": 4
+            },
+            "created": {
+              "description": "How many trailing elements of \"key\" did not exist before: 1 for the key alone, 2 when its parent was created too, and so on. Undoing removes those parents again if they are empty.",
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         },
         "at": {
           "description": "When the entry was written, as an RFC 3339 timestamp.",

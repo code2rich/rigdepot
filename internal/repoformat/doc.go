@@ -20,8 +20,10 @@
 //     checks (bundle.Snapshot, bundle.SnapshotFile), digested, its metadata is read (meta.yaml,
 //     or the "meta" key of a single YAML file), validated against the metadata schema and, for
 //     a single-file kind, the kind's own schema; stages and secrets are checked against
-//     rigdepot.yaml; then the kind parses it. Any problem fails that resource only, with every
-//     reason found, each with a file and, where there is one, a line and a field.
+//     rigdepot.yaml; then the kind parses it, and the secrets its own files refer to
+//     (kind.SecretUser, such as ${secret:NAME} in an MCP server) are checked as well. Any
+//     problem fails that resource only, with every reason found, each with a file and, where
+//     there is one, a line and a field.
 //  4. Codes are unique across kinds; every resource sharing one fails.
 //
 // Unknown fields are reported as notices and block nothing; a field whose name starts with "x-"

@@ -94,7 +94,7 @@ func TestPrimaryKeysAreNotNull(t *testing.T) {
 func TestEveryTableOfTheDataModel(t *testing.T) {
 	s := migrated(t, dbxtest.Open(t, dbxtest.SQLiteURL(t)))
 	for _, table := range []string{
-		"users", "identities", "local_credentials", "invites", "sessions", "access_tokens",
+		"users", "identities", "local_credentials", "invites", "invite_products", "sessions", "access_tokens",
 		"devices", "device_codes", "products", "memberships", "join_requests",
 		"sources", "resources", "resource_stages", "resource_maintainers", "resource_drafts",
 		"resource_versions", "resource_refs", "blobs", "stages", "check_waivers",

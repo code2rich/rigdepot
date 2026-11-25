@@ -21,12 +21,10 @@ func Main(m *testing.M) {
 	testenv.Main(m)
 }
 
-// Run runs one kind against the fixtures in dir: every resource under valid/ must parse and
-// render, every resource under invalid/ must be refused.
-//
-// The assertions are not written yet. Until they are, Run fails the test, so that no kind can
-// look as if its samples had been checked.
+// Run runs one kind against the fixtures in dir, which is laid out as the package documentation
+// describes. Each fixture is a subtest; each failure names the assertion it belongs to in
+// brackets, such as "[invalid]".
 func Run(t *testing.T, k kind.Kind, dir string) {
 	t.Helper()
-	t.Fatalf("kindtest.Run is not implemented yet: kind %q was not run against %s", k.ID(), dir)
+	runSuite(tReporter{t}, k, dir)
 }

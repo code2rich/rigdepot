@@ -47,7 +47,7 @@ func (e *Executor) Revert(ctx context.Context, en manifest.Entry) (Reverted, err
 	switch en.Op {
 	case manifest.OpTree, manifest.OpFile:
 	case manifest.OpKey:
-		return Reverted{}, fmt.Errorf("reverting a key in %s: %w", en.Path, ErrNotImplemented) // M0-20
+		return e.revertKey(en)
 	default:
 		return Reverted{}, fmt.Errorf("reverting a %q entry: %w", en.Op, ErrNotImplemented)
 	}
@@ -172,6 +172,9 @@ func (e *Executor) keep(t target) (string, error) {
 // write did not happen.
 func (e *Executor) Settle(in manifest.Intent) manifest.Observation {
 	en := in.Entry
+	if en.Op == manifest.OpKey {
+		return e.settleKey(in)
+	}
 	if en.Op != manifest.OpTree && en.Op != manifest.OpFile {
 		return manifest.Observation{Err: fmt.Errorf("settling a %q intent: %w", en.Op, ErrNotImplemented)}
 	}

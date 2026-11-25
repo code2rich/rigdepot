@@ -15,6 +15,7 @@ import (
 	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/ext/adapter/profileyaml"
 	"github.com/code2rich/rigdepot/internal/brand"
+	coremanifest "github.com/code2rich/rigdepot/internal/manifest"
 	"github.com/code2rich/rigdepot/internal/testenv"
 )
 
@@ -308,33 +309,35 @@ func TestBrokenAdaptersFailTheirAssertion(t *testing.T) {
 }
 
 // The assertions that guard the core (drift, uninstall, occupied, others) cannot be broken by an
-// adapter: they hold because of what the executor and the sync engine do. Breaking the core
-// stand-in shows that they would catch a core that got it wrong.
+// adapter: they hold because of what the executor and the sync engine do. Wrapping the real
+// executor so that it gets one thing wrong shows that they would catch a core that did.
 func TestBrokenCoreFailsItsAssertions(t *testing.T) {
 	cases := []struct {
 		name string
-		ex   func(home, state string, places []string) executor
+		wrap func(executor) executor
 		want []check
 	}{
 		{
 			name: "undo leaves the directories it created",
-			ex: func(home, state string, places []string) executor {
-				return keepDirs{newStandInExecutor(home, state, places)}
-			},
+			wrap: func(ex executor) executor { return keepDirs{ex} },
 			want: []check{checkUninstall},
 		},
 		{
 			name: "overwrites what it finds",
-			ex: func(home, state string, places []string) executor {
-				return &trusting{standInExecutor: newStandInExecutor(home, state, places), seen: map[string]string{}}
-			},
+			wrap: func(ex executor) executor { return &trusting{executor: ex, seen: map[string]string{}} },
 			want: []check{checkDrift, checkOccupied},
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			saved := newExecutor
-			newExecutor = c.ex
+			newExecutor = func(home, state string, tool coreTool) (executor, error) {
+				ex, err := saved(home, state, tool)
+				if err != nil {
+					return nil, err
+				}
+				return c.wrap(ex), nil
+			}
 			defer func() { newExecutor = saved }()
 			rec := record(t, fakeAdapter(t))
 			for _, want := range c.want {
@@ -346,20 +349,21 @@ func TestBrokenCoreFailsItsAssertions(t *testing.T) {
 	}
 }
 
-// keepDirs undoes entries but leaves the directories it created.
-type keepDirs struct{ *standInExecutor }
+// keepDirs undoes entries but leaves the directories it created for them.
+type keepDirs struct{ executor }
 
 func (k keepDirs) Revert(e entry) (bool, error) {
-	u, _ := e.undo.(standInUndo)
-	u.createdDirs = nil
-	e.undo = u
-	return k.standInExecutor.Revert(e)
+	if u, ok := e.undo.(coremanifest.Entry); ok {
+		u.Created = nil
+		e.undo = u
+	}
+	return k.executor.Revert(e)
 }
 
 // trusting does not look: it takes every target to be as it last left it, and anything it did
 // not write to be absent. A core like that overwrites the person's things and their changes.
 type trusting struct {
-	*standInExecutor
+	executor
 	seen map[string]string
 }
 
@@ -371,7 +375,7 @@ func (x *trusting) Observe(t target) observed {
 }
 
 func (x *trusting) Apply(op adapter.Op, _ observed) (entry, error) {
-	e, err := x.standInExecutor.Apply(op, x.standInExecutor.Observe(targetOf(op)))
+	e, err := x.executor.Apply(op, x.executor.Observe(targetOf(op)))
 	if err == nil {
 		x.seen[e.target.id()] = e.digest
 	}
@@ -380,5 +384,5 @@ func (x *trusting) Apply(op adapter.Op, _ observed) (entry, error) {
 
 func (x *trusting) Revert(e entry) (bool, error) {
 	delete(x.seen, e.target.id())
-	return x.standInExecutor.Revert(e)
+	return x.executor.Revert(e)
 }

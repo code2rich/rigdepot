@@ -102,7 +102,8 @@ type Executor struct {
 	journal Journal
 	now     func() time.Time
 
-	keptAbs, keptRel string // kept/<time>/ of this executor, made on first use
+	keptAbs, keptRel     string // kept/<time>/ of this executor, made on first use
+	backupAbs, backupRel string // backup/<time>/ of this executor, made on first use
 
 	// hook, when set by a test, runs at named steps of a write; an error from it is treated as
 	// a failure at that step.
@@ -264,7 +265,7 @@ func (e *Executor) Apply(ctx context.Context, tool Tool, op adapter.Op, pre Obse
 	case adapter.WriteFile:
 		return e.applyFile(tool, op, pre, opt)
 	case adapter.SetKey:
-		return Applied{}, fmt.Errorf("setting a key in %s: %w", op.File, ErrNotImplemented) // M0-20
+		return e.applyKey(tool, op, pre, opt)
 	case adapter.Exec:
 		return Applied{}, fmt.Errorf("running %v: %w", op.Argv, ErrNotImplemented)
 	}

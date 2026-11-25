@@ -1,0 +1,4 @@
+meta: {name: Probe with a server}
+prompt: "Ask the probe server."
+command: probe-server
+token_secret: PROBE_TOKEN

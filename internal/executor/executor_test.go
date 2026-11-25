@@ -548,23 +548,16 @@ func TestWriteFileOverADirectoryMovesItAsideAndFailsBack(t *testing.T) {
 	}
 }
 
-func TestSetKeyAndExecHaveAPlaceButAreNotImplemented(t *testing.T) {
+func TestExecHasAPlaceButIsNotImplemented(t *testing.T) {
 	e := newEnv(t)
 	before := snapshot(t, e.home)
-	for _, op := range []adapter.Op{
-		adapter.SetKey{Resource: skillRef, File: "~/.claude.json", Format: adapter.JSON, Path: []string{"mcpServers", brand.Prefix + "jira"}, Value: "x"},
-		adapter.Exec{Resource: skillRef, Argv: []string{"claude", "plugin", "install", "x"}, Undo: []string{"claude", "plugin", "uninstall", "x"}},
-	} {
-		if _, err := e.ex.Apply(ctx, claude, op, Observed{State: Absent}, Options{}); !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("Apply %T = %v, want ErrNotImplemented", op, err)
-		}
+	op := adapter.Exec{Resource: skillRef, Argv: []string{"claude", "plugin", "install", "x"}, Undo: []string{"claude", "plugin", "uninstall", "x"}}
+	if _, err := e.ex.Apply(ctx, claude, op, Observed{State: Absent}, Options{}); !errors.Is(err, ErrNotImplemented) {
+		t.Errorf("Apply %T = %v, want ErrNotImplemented", op, err)
 	}
-	key := manifest.Entry{ID: "k", Tool: "claude-code", Resource: "jira", Op: manifest.OpKey, Path: "~/.claude.json", Format: "json", Key: []string{"mcpServers", brand.Prefix + "jira"}}
-	if _, err := e.ex.Revert(ctx, key); !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("Revert of a key = %v, want ErrNotImplemented", err)
-	}
-	if o := e.ex.Observe(TargetOfEntry(key)); o.State != Unknown || !errors.Is(o.Err, ErrNotImplemented) {
-		t.Errorf("Observe of a key = %+v, want unknown", o)
+	en := manifest.Entry{ID: "x", Tool: "claude-code", Resource: "x", Op: manifest.OpExec, Undo: op.Undo}
+	if _, err := e.ex.Revert(ctx, en); !errors.Is(err, ErrNotImplemented) {
+		t.Errorf("Revert of an exec entry = %v, want ErrNotImplemented", err)
 	}
 	assertSame(t, before, snapshot(t, e.home), "an operation that is not implemented changed something")
 	e.assertNoIntents(t)

@@ -1,0 +1,8 @@
+meta: {name: 构建事件, summary: 订阅流水线的构建事件}
+
+server:
+  type: sse
+  url: http://127.0.0.1:8808/sse
+
+tools:
+  - { name: recent_builds, summary: 最近的构建 }

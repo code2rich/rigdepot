@@ -1,0 +1,5 @@
+go test fuzz v1
+byte('\x1f')
+[]byte("")
+string("0")
+string("10000000000000001e1  ")

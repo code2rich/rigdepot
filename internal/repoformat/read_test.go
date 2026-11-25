@@ -220,6 +220,36 @@ func TestReadFailsOnlyTheBrokenResources(t *testing.T) {
 	}
 }
 
+// A secret an MCP server refers to in its own file needs a definition as much as a listed one,
+// and counts as needed without being listed.
+func TestReadChecksTheSecretsAResourceRefersTo(t *testing.T) {
+	f := fstest.MapFS{
+		brand.RepoConfig: {Data: []byte("schema: 1\nsecrets:\n  JIRA_API_TOKEN: {label: Jira}\n  GITLAB_TOKEN: {label: GitLab}\n")},
+		"mcp/jira.yaml": {Data: []byte("meta: {name: Jira}\nserver:\n  type: http\n  url: https://jira.example.com/mcp\n" +
+			"  headers: {Authorization: \"Bearer ${secret:JIRA_API_TOKEN}\"}\n")},
+		"mcp/gitlab.yaml": {Data: []byte("meta: {name: GitLab, secrets: [GITLAB_TOKEN]}\nserver:\n  type: stdio\n  command: gitlab-mcp\n" +
+			"  env: {GITLAB_TOKEN: \"${secret:GITLAB_TOKEN}\"}\n")},
+		"mcp/wiki.yaml": {Data: []byte("meta: {name: Wiki}\nserver:\n  type: http\n  url: https://wiki.example.com/mcp\n" +
+			"  headers:\n    Authorization: \"Bearer ${secret:WIKI_TOKEN}\"\n")},
+	}
+	repo := read(t, f)
+	if len(repo.Failed) != 1 || repo.Failed[0].Path != "mcp/wiki.yaml" {
+		t.Fatalf("failed: %+v; only wiki refers to an undefined secret", repo.Failed)
+	}
+	is := repo.Failed[0].Issues
+	if len(is) != 1 || is[0].Code != CodeUndefinedSecret || is[0].Line != 6 || !strings.Contains(is[0].Message, "WIKI_TOKEN") {
+		t.Errorf("wiki: %+v, want one undefined-secret on line 6 naming WIKI_TOKEN", is)
+	}
+	jira, _ := repo.Lookup("jira")
+	if len(jira.Meta.Secrets) != 0 || !slices.Equal(jira.Effective.Secrets, []string{"JIRA_API_TOKEN"}) {
+		t.Errorf("jira: meta secrets %v, effective %v; the referred secret counts without being listed", jira.Meta.Secrets, jira.Effective.Secrets)
+	}
+	gitlab, _ := repo.Lookup("gitlab")
+	if !slices.Equal(gitlab.Effective.Secrets, []string{"GITLAB_TOKEN"}) {
+		t.Errorf("gitlab: effective secrets %v; a secret both listed and referred to counts once", gitlab.Effective.Secrets)
+	}
+}
+
 func TestReadRefusesTheRepositoryWhenTheConfigCannotBeUsed(t *testing.T) {
 	good := brokenRepo()
 	for name, c := range map[string]struct {
