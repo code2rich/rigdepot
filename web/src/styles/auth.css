@@ -1,0 +1,50 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* Sign-in, application and setup pages. From the prototype (登录、申请、部署向导). */
+
+.auth { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); background: var(--bg) }
+.auth-l { position: relative; padding: 40px 56px 44px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; border-right: 1px solid var(--line); overflow: hidden; background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 48px 48px; background-position: -1px -1px }
+.auth-l::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 80% at 0% 40%, rgba(var(--shade), .96) 35%, rgba(var(--shade), .55) 75%, rgba(var(--shade), .2)) }
+.auth-l > * { position: relative; z-index: 1 }
+.auth-l h1 { font-size: clamp(34px, 3.6vw, 52px); line-height: 1.12; font-weight: 600; letter-spacing: -.02em; margin: 18px 0 16px; text-wrap: balance }
+.auth-l .lead { color: var(--ink-2); max-width: 520px; font-size: 14.5px; line-height: 1.75 }
+.auth-pts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin-top: 26px; max-width: 620px; border-top: 1px solid var(--line-2) }
+.auth-pts li { list-style: none; padding: 12px 16px 12px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2) }
+.auth-pts li:nth-child(even) { padding-left: 16px; border-left: 1px solid var(--line) }
+.auth-pts li b { display: block; color: var(--ink); font-size: 13.5px; margin-bottom: 2px }
+.trail { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; margin-top: 26px; max-width: 620px }
+.trail div { padding: 8px 0 0; border-top: 2px solid var(--line-3); font-size: 12px; color: var(--ink-2) } .trail small { display: block; font-family: var(--mono); color: var(--ink-3); font-size: 9.5px }
+.trail div:nth-child(4) { border-top-color: var(--accent) }
+.auth-foot { display: flex; gap: 36px }
+.auth-foot b { display: block; font-family: var(--display); font-weight: 800; font-size: 40px; line-height: .9; color: var(--ink); font-variant-numeric: tabular-nums; margin-bottom: 6px }
+.auth-r { display: grid; place-items: center; padding: 32px 20px; background: var(--bg) }
+.auth-card { width: min(380px, 100%); display: flex; flex-direction: column; gap: 14px }
+.auth-card h2 { font-size: 22px; font-weight: 600; letter-spacing: -.01em }
+.auth-card .btn.lg { width: 100% }
+.or { display: flex; align-items: center; gap: 10px; margin: 4px 0 } .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line) }
+.center-page { min-height: 100%; display: grid; place-items: start center; padding: 48px 16px; background: var(--bg) }
+.center-card { width: min(720px, 100%); padding: 0; display: flex; flex-direction: column }
+.cc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--line) }
+.cc-body { padding: 22px; display: flex; flex-direction: column; gap: 18px }
+.cc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 22px; border-top: 1px solid var(--line); background: var(--panel-2); border-radius: 0 0 var(--r-3) var(--r-3) }
+.center-card h1 { font-size: 20px; font-weight: 600; letter-spacing: -.01em }
+.wizard { display: grid; grid-template-columns: 210px minmax(0, 1fr) }
+.wizard > ol { padding: 18px 16px; border-right: 1px solid var(--line); background: var(--panel-2) }
+.wizard .wz-body { padding: 22px 24px 26px; display: flex; flex-direction: column; gap: 16px; min-width: 0 }
+.wizard .wz-body h2 { display: flex; align-items: baseline; gap: 12px; font-size: 18px; font-weight: 600 }
+.wizard .wz-body h2 b { font-family: var(--display); font-weight: 800; font-size: 28px; line-height: .9; color: var(--ink-3) }
+.wz-prog { height: 2px; background: var(--line); position: relative } .wz-prog i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); transition: width var(--t-slow) var(--ease) }
+
+@media (max-width: 1080px) {
+  .trail { grid-template-columns: repeat(4, minmax(0, 1fr)) }
+  .auth { grid-template-columns: minmax(0, 1fr) } .auth-l { border-right: 0; border-bottom: 1px solid var(--line) }
+}
+@media (max-width: 760px) {
+  .auth-pts { grid-template-columns: minmax(0, 1fr) }
+  .auth-pts li:nth-child(even) { padding-left: 0; border-left: 0 }
+  .wizard { grid-template-columns: minmax(0, 1fr) } .wizard > ol { border-right: 0; border-bottom: 1px solid var(--line); display: flex; overflow-x: auto; gap: 6px; padding: 12px 16px } .wizard > ol li { flex: none } .wizard > ol li div span { display: none }
+  .wizard .wz-body { padding: 18px 16px 22px } .cc-body { padding: 18px 16px } .cc-head, .cc-foot { padding-left: 16px; padding-right: 16px }
+  .center-page { padding: 0; place-items: stretch } .center-card { border-radius: 0; border-left: 0; border-right: 0; min-height: 100vh }
+  .auth-l { padding: 24px 18px 28px; gap: 24px } .auth-l h1 { font-size: 30px } .auth-foot { gap: 24px } .auth-foot b { font-size: 32px } .trail { grid-template-columns: repeat(4, minmax(0, 1fr)) }
+}

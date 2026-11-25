@@ -1,0 +1,18 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* Every style sheet of the console, in cascade order. The component styles come from the prototype
+   (prototype/styles.css), split by component, in its compact one-rule-per-line form so the two can be
+   compared; class names are the prototype's. A page's own styles live next to the page and are imported
+   by it. */
+
+@import "./tokens.gen.css";
+@import "./fonts.css";
+@import "./base.css";
+@import "./shell.css";
+@import "./header.css";
+@import "./widgets.css";
+@import "./table.css";
+@import "./overlay.css";
+@import "./auth.css";
+@import "./motion.css";
