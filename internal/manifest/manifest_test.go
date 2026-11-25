@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,6 +19,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/home"
 	"github.com/code2rich/rigdepot/internal/testenv"
+	"github.com/code2rich/rigdepot/schema"
 )
 
 func TestMain(m *testing.M) { testenv.Main(m) }
@@ -335,12 +337,18 @@ func TestASecondLockerIsTurnedAwayWithLockedAndUnknown(t *testing.T) {
 
 func TestAWaitingLockerGetsTheLockWhenItIsReleased(t *testing.T) {
 	s := newStore(t)
-	first := lock(t, s)
+	first, err := s.Lock(context.Background(), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	released := make(chan struct{})
 	go func() {
+		defer close(released)
 		time.Sleep(100 * time.Millisecond)
 		first.Release()
 	}()
 	l, err := s.Lock(context.Background(), 5*time.Second)
+	<-released
 	if err != nil {
 		t.Fatalf("Lock = %v, want the lock once the holder let go", err)
 	}
@@ -420,5 +428,42 @@ func TestRecoverCommitsDropsAndLeavesAlone(t *testing.T) {
 	pending, _ := l.Pending()
 	if len(pending) != 2 {
 		t.Fatalf("%d intents left; the two that could not be settled must stay for a person to look at", len(pending))
+	}
+}
+
+func TestTheSchemaAndTheGoTypesListTheSameFields(t *testing.T) {
+	data, err := fs.ReadFile(schema.FS(), schema.Manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Properties map[string]any `json:"properties"`
+		Defs       struct {
+			Entry struct {
+				Properties map[string]any `json:"properties"`
+			} `json:"entry"`
+		} `json:"$defs"`
+	}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		name   string
+		schema map[string]any
+		fields map[string]bool
+	}{
+		{"manifest", doc.Properties, fieldNames(&manifestJSON{})},
+		{"entry", doc.Defs.Entry.Properties, fieldNames(&entryJSON{})},
+	} {
+		for k := range c.schema {
+			if !c.fields[k] {
+				t.Errorf("%s: the schema has %q and the Go type does not; it would be carried along but never used", c.name, k)
+			}
+		}
+		for k := range c.fields {
+			if _, ok := c.schema[k]; !ok {
+				t.Errorf("%s: the Go type has %q and the schema does not describe it", c.name, k)
+			}
+		}
 	}
 }

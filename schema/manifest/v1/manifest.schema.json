@@ -112,6 +112,11 @@
           "items": { "$ref": "#/$defs/toolId" },
           "uniqueItems": true
         },
+        "created": {
+          "description": "Directories that did not exist and were created to hold the target, outermost first. Undoing the entry removes them again, innermost first, as long as they are empty. Only for \"tree\" and \"file\".",
+          "type": "array",
+          "items": { "$ref": "#/$defs/path" }
+        },
         "at": {
           "description": "When the entry was written, as an RFC 3339 timestamp.",
           "type": "string",

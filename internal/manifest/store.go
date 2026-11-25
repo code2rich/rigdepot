@@ -50,7 +50,7 @@ func (s *Store) Lock(ctx context.Context, wait time.Duration) (*Locked, error) {
 }
 
 // Locked is the store while this process holds the lock. Only it can change the manifest and
-// the intent log.
+// the intent log. It is not safe for concurrent use: one goroutine drives a run.
 type Locked struct {
 	s    *Store
 	lock *lockFile

@@ -87,21 +87,23 @@ func (l *Locked) Intend(in Intent) (Intent, error) {
 }
 
 // Commit records what in announced, in the manifest, and then clears it from the log: for
-// Write the entry is put (replacing one with the same ID), for Remove it is dropped. If the
-// process dies between the two steps, recovery finds the target in its final state and
-// commits again, which changes nothing.
-func (l *Locked) Commit(in Intent) error {
+// Write the entry is put (replacing one with the same ID, see Manifest.Put), for Remove it is
+// dropped. It returns the entry as recorded. If the process dies between the two steps,
+// recovery finds the target in its final state and commits again, which changes nothing.
+func (l *Locked) Commit(in Intent) (Entry, error) {
+	recorded := in.Entry
 	err := l.update(func(m *Manifest) {
 		if in.Kind == Remove {
 			m.Delete(in.Entry.ID)
-		} else {
-			m.Put(in.Entry)
+			return
 		}
+		m.Put(in.Entry)
+		recorded, _ = m.Find(in.Entry.ID)
 	})
 	if err != nil {
-		return err
+		return Entry{}, err
 	}
-	return l.Forget(in.ID)
+	return recorded, l.Forget(in.ID)
 }
 
 // Forget clears an intent from the log without recording anything, for a change that was
@@ -228,7 +230,7 @@ func (l *Locked) Recover(observe func(Intent) Observation) (Recovery, error) {
 		case o.Err != nil:
 			r.Unresolved = append(r.Unresolved, in)
 		case o.state() == in.After:
-			if err := l.Commit(in); err != nil {
+			if _, err := l.Commit(in); err != nil {
 				return r, err
 			}
 			r.Committed = append(r.Committed, in)

@@ -57,14 +57,17 @@ type Entry struct {
 	Version  int    `json:"version,omitempty"`
 	Op       Op     `json:"op"`
 	// Path is "~/…" inside the home directory and absolute otherwise, with forward slashes.
-	Path       string    `json:"path,omitempty"`
-	Format     string    `json:"format,omitempty"`
-	Key        []string  `json:"key,omitempty"`
-	Digest     string    `json:"digest,omitempty"`
-	Backup     string    `json:"backup,omitempty"`
-	Undo       []string  `json:"undo,omitempty"`
-	SharedWith []string  `json:"sharedWith,omitempty"`
-	At         time.Time `json:"at"`
+	Path       string   `json:"path,omitempty"`
+	Format     string   `json:"format,omitempty"`
+	Key        []string `json:"key,omitempty"`
+	Digest     string   `json:"digest,omitempty"`
+	Backup     string   `json:"backup,omitempty"`
+	Undo       []string `json:"undo,omitempty"`
+	SharedWith []string `json:"sharedWith,omitempty"`
+	// Created lists the directories made to hold the target, outermost first, in the same
+	// form as Path. Undoing the entry removes them again if they are empty.
+	Created []string  `json:"created,omitempty"`
+	At      time.Time `json:"at"`
 
 	extra map[string]json.RawMessage
 }
@@ -95,10 +98,15 @@ func (m *Manifest) Find(id string) (Entry, bool) {
 	return Entry{}, false
 }
 
-// Put records e, replacing the entry with the same ID in place or appending it.
+// Put records e, replacing the entry with the same ID in place or appending it. When e
+// replaces an entry and lists no created directories of its own, it inherits those of the
+// entry it replaces: they were made for this target and are removed with it.
 func (m *Manifest) Put(e Entry) {
 	for i := range m.Entries {
 		if m.Entries[i].ID == e.ID {
+			if len(e.Created) == 0 {
+				e.Created = m.Entries[i].Created
+			}
 			m.Entries[i] = e
 			return
 		}
