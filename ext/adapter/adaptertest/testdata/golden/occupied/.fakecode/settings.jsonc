@@ -1,0 +1,14 @@
+{
+  "mcp": {
+    "servers": {
+      "rgd-contract-stdio": { "type": "stdio", "command": "my-own-server" },
+      "rgd-contract-http": {
+        "headers": {
+          "X-Contract": "yes"
+        },
+        "type": "http",
+        "url": "https://mcp.example.com/contract"
+      }
+    }
+  }
+}

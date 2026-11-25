@@ -1,0 +1,25 @@
+{
+  "mcp": {
+    "servers": {
+      "rgd-contract-stdio": {
+        "args": [
+          "--stdio",
+          "--log-level",
+          "info"
+        ],
+        "command": "contract-mcp",
+        "env": {
+          "CONTRACT_MODE": "read-only"
+        },
+        "type": "stdio"
+      },
+      "rgd-contract-http": {
+        "headers": {
+          "X-Contract": "yes"
+        },
+        "type": "http",
+        "url": "https://mcp.example.com/contract"
+      }
+    }
+  }
+}

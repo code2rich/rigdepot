@@ -1,0 +1,41 @@
+{
+  // Fake Code settings. Written by Fake Code 1.0.0, then edited by hand.
+  "$schema": "https://fakecode.example.com/config.json",
+  "theme": "dark",
+  "model": {
+    "name": "<placeholder: model>",
+    "temperature": 0.2, // lower is calmer
+  },
+  "mcp": {
+    "servers": {
+      /* the person's own server */
+      "notes": {
+        "type": "stdio",
+        "command": "notes-mcp",
+        "args": ["--dir", "~/notes"],
+        "env": {}
+      },
+      "rgd-contract-stdio": {
+        "args": [
+          "--stdio",
+          "--log-level",
+          "info"
+        ],
+        "command": "contract-mcp",
+        "env": {
+          "CONTRACT_MODE": "read-only"
+        },
+        "type": "stdio"
+      },
+      "rgd-contract-http": {
+        "headers": {
+          "X-Contract": "yes"
+        },
+        "type": "http",
+        "url": "https://mcp.example.com/contract"
+      },
+    },
+    "timeoutSeconds": 30
+  },
+  "experimental": null
+}

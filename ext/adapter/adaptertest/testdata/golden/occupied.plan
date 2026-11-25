@@ -1,0 +1,12 @@
+op write-tree ~/.fakecode/skills/rgd-contract-skill (skill/contract-skill@3): SKILL.md, scripts/check.sh*
+op write-file ~/.fakecode/commands/rgd-contract-command.md (workflow/contract-command@1)
+op write-file ~/.fakecode/agents/rgd-contract-agent.md (agent/contract-agent@1)
+op set-key ~/.fakecode/settings.jsonc jsonc ["mcp","servers","rgd-contract-stdio"] (mcp/contract-stdio@2) = {"args":["--stdio","--log-level","info"],"command":"contract-mcp","env":{"CONTRACT_MODE":"read-only"},"type":"stdio"}
+op set-key ~/.fakecode/settings.jsonc jsonc ["mcp","servers","rgd-contract-http"] (mcp/contract-http@1) = {"headers":{"X-Contract":"yes"},"type":"http","url":"https://mcp.example.com/contract"}
+skip mcp/contract-secret@1 needs_secret_support: refers to the personal secret CONTRACT_TOKEN and the tool has no way to take it from the environment
+core:
+  ! tree ~/.fakecode/skills/rgd-contract-skill: name_taken
+  ! file ~/.fakecode/commands/rgd-contract-command.md: name_taken
+  + file ~/.fakecode/agents/rgd-contract-agent.md
+  ! key ~/.fakecode/settings.jsonc mcp.servers.rgd-contract-stdio: name_taken
+  + key ~/.fakecode/settings.jsonc mcp.servers.rgd-contract-http

@@ -4,6 +4,7 @@
 package adaptertest
 
 import (
+	"flag"
 	"testing"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
@@ -21,12 +22,29 @@ func Main(m *testing.M) {
 	testenv.Main(m)
 }
 
+// updateFlag is -update: write golden/ from what the adapter does instead of comparing with it.
+// Another package of the test binary may define the same flag, so it is only defined once.
+const updateFlag = "update"
+
+func init() {
+	if flag.Lookup(updateFlag) == nil {
+		flag.Bool(updateFlag, false, "write the golden files instead of comparing with them")
+	}
+}
+
+func updating() bool {
+	f := flag.Lookup(updateFlag)
+	return f != nil && f.Value.String() == "true"
+}
+
 // Run runs the contract tests for one adapter against the fixtures in dir, which is laid out as
-// the package documentation describes.
+// the package documentation describes. Each home is a subtest; each failure names the assertion
+// it belongs to in brackets, such as "[uninstall]".
 //
-// The assertions are not written yet. Until they are, Run fails the test, so that no adapter
-// can look as if it had passed a contract nobody checked.
+// With -update (go test ./… -run TestContract -update) it writes golden/ from what the adapter
+// does instead of comparing with it. Read every file it wrote before committing it: the golden
+// files are the review of the adapter's output.
 func Run(t *testing.T, a adapter.Adapter, dir string) {
 	t.Helper()
-	t.Fatalf("adaptertest.Run is not implemented yet: the contract of adapter %q was not checked against %s", a.ID(), dir)
+	runSuite(tReporter{t}, a, dir, updating())
 }

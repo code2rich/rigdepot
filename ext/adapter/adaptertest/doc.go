@@ -10,6 +10,8 @@
 //
 //	func TestContract(t *testing.T) { adaptertest.Run(t, New(), "testdata") }
 //
+// # Fixtures
+//
 // The fixtures are home directories as people really have them, made from files the real tool
 // wrote, with account details removed:
 //
@@ -19,18 +21,59 @@
 //	│   ├── user-config/      the person's own configuration: comments, unknown keys, own entries
 //	│   ├── crlf-bom/         the same with CRLF line endings and a byte order mark
 //	│   ├── broken-config/    a configuration file that does not parse
-//	│   └── occupied/         the target name is taken by something that is not ours
-//	└── golden/               each home after a sync, byte for byte
+//	│   ├── occupied/         the target names are taken by things that are not ours
+//	│   └── <more>/           situations of this tool (an inline TOML table, a moved root, …)
+//	└── golden/
+//	    ├── <case>/           the home after a sync, byte for byte (written by -update)
+//	    └── <case>.plan       the plan and what the core decided (written by -update)
 //
-// For every home the suite asserts what the product promises about any tool: the preview equals
-// what is written, a second sync does nothing, a file changed by hand is reported and left
-// alone, uninstalling restores the home byte for byte, an unreadable configuration is never
-// written, a taken name is never overwritten, every target carries the prefix and lies inside a
-// declared root, and Plan neither writes nor uses the network.
+// The first five cases are required. Each case directory holds:
 //
-// Unlike the packages it tests, this package depends on the core: it drives the real executor.
-// It is only ever imported from test files.
+//	README.md    which tool and version the files come from, and what the case shows
+//	case.json    optional: what the computer looks like apart from the files
+//	home/        the home directory itself; may be missing for an empty home
 //
-// Status: Main works. Run is the agreed signature only; the assertions are not written yet, and
-// until they are Run fails the test that calls it.
+// case.json has four optional fields: "goos" (the operating system the adapter is told about),
+// "env" (environment variables; a value starting with "~/" is a path inside the home), "bins"
+// (the executables on the PATH; by default every one the profile looks for) and "versionOutput"
+// (what the tool prints for its version; by default the version it was verified against).
+//
+// Every adapter is synced with the same artifacts: a skill, a slash command, a sub-agent, an MCP
+// server over stdio, one over HTTP and one that needs a personal secret, as far as the adapter's
+// capabilities take them. Their names carry the product's prefix, as the core gives them.
+//
+// # Assertions
+//
+// For every home the suite asserts what the product promises about any tool. Each failure is
+// tagged with the assertion's name:
+//
+//	[plan-pure]      Plan writes nothing (neither in the home nor in the process's home directory)
+//	                 and runs no command
+//	[deterministic]  the same input gives the same plan
+//	[targets]        every target carries the prefix and lies in a root or a place the profile
+//	                 declares; paths are in the package form
+//	[preview]        the preview, run in a temporary copy, changes what the real write changes
+//	[golden]         the home after a sync, and the plan, equal golden/
+//	[others]         what was there before is unchanged; a configuration file we added keys to
+//	                 differs by those keys only
+//	[idempotent]     a second sync writes nothing
+//	[drift]          a file we wrote, changed by hand, is reported and left alone
+//	[uninstall]      undoing everything restores the home byte for byte, directories included
+//	[unreadable]     broken-config: the plan reports ConfigUnreadable, sets no key in the broken
+//	                 file, and nothing at all is written
+//	[occupied]       occupied: the taken names are reported and nothing of the person's is touched
+//
+// The network is blocked by Main for the whole test binary, so an adapter that uses it fails
+// with the error it gets.
+//
+// # The core
+//
+// Unlike the packages it tests, this package depends on the core: it applies, observes and
+// reverts operations with the executor and prepares previews with the sandbox, so it checks the
+// core along with the adapter. It is only ever imported from test files.
+//
+// Status: internal/executor and internal/sandbox do not exist yet. Until they do, small
+// stand-ins inside this package take their place (standin.go): they make the same safety checks
+// and edit configuration files as text, so that every assertion above means something, but they
+// handle only what the fixtures need. TOML is appended and removed as text and not parsed.
 package adaptertest

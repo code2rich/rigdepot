@@ -1,0 +1,22 @@
+{
+  // Fake Code settings. Written by Fake Code 1.0.0, then edited by hand.
+  "$schema": "https://fakecode.example.com/config.json",
+  "theme": "dark",
+  "model": {
+    "name": "<placeholder: model>",
+    "temperature": 0.2, // lower is calmer
+  },
+  "mcp": {
+    "servers": {
+      /* the person's own server */
+      "notes": {
+        "type": "stdio",
+        "command": "notes-mcp",
+        "args": ["--dir", "~/notes"],
+        "env": {}
+      },
+    },
+    "timeoutSeconds": 30
+  },
+  "experimental": null
+}

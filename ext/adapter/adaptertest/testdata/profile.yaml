@@ -1,0 +1,25 @@
+# The profile of Fake Code, a tool that exists only in these tests. Its files
+# are modelled on what Claude Code and OpenCode write: a configuration file with
+# comments (JSONC) that lists MCP servers two levels down, and one directory per
+# kind of artifact.
+id: fakecode
+name: Fake Code
+detect:
+  bins: [fakecode]
+  dirs: ["{config}"]
+  version: { run: [fakecode, --version], match: '(\d+\.\d+\.\d+)' }
+roots:
+  config: { env: FAKECODE_HOME, default: "~/.fakecode" }
+verified:
+  version: "1.0.0"
+  os: [darwin, linux, windows]
+  at: "2026-11-25"
+  how: not a real tool; the suite's own tests use it to check the suite
+skills:   { dir: "{config}/skills", layout: dir }
+commands: { dir: "{config}/commands", ext: .md }
+agents:   { dir: "{config}/agents", ext: .md }
+mcp:
+  files: ["{config}/settings.jsonc"]
+  format: jsonc
+  path: [mcp, servers]
+credentials: [auth.json]
