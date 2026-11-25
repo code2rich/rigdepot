@@ -17,6 +17,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/events"
+	"github.com/code2rich/rigdepot/internal/server/feedback"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/modhost"
@@ -84,6 +85,13 @@ func (a *App) openServices(ctx context.Context) error {
 		co.PullNow = func() { jobs.Trigger(catalog.SourceSyncJob) }
 	}
 	if a.catalog, err = catalog.New(a.db, a.access, co); err != nil {
+		return err
+	}
+	fo := feedback.Options{Auditor: log}
+	if a.bg != nil {
+		fo.Events = a.bg.Events
+	}
+	if a.feedback, err = feedback.New(a.db, a.access, a.catalog, fo); err != nil {
 		return err
 	}
 

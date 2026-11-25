@@ -95,6 +95,8 @@ feedback
   created_at bigint not null
   updated_at bigint not null
   closed_at bigint
+  status_reason text not null
+  score_note text not null
 
 feedback_events
   id text not null pk

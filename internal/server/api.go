@@ -49,6 +49,7 @@ type api struct {
 	*toolsAPI
 	*catalogAPI
 	*sourcesAPI
+	*feedbackAPI
 }
 
 // fallback puts notImplemented's methods one embedding level below the
@@ -122,6 +123,7 @@ func apiMounts(app *App) Mounts {
 		toolsAPI:    &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
 		catalogAPI:  &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
 		sourcesAPI:  &sourcesAPI{cat: app.catalog},
+		feedbackAPI: &feedbackAPI{fb: app.feedback, hooks: &app.hooks},
 	}
 	if impl.toolsAPI.version == "" {
 		impl.toolsAPI.version = buildinfo.Get().Version

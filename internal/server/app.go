@@ -24,6 +24,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/catalog"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
+	"github.com/code2rich/rigdepot/internal/server/feedback"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/migrations"
@@ -60,6 +61,7 @@ type App struct {
 	authnOps *authnapi.Ops // the sign-in operations and middleware
 	settings *settings.Service
 	catalog  *catalog.Service
+	feedback *feedback.Service
 	hooks    hooks
 	// catalogOptions are the kinds and the rule set the catalog uses; the zero value is the
 	// program's registries (builtin/all). Tests, which cannot import builtin, set their own.
