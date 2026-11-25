@@ -577,6 +577,15 @@ func commandLine(name string, f sourceFlags) string {
 	if f.repo != "" {
 		s += " --repo " + quoteArg(f.repo)
 	}
+	if f.branch != "" {
+		s += " --branch " + quoteArg(f.branch)
+	}
+	if f.dir != "" {
+		s += " --dir " + quoteArg(f.dir)
+	}
+	for _, p := range f.products {
+		s += " --product " + quoteArg(p)
+	}
 	return s
 }
 

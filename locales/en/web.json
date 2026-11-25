@@ -1034,7 +1034,7 @@
   "resources.new.kind_title": "New {{kind}}",
   "resources.new.lead": "Choose the kind first: each comes in differently",
   "resources.new.other_kind": "choose another kind",
-  "resources.new.repo_first": "Skills, workflows and agents are best committed to the resource repository, where the platform imports them as drafts: {{cli}} skill new <code> makes the skeleton and {{cli}} check runs the same checks on your computer.",
+  "resources.new.repo_first": "Skills, workflows and agents are best committed to the resource repository, where the platform imports them as drafts; run {{cli}} check before committing to get the same checks on your computer.",
   "resources.new.title": "New resource",
   "resources.new.upload_hint": "Name, stages and the rest come from the files in the archive and can be changed afterwards.",
   "resources.new.upload_submit": "Upload as draft",

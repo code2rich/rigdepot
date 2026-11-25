@@ -1,6 +1,6 @@
 # Web console
 
-The browser side of the server: Preact, TypeScript and Vite, built into static files that the server program embeds. Its pages follow the prototype one to one; class names and page codes (A-01 …) are the prototype's so the two can be compared.
+The browser side of the server: Preact, TypeScript and Vite, built into static files that the server program embeds. Every page has a page code (A-01 …) shown in its header, so a screenshot or a bug report names the page unambiguously.
 
 Only people who change `web/`, release builds and browser tests need Node (22.12 or later) and pnpm. Everyone else builds and tests the Go code as usual: without the built console the server embeds a one-page stub that says how to build it.
 
@@ -50,7 +50,7 @@ web/
     ├── shell/              sidebar, navigation, account menu, theme switch, feedback button
     ├── pages/              registry.ts (navigation and routes) and one directory per page
     ├── ui/                 shared parts: icons, logo, page header, empty state, kind shapes
-    ├── styles/             the prototype's styles split by component; tokens.gen.css [generated]
+    ├── styles/             the shared styles, split by component; tokens.gen.css [generated]
     └── theme.ts            light, dark, or follow the system
 ```
 
@@ -58,14 +58,14 @@ Generated files are committed and checked: `go run ./tools/dev gen` rewrites the
 
 ## Adding a page
 
-Every page of the prototype already has an id and a path in `src/pages/registry.ts`; most are `notBuilt(...)` stand-ins. The prototype is where a page is designed; build it from there.
+Every page has an id and a path in `src/pages/registry.ts`. A page that is planned but not built yet is a `notBuilt(...)` stand-in there. Look at an existing page of the same kind (a list with a drawer, a settings form …) and follow it.
 
-1. **Make the directory** `src/pages/<id>/` with an `index.tsx` whose default export is the page. `<id>` is the prototype's page id (the first item of its `NAV` entry: `catalog`, `keys` …). Start with `<PageHeader page="<id>" title={t('nav.<id>')} lead={…} />` so the page code and the breadcrumb match the prototype.
+1. **Make the directory** `src/pages/<id>/` with an `index.tsx` whose default export is the page. `<id>` is the page's id in the registry (`catalog`, `keys` …). Start with `<PageHeader page="<id>" title={t('nav.<id>')} lead={…} />` so the page code and the breadcrumb are right.
 2. **Register it** in `src/pages/registry.ts`: replace `notBuilt('<id>')` with `lazy(() => import('./<id>'))`. A page outside the navigation (sign-in, setup …) goes into `PUBLIC` the same way. Each page becomes its own chunk, loaded when first opened. A sub-path such as `/catalog/<code>` belongs to its page automatically for highlighting; add a route for it next to the page's own.
-3. **Styles**: copy the page's section from the prototype's `styles.css` into `src/pages/<id>/<id>.css`, keep the class names, and import it from the page. Shared parts go to `src/styles/` or `src/ui/`. Colours only through the tokens (`var(--ink)` …).
+3. **Styles**: put the page's own styles in `src/pages/<id>/<id>.css` and import it from the page; reuse the classes in `src/styles/` before adding new ones. Shared parts go to `src/styles/` or `src/ui/`. Colours only through the tokens (`var(--ink)` …).
 4. **Text**: every string comes from `locales/en/web.json` and `locales/zh-CN/web.json`, added to both in the same change, keys prefixed with the page id (`catalog.filter.search`). Write keys out in full in `t('…')`: `check` reads them to find unused keys, and the type check rejects keys that do not exist. Then `go run ./tools/dev gen`.
 5. **Data**: call the API through `api` from `src/api/client.ts`; the types come from the contract, so a contract change the page does not follow fails `tsc`. Show loading, failure and empty states: every list passes its own `Empty` with why it is empty and what to do next. A 403 is the page's to explain — hiding a button is not a permission.
-6. **Check**: `go run ./tools/dev check`, then look at the page next to the prototype in both themes and at 390 px wide.
+6. **Check**: `go run ./tools/dev check`, then look at the page in both themes, at 390 px wide and in both languages.
 
 ## Rules the content security policy enforces
 
