@@ -99,6 +99,7 @@ The project is at the very beginning of its implementation. To be exact about wh
 | --- | --- |
 | Product and engineering design | Complete |
 | Repository skeleton, development entry point (`go run ./tools/dev`), dependency rule checks, test isolation | Done |
+| Extension interfaces for tools, resource kinds and check rules (`ext/`) | Defined, version v0. **Nothing implements them yet.** |
 | `rgd`, `rgd-server` | Build for all six targets and answer `--version`. **No other command is implemented.** |
 | M0: command-line core | In development |
 | Releases, install scripts, Homebrew, Scoop, container image | Not published. The release tooling is in the repository and has only been run locally. |

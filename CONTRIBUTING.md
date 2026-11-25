@@ -6,7 +6,7 @@ Thank you for considering a contribution. This page takes about ten minutes to r
 
 Ideas and questions are contributions too, and you do not have to write code: open an issue, or talk to us on [Discord](https://discord.gg/feGwwqs7x). Issues and pull requests are welcome in English or Chinese.
 
-> **Where the project is.** The design is complete and M0, the command-line core, is in development. The repository skeleton, the development entry point and the checks described here work today. The extension interfaces in `ext/` are being defined right now, so the five kinds of contribution described [below](#the-five-most-common-contributions) are the shape things will have, not something you can copy from yet. Each section says what exists.
+> **Where the project is.** The design is complete and M0, the command-line core, is in development. The repository skeleton, the development entry point and the checks described here work today. The extension interfaces for tools, resource kinds and check rules are defined in `ext/` (read them with `go doc ./ext/adapter`, `./ext/kind` and `./ext/check`). Nothing implements them yet, so the five kinds of contribution described [below](#the-five-most-common-contributions) are the shape things will have, not something you can copy from yet. Each section says what exists.
 
 ## What this is
 
@@ -121,7 +121,7 @@ There are only four kinds of artifact (skill directory, MCP entry, slash command
 
 Each of them is the same move: **add files in one directory, add one line to the registry.**
 
-> The interfaces these implement are being defined in M0. Until the first built-in item of a kind has landed there is nothing to copy from, so please open an issue before starting one of these; we will tell you whether the ground is ready.
+> The interfaces for the first three are defined: `ext/adapter`, `ext/kind` and `ext/check`. Their test suites (`adaptertest`, `kindtest`, `checktest`) have their entry points but no assertions yet, and the interface for notification channels comes with M1. Until the first built-in item of a kind has landed there is nothing to copy from, so please open an issue before starting one of these; we will tell you whether the ground is ready.
 
 ### A new AI coding tool (an adapter)
 
