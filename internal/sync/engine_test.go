@@ -107,6 +107,26 @@ func TestUnknownResourcesAreHeldNotUndone(t *testing.T) {
 	}
 }
 
+// A desired state kept from earlier, because its source cannot be reached, removes nothing it
+// does not deliver (Options.Keep); the same state from a source that answered does.
+func TestAKeptStateRemovesNothing(t *testing.T) {
+	w, r := synced(t)
+	delete(r, "skills/unit-testing/SKILL.md")
+	delete(r, "skills/unit-testing/meta.yaml")
+	st := r.state(t, desired.Filter{})
+	if _, ok := st.Lookup("unit-testing"); ok {
+		t.Fatal("the resource is still in the state")
+	}
+	p, res := w.run(st, Options{Keep: true}, ConsentInput{})
+	if len(p.Changes()) != 0 || len(res.Done) != 0 || !w.exists(unitSkill) {
+		t.Fatalf("a kept state undid something: %+v", p.Items)
+	}
+	p, _ = w.run(st, Options{}, ConsentInput{})
+	if it := item(t, p, "fakecode", unitDir); it.Action != ActionRevert || w.exists(unitSkill) {
+		t.Errorf("without Keep: %s, still there %v", it.Action, w.exists(unitSkill))
+	}
+}
+
 // A tool whose detection cannot tell is left alone, and so is one the configuration disables.
 func TestToolsThatDoNotTakePart(t *testing.T) {
 	w, r := synced(t)
