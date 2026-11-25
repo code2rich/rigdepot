@@ -18,7 +18,7 @@
 
 两样东西，**分开保管**：
 
-- **数据库。** 用 SQLite 时是数据目录里的 `rigdepot.db`。不要在服务运行时直接复制这个文件，可能复制到写了一半的状态。
+- **数据库。** 用 SQLite 时是数据目录里的 `rigdepot.db`。不要在服务运行时直接复制这个文件，可能复制到写了一半的状态。`rgd-server backup` 能在服务运行时做一份一致的快照。
 - **主密钥。** 没有另外指定时是数据目录里的 `master.key`。它丢了，库里所有加密的内容（每个人的个人密钥、身份源的 Client Secret、仓库令牌、邮件密码）都解不开，只能重新填。
 
 ## 配置
@@ -45,7 +45,7 @@ HTTPS 通常交给前面的反向代理。除非只监听本机、有证书、�
 {"level":"WARN","msg":"setup is not complete: open the server's address in a browser and enter this one-time setup code","base_url":"https://hub.example.com","setup_code":"…"}
 ```
 
-浏览器打开对外地址，输入它，创建第一个管理员。日志在哪：`journalctl -u rigdepot-server`（包）、`docker compose logs rigdepot`（Compose）、`docker logs <容器>`（镜像）。
+浏览器打开对外地址，输入它，创建第一个管理员。起不来时，`rgd-server doctor` 和 `rgd-server config check` 会说缺了什么。日志在哪：`journalctl -u rigdepot-server`（包）、`docker compose logs rigdepot`（Compose）、`docker logs <容器>`（镜像）。
 
 ## 给内网分发命令行
 

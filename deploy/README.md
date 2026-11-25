@@ -18,7 +18,7 @@ The server targets Linux on amd64 and arm64. The only thing it needs on the mach
 
 Two things, kept in **different places**:
 
-- **The database.** With SQLite it is `rigdepot.db` in the data directory. Do not copy the file while the server is running: it may be half written.
+- **The database.** With SQLite it is `rigdepot.db` in the data directory. Do not copy the file while the server is running: it may be half written. `rgd-server backup` makes a consistent snapshot while the server runs.
 - **The master key**, `master.key` in the data directory unless you configured it elsewhere. If it is lost, everything encrypted in the database (everyone's personal secrets, the client secrets of identity sources, repository tokens, the mail password) can no longer be read and has to be entered again.
 
 ## Configuration
@@ -45,7 +45,7 @@ On first start the server creates its database and master key and prints a one-t
 {"level":"WARN","msg":"setup is not complete: open the server's address in a browser and enter this one-time setup code","base_url":"https://hub.example.com","setup_code":"…"}
 ```
 
-Open the public address in a browser and enter it to create the first administrator. Where to find the log: `journalctl -u rigdepot-server` (packages), `docker compose logs rigdepot` (Compose), `docker logs <container>` (image).
+Open the public address in a browser and enter it to create the first administrator. `rgd-server doctor` and `rgd-server config check` say what is missing when it does not start. Where to find the log: `journalctl -u rigdepot-server` (packages), `docker compose logs rigdepot` (Compose), `docker logs <container>` (image).
 
 ## Handing out the command line
 
