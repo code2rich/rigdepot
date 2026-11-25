@@ -16,6 +16,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/internal/apiclient"
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/cliout"
 	"github.com/code2rich/rigdepot/internal/executor"
@@ -53,6 +54,12 @@ type Env struct {
 	NewExecutor func(executor.Roots, executor.State) (sync.Executor, error)
 	// Knowledge fetches the knowledge bases a sync delivers; nil means the person's own git.
 	Knowledge sync.Fetcher
+	// Connect returns a client for the server this computer is signed in to, or an error
+	// wrapping ErrNotSignedIn. Nil means not signed in: the commands that need the server
+	// (rgd feedback) exit with 6.
+	//
+	// TODO(M1-22): Main sets it from the device identity (rgd login) once that is merged.
+	Connect func(ctx context.Context) (apiclient.ClientWithResponsesInterface, error)
 }
 
 // Main runs the command-line program with the given arguments (without the
