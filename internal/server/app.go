@@ -37,6 +37,8 @@ type App struct {
 	log    *slog.Logger
 	db     *dbx.DB
 	mounts Mounts
+	// bg runs events, jobs, the mail outbox and modules; nil outside serve.
+	bg *Background
 
 	checks   []ReadyCheck
 	draining atomic.Bool
@@ -70,6 +72,10 @@ func NewApp(cfg *config.Config, log *slog.Logger, db *dbx.DB, mounts Mounts) *Ap
 	// TODO(M1-11): "master key loaded" joins here once masterkey exists.
 	return a
 }
+
+// Background returns the events, jobs, outbox and modules of a serving app, for apiMounts to
+// hand to the domain services; nil when nothing runs in the background.
+func (a *App) Background() *Background { return a.bg }
 
 // AddReadyCheck adds an item to /readyz. Domain services add theirs while
 // the server is assembled, before it serves.
