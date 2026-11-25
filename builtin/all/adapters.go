@@ -3,8 +3,12 @@
 
 package all
 
+import (
+	"github.com/code2rich/rigdepot/builtin/adapters/codex"
+	"github.com/code2rich/rigdepot/ext/adapter"
+)
+
 func init() {
-	// One line per tool adapter under builtin/adapters, in alphabetical order:
-	//
-	//	adapter.Register(claudecode.New())
+	// One line per tool adapter under builtin/adapters, in alphabetical order.
+	adapter.Register(codex.New())
 }
