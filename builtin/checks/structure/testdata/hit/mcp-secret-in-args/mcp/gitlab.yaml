@@ -1,0 +1,6 @@
+meta:
+  name: GitLab
+server:
+  type: stdio
+  command: npx
+  args: ["-y", "@example/gitlab-mcp@1.4.2", "--token", "${secret:GITLAB_TOKEN}"]

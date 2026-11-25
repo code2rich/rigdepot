@@ -3,7 +3,10 @@
 
 package all
 
-import "github.com/code2rich/rigdepot/ext/check"
+import (
+	"github.com/code2rich/rigdepot/builtin/checks/structure"
+	"github.com/code2rich/rigdepot/ext/check"
+)
 
 // rulesetVersion is the version of the built-in rule set. It is recorded with every check
 // result. Raise it by one in the commit that adds or removes a rule or changes what a rule
@@ -15,7 +18,6 @@ const rulesetVersion = 1
 func init() {
 	check.SetVersion(rulesetVersion)
 
-	// One line per check rule under builtin/checks, in alphabetical order:
-	//
-	//	check.Register(structure.New())
+	// One line per check rule under builtin/checks, in alphabetical order.
+	check.Register(structure.New())
 }

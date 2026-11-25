@@ -1,0 +1,5 @@
+meta:
+  name: GitLab
+server:
+  type: stdio
+  args: ["-y", "@example/gitlab-mcp@1.4.2"]

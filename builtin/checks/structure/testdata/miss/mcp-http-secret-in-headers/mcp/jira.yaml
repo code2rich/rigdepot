@@ -1,0 +1,12 @@
+meta:
+  name: Jira
+  stages: [requirement, develop]
+server:
+  type: http
+  url: https://jira.example.com/mcp
+  headers:
+    Authorization: "Bearer ${secret:JIRA_API_TOKEN}"
+delivery: on-demand
+tools:
+  - { name: search_issues, summary: 按 JQL 查询事项 }
+x-team: 平台组

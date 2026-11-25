@@ -1,0 +1,5 @@
+meta:
+  name: Jira
+server:
+  type: http
+  url: https://jira.example.com/mcp?token=${secret:JIRA_API_TOKEN}
