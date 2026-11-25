@@ -1,0 +1,5 @@
+meta:
+  name: 商城接口
+server:
+  type: http
+  url: https://shop-api.example.com/mcp

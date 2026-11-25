@@ -7,6 +7,7 @@ import (
 	"github.com/code2rich/rigdepot/builtin/checks/bundledenv"
 	"github.com/code2rich/rigdepot/builtin/checks/dangerous"
 	"github.com/code2rich/rigdepot/builtin/checks/injection"
+	"github.com/code2rich/rigdepot/builtin/checks/personalpath"
 	"github.com/code2rich/rigdepot/builtin/checks/secrets"
 	"github.com/code2rich/rigdepot/builtin/checks/structure"
 	"github.com/code2rich/rigdepot/ext/check"
@@ -26,6 +27,7 @@ func init() {
 	check.Register(bundledenv.New())
 	check.Register(dangerous.New())
 	check.Register(injection.New())
+	check.Register(personalpath.New())
 	check.Register(secrets.New())
 	check.Register(structure.New())
 }
