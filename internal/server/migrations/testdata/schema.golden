@@ -1,0 +1,349 @@
+access_tokens
+  id text not null pk
+  user_id text not null
+  name text not null
+  token_digest text not null
+  token_prefix text not null
+  scope text not null
+  created_at bigint not null
+  expires_at bigint
+  last_used_at bigint
+  revoked_at bigint
+
+audit_log
+  seq bigint not null pk
+  at bigint not null
+  category text not null
+  actor_id text
+  origin text not null
+  via_tool text not null
+  device_id text not null
+  action text not null
+  object_kind text not null
+  object_id text not null
+  object_label text not null
+  change text not null
+  result text not null
+  reason text not null
+  prev_hash text not null
+  hash text not null
+
+blobs
+  digest text not null pk
+  size integer not null
+  data binary not null
+  created_at bigint not null
+
+check_waivers
+  id text not null pk
+  resource_id text not null
+  rule text not null
+  file text not null
+  line_digest text not null
+  reason text not null
+  created_by text not null
+  created_at bigint not null
+
+device_codes
+  id text not null pk
+  device_code_digest text not null
+  user_code text not null
+  device_name text not null
+  os text not null
+  arch text not null
+  cli_version text not null
+  public_key text not null
+  status text not null
+  user_id text
+  device_id text
+  interval_seconds integer not null
+  created_at bigint not null
+  expires_at bigint not null
+  last_polled_at bigint
+
+devices
+  id text not null pk
+  user_id text not null
+  name text not null
+  os text not null
+  arch text not null
+  cli_version text not null
+  public_key text not null
+  token_digest text not null
+  key_storage text not null
+  collection_scope text not null
+  created_at bigint not null
+  last_seen_at bigint not null
+  revoked_at bigint
+
+feedback
+  id text not null pk
+  number integer not null
+  kind text not null
+  origin text not null
+  status text not null
+  severity text not null
+  title text not null
+  body text not null
+  author_id text not null
+  assignee_id text
+  resource_id text
+  resource_version integer
+  context text not null
+  score integer
+  created_at bigint not null
+  updated_at bigint not null
+  closed_at bigint
+
+feedback_events
+  id text not null pk
+  feedback_id text not null
+  at bigint not null
+  actor_id text
+  kind text not null
+  body text not null
+  data text not null
+
+identities
+  id text not null pk
+  user_id text not null
+  provider text not null
+  subject text not null
+  email text not null
+  created_at bigint not null
+  last_login_at bigint
+
+installs
+  device_id text not null pk
+  resource_id text not null pk
+  tool text not null pk
+  version integer not null
+  status text not null
+  degraded boolean not null
+  error_code text not null
+  reported_at bigint not null
+
+invites
+  id text not null pk
+  token_digest text not null
+  email text not null
+  product_id text
+  role text not null
+  invited_by text not null
+  created_at bigint not null
+  expires_at bigint not null
+  accepted_at bigint
+  accepted_user_id text
+  revoked_at bigint
+
+jobs
+  name text not null pk
+  last_run_at bigint
+  last_result text not null
+  last_error text not null
+  next_run_at bigint
+  lease_owner text not null
+  lease_until bigint
+
+join_requests
+  id text not null pk
+  user_id text not null
+  product_id text not null
+  note text not null
+  status text not null
+  handled_by text
+  handled_at bigint
+  reject_reason text not null
+  created_at bigint not null
+
+local_credentials
+  user_id text not null pk
+  password_hash text not null
+  failed_attempts integer not null
+  locked_until bigint
+  updated_at bigint not null
+
+mail_outbox
+  id text not null pk
+  recipient text not null
+  template text not null
+  locale text not null
+  params text not null
+  status text not null
+  attempts integer not null
+  next_attempt_at bigint not null
+  last_error text not null
+  created_at bigint not null
+  sent_at bigint
+
+memberships
+  product_id text not null pk
+  user_id text not null pk
+  role text not null
+  created_at bigint not null
+
+notifications
+  id text not null pk
+  user_id text not null
+  kind text not null
+  message_key text not null
+  params text not null
+  link text not null
+  created_at bigint not null
+  read_at bigint
+
+products
+  id text not null pk
+  code text not null
+  name text not null
+  product_line text not null
+  created_at bigint not null
+  updated_at bigint not null
+
+resource_drafts
+  resource_id text not null pk
+  digest text not null
+  bundle text not null
+  meta text not null
+  ruleset integer not null
+  findings text not null
+  source_commit text not null
+  updated_by text
+  updated_at bigint not null
+
+resource_maintainers
+  resource_id text not null pk
+  user_id text not null pk
+
+resource_refs
+  resource_id text not null pk
+  ref_code text not null pk
+
+resource_secrets
+  resource_id text not null pk
+  secret_name text not null pk
+
+resource_stages
+  resource_id text not null pk
+  stage_id text not null pk
+
+resource_versions
+  resource_id text not null pk
+  number integer not null pk
+  digest text not null
+  bundle text not null
+  meta text not null
+  ruleset integer not null
+  findings text not null
+  source_commit text not null
+  rollback_of integer
+  note text not null
+  published_by text not null
+  published_at bigint not null
+
+resources
+  id text not null pk
+  code text not null
+  kind text not null
+  origin text not null
+  source_id text
+  scope_kind text not null
+  scope_product_id text
+  owner_user_id text
+  policy text not null
+  audience text not null
+  status text not null
+  current_version integer
+  name text not null
+  summary text not null
+  overrides text not null
+  created_at bigint not null
+  updated_at bigint not null
+
+schema_migrations
+  namespace text not null pk
+  version integer not null pk
+  name text not null
+  checksum text not null
+  applied_at bigint not null
+
+secret_defs
+  name text not null pk
+  display_name text not null
+  help_url text not null
+  created_at bigint not null
+  updated_at bigint not null
+
+secret_values
+  user_id text not null pk
+  secret_name text not null pk
+  ciphertext text not null
+  nonce text not null
+  wrapped_key text not null
+  key_id text not null
+  version integer not null
+  expires_at bigint
+  updated_at bigint not null
+
+sessions
+  id text not null pk
+  user_id text not null
+  token_digest text not null
+  created_at bigint not null
+  last_seen_at bigint not null
+  expires_at bigint not null
+  revoked_at bigint
+
+settings
+  key text not null pk
+  value text not null
+  encrypted boolean not null
+  updated_by text
+  updated_at bigint not null
+
+sources
+  id text not null pk
+  name text not null
+  url text not null
+  branch text not null
+  dir text not null
+  credential text not null
+  position integer not null
+  enabled boolean not null
+  last_fetch_at bigint
+  last_fetch_ok boolean
+  last_error text not null
+  last_commit text not null
+  last_success_at bigint
+  created_at bigint not null
+  updated_at bigint not null
+
+stages
+  id text not null pk
+  code text not null
+  name text not null
+  position integer not null
+  hidden boolean not null
+  created_at bigint not null
+  updated_at bigint not null
+
+user_resource_prefs
+  user_id text not null pk
+  resource_id text not null pk
+  enabled boolean not null
+  updated_at bigint not null
+
+users
+  id text not null pk
+  username text not null
+  display_name text not null
+  email text not null
+  email_verified boolean not null
+  status text not null
+  is_admin boolean not null
+  job_title text not null
+  stages text not null
+  locale text not null
+  created_at bigint not null
+  updated_at bigint not null
+  disabled_at bigint
