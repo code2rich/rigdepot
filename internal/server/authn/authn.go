@@ -26,6 +26,7 @@ const (
 	KindNotFound                        // not there, or not the caller's
 	KindConflict                        // the state does not allow it
 	KindLocked                          // too many wrong passwords; RetryAfter says how long
+	KindDeviceFlow                      // an answer to polling in the device code flow (RFC 8628, 3.5)
 )
 
 // Error is a failure the caller can act on. Code is the stable identifier of
@@ -35,6 +36,7 @@ type Error struct {
 	Code       string
 	Fields     []access.FieldError // for KindInvalid
 	RetryAfter time.Duration       // for KindLocked
+	Params     map[string]any      // values the message is built from, such as the new interval of ErrSlowDown
 }
 
 func (e *Error) Error() string {

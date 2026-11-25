@@ -65,13 +65,24 @@ func (a *App) openServices(ctx context.Context) error {
 		})
 	}
 	if a.hooks.names == nil {
-		a.hooks.names = accessNames{a.access}
+		a.hooks.names = accessNames{svc: a.access}
 	}
 	a.settings = settings.New(a.db, keys, log, settings.Options{Authorize: a.hooks.settingsAuthorizer(), SetupToken: a.cfg.SetupToken})
-	// Device tokens are refused until the device code flow (M1-22) sets
-	// hooks.devices.
+	// The device code flow keeps the devices and verifies their tokens;
+	// tests may put a stand-in into hooks.devices for the verification.
+	a.devices = authn.NewDevices(a.db, authn.DevicesOptions{Access: a.access, Audit: log})
+	if a.hooks.devices == nil {
+		a.hooks.devices = a.devices
+	}
+	if n, ok := a.hooks.names.(accessNames); ok && n.devices == nil {
+		n.devices = a.devices
+		a.hooks.names = n
+	}
 	a.authn = authn.New(a.db, authn.Options{Access: a.access, Audit: log, Devices: a.hooks.devices})
-	if a.authnOps, err = authnapi.New(a.authn, authnapi.Options{BaseURL: a.cfg.BaseURL, TrustedProxies: a.cfg.TrustedProxies, Log: a.log, Protected: []string{modhost.RoutePrefix}}); err != nil {
+	if a.authnOps, err = authnapi.New(a.authn, authnapi.Options{
+		BaseURL: a.cfg.BaseURL, TrustedProxies: a.cfg.TrustedProxies, Log: a.log, Devices: a.devices,
+		Protected: []string{modhost.RoutePrefix},
+	}); err != nil {
 		return err
 	}
 	if a.hooks.firstAdmin == nil {

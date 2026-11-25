@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* A form field's own problem, under the field. */
+
+.hint.err {
+  color: var(--bad);
+}
+.field[aria-invalid='true'] {
+  border-color: var(--bad);
+}

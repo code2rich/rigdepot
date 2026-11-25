@@ -19,8 +19,10 @@ import (
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/buildinfo"
 	"github.com/code2rich/rigdepot/internal/cliout"
+	"github.com/code2rich/rigdepot/internal/device"
 	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/i18n/msg"
+	"github.com/code2rich/rigdepot/internal/localconfig"
 )
 
 func init() { register("", newFeedbackCmd) }
@@ -135,7 +137,7 @@ func (a *app) runFeedback(cmd *cobra.Command, f feedbackFlags) error {
 	}
 	req.Context = &fc
 
-	client, err := a.connect(cmd.Context())
+	client, err := a.serverClient(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -144,6 +146,10 @@ func (a *app) runFeedback(cmd *cobra.Command, f feedbackFlags) error {
 		e := cliout.Fail(cliout.ExitUnreachable, "unreachable", a.p.T(msg.FeedbackUnreachable, i18n.V("detail", err.Error())))
 		e.Err = err
 		return e
+	}
+	if resp.StatusCode() == http.StatusUnauthorized {
+		// The device was signed out on the server, or the account disabled.
+		return cliout.Fail(cliout.ExitAuth, "not_signed_in", a.p.T(msg.FeedbackNotSignedIn, i18n.V("command", brand.CLI+" login")))
 	}
 	if resp.JSON201 == nil {
 		return a.feedbackRefused(resp.StatusCode(), resp.ApplicationproblemJSONDefault, path)
@@ -215,19 +221,31 @@ func (a *app) feedbackContext(f feedbackFlags, path string) (apiclient.FeedbackC
 	return c, sent, nil
 }
 
-// connect returns a client for the server this computer is signed in to, or the error for not
-// being signed in (exit code 6).
-func (a *app) connect(ctx context.Context) (apiclient.ClientWithResponsesInterface, error) {
+// serverClient returns a client for the server this computer is signed in to (rgd login), with
+// its device token, or the error for not being signed in (exit code 6).
+func (a *app) serverClient(ctx context.Context) (apiclient.ClientWithResponsesInterface, error) {
 	notSignedIn := func(err error) error {
 		e := cliout.Fail(cliout.ExitAuth, "not_signed_in", a.p.T(msg.FeedbackNotSignedIn, i18n.V("command", brand.CLI+" login")))
 		e.Err = err
 		return e
 	}
-	if a.env.Connect == nil {
-		return nil, notSignedIn(ErrNotSignedIn)
+	if a.env.Connect != nil {
+		c, err := a.env.Connect(ctx)
+		if errors.Is(err, ErrNotSignedIn) {
+			return nil, notSignedIn(err)
+		}
+		return c, err
 	}
-	c, err := a.env.Connect(ctx)
-	if errors.Is(err, ErrNotSignedIn) {
+	cfg, err := a.config()
+	if err != nil {
+		return nil, err
+	}
+	id, _, err := a.identity()
+	if err != nil {
+		return nil, err
+	}
+	c, _, err := id.Connect(apiclient.Options{CAFile: cfg.String(localconfig.KeyCAFile)})
+	if errors.Is(err, device.ErrNotLoggedIn) {
 		return nil, notSignedIn(err)
 	}
 	if err != nil {

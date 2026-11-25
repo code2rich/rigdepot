@@ -73,12 +73,12 @@ type hooks struct {
 	// answers 501.
 	firstAdmin firstAdminCreator
 	// names turns user and device ids into names for the audit log's
-	// entries. openServices sets it to read users from access; device
-	// names come with the device table (authn, M1-22). Nil: the ids stand
-	// in for the names.
+	// entries. openServices sets it to read users from access and devices
+	// from authn. Nil: the ids stand in for the names.
 	names auditNames
-	// devices verifies the command-line program's device tokens (the device
-	// code flow, M1-22). Nil: every device token is refused.
+	// devices verifies the command-line program's device tokens.
+	// openServices sets it to the device code flow (authn.Devices); tests
+	// put a stand-in here.
 	devices authn.DeviceTokens
 	// sendTestMail sends a test message with the given mail server
 	// (notify, M1-18). Nil: sendTestMail answers 501.

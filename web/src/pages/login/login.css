@@ -1,0 +1,30 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* The sign-in page: what the prototype (V.login) writes inline. The layout itself is in styles/auth.css. */
+
+.auth-l .pills {
+  gap: 8px;
+}
+.auth-l .pills .tag {
+  padding: 4px 8px;
+  border: 1px solid var(--line-2);
+}
+.auth-card .lg-err {
+  color: var(--bad);
+  min-height: 18px;
+  margin: -4px 0;
+}
+.auth-card .lg-foot {
+  text-align: center;
+  line-height: 1.7;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line-2);
+}
+/* Stage names longer than a column ("Requirements") break with a hyphen instead of running into the next. */
+.auth-l .trail div {
+  min-width: 0;
+  padding-right: 4px;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}

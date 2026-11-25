@@ -15,6 +15,9 @@ import (
 	"testing"
 
 	"github.com/code2rich/rigdepot/internal/apiclient"
+	"github.com/code2rich/rigdepot/internal/device"
+	"github.com/code2rich/rigdepot/internal/home"
+	"github.com/code2rich/rigdepot/internal/keyring"
 )
 
 // fakeServer answers POST /api/v1/feedback with status and keeps the bodies it got.
@@ -152,5 +155,30 @@ func TestFeedbackExitCodes(t *testing.T) {
 	srv.Close()
 	if r := w.runSignedIn(srv.URL, "", "feedback", "--title", "x", "-m", "y"); r.code != 7 {
 		t.Errorf("server down: %d %s", r.code, r.stderr)
+	}
+}
+
+// TestFeedbackUsesTheDeviceSignIn: without a stand-in, rgd feedback sends the device token that
+// rgd login stored, to the server that issued it.
+func TestFeedbackUsesTheDeviceSignIn(t *testing.T) {
+	fs := &fakeServer{status: http.StatusCreated}
+	srv := httptest.NewServer(fs)
+	defer srv.Close()
+	w := newWorld(t)
+	if r := w.run("feedback", "--title", "x", "-m", "y"); r.code != 6 || !strings.Contains(r.stderr, "login") {
+		t.Fatalf("before signing in: %d %s", r.code, r.stderr)
+	}
+	server, _ := apiclient.NormalServer(srv.URL)
+	creds, _ := json.Marshal(device.Credentials{Server: server, DeviceID: "0193a4b2-6c1e-7a00-8000-000000000201",
+		Token: "<placeholder-device-token>", UserID: "0193a4b2-6c1e-7a00-8000-000000000011", Username: "jdoe"})
+	data, err := home.At(w.dataDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := keyring.Open(data, keyring.Options{}).Set(keyring.DeviceToken, creds); err != nil {
+		t.Fatal(err)
+	}
+	if r := w.run("feedback", "--title", "x", "-m", "y"); r.code != 0 || len(fs.bodies) != 1 {
+		t.Errorf("signed in: %d %s %s", r.code, r.stdout, r.stderr)
 	}
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Rigdepot Authors
 
-// Package binary builds the real command-line program for the tests under test/ and makes the
+// Package binary builds the real programs for the tests under test/ and makes the
 // local resource repositories they sync from. Those tests drive the program the way a person
 // does: through its arguments, its environment and its exit code, never by calling into it.
 package binary
@@ -67,41 +67,60 @@ func Root(t testing.TB) string {
 	}
 }
 
+// builds are the programs built so far in this test binary, by name.
 var (
-	buildOnce sync.Once
-	built     string
-	buildErr  error
+	buildMu sync.Mutex
+	builds  = map[string]*build{}
 )
+
+type build struct {
+	once sync.Once
+	path string
+	err  error
+}
 
 // Build compiles ./cmd/rgd once per test binary, offline, and returns the path of the program.
 // It lives in the isolated environment's temporary directory and goes away with it.
-func Build(t testing.TB) string {
+func Build(t testing.TB) string { return BuildProgram(t, brand.CLI) }
+
+// BuildServer compiles ./cmd/rgd-server the same way, for the tests that need a real server.
+func BuildServer(t testing.TB) string { return BuildProgram(t, brand.Server) }
+
+// BuildProgram compiles ./cmd/<name> once per test binary, offline, and returns its path.
+func BuildProgram(t testing.TB, name string) string {
 	t.Helper()
 	env := testenv.Current(t)
 	root := Root(t)
-	buildOnce.Do(func() {
+	buildMu.Lock()
+	b, ok := builds[name]
+	if !ok {
+		b = &build{}
+		builds[name] = b
+	}
+	buildMu.Unlock()
+	b.once.Do(func() {
 		dir := filepath.Join(filepath.Dir(env.Home), "build")
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			buildErr = err
+			b.err = err
 			return
 		}
-		out := filepath.Join(dir, Exe(brand.CLI))
-		cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", out, "./cmd/"+brand.CLI)
+		out := filepath.Join(dir, Exe(name))
+		cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", out, "./cmd/"+name)
 		cmd.Dir = root
 		cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOPROXY=off", "GOFLAGS=-mod=readonly", "GOWORK=off")
 		for name, v := range recorded {
 			cmd.Env = append(cmd.Env, name+"="+v)
 		}
-		if b, err := cmd.CombinedOutput(); err != nil {
-			buildErr = fmt.Errorf("go build ./cmd/%s: %w\n%s", brand.CLI, err, b)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			b.err = fmt.Errorf("go build ./cmd/%s: %w\n%s", name, err, out)
 			return
 		}
-		built = out
+		b.path = out
 	})
-	if buildErr != nil {
-		t.Fatal(buildErr)
+	if b.err != nil {
+		t.Fatal(b.err)
 	}
-	return built
+	return b.path
 }
 
 // Exe adds the executable suffix of the operating system to a program's name.

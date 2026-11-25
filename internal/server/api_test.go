@@ -111,6 +111,9 @@ type fixtureOptions struct {
 	version  string
 	// setup runs on the app before its services are opened.
 	setup func(*App)
+	// realDevices leaves device tokens to the device code flow instead of
+	// the stand-in with the administrator's one token.
+	realDevices bool
 }
 
 func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
@@ -154,7 +157,9 @@ func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
 		app.hooks.firstAdmin = fakeFirstAdmin{}
 	}
 	devices := testDevices{token: authn.NewToken(authn.DeviceTokenPrefix)}
-	app.hooks.devices = devices
+	if !o.realDevices {
+		app.hooks.devices = devices
+	}
 	app.mailChannels, app.modules, app.adapters, app.version = o.channels, o.modules, o.adapters, o.version
 	cfg.ModulesDisabled = o.locked
 	if o.background {

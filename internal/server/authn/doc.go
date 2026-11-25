@@ -11,7 +11,9 @@
 //   - a browser holds a session: 256 random bits in a cookie, ending after
 //     SessionIdle without use and SessionMax after it began;
 //   - the command-line program holds a device token (DeviceTokenPrefix),
-//     verified by DeviceTokens (the device code flow, task M1-22);
+//     which it gets through the device code flow and Devices verifies
+//     (device.go): bound to one computer and its X25519 public key, ended
+//     by signing the computer out or 90 days without a request;
 //   - a program holds an access token (AccessTokenPrefix) with a scope and
 //     an expiry.
 //
