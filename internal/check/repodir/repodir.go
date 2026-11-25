@@ -2,8 +2,13 @@
 // Copyright 2026 The Rigdepot Authors
 
 // Package repodir reads a resource repository from a directory into the engine's in-memory
-// resources. It exists for tests: the rule fixtures, the example repositories and the engine's
-// own tests are directories laid out as a resource repository.
+// resources. It exists for the samples of the check rules (ext/check/checktest), which are
+// directories laid out as small resource repositories. The example repositories and rgd check
+// go through repoformat.
+//
+// checktest cannot use repoformat instead: the samples have no rigdepot.yaml or meta.yaml, the
+// suite cannot reach the built-in kinds (rule R1), and the structure rule's samples that must be
+// hit are exactly what repoformat refuses before any rule sees them.
 //
 // It is a stand-in for internal/repoformat and deliberately does less: no schema validation, no
 // path safety checks, no digest. It also reads what repoformat would refuse, such as a skill
