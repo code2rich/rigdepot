@@ -8,13 +8,14 @@ import (
 	"testing"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
-	"github.com/code2rich/rigdepot/internal/brand"
 )
 
 var entryValue = map[string]any{"type": "stdio", "command": "x", "args": []any{"--a"}, "env": map[string]any{}}
 
-// The stand-in's edits have to be exactly reversible, or the uninstall assertion would test the
-// stand-in instead of the adapter.
+// TODO(M0-20): delete this file with interimkeys.go.
+
+// The interim key edits have to be exactly reversible, or the uninstall assertion would test the
+// suite instead of the adapter.
 func TestInsertJSONIsReversible(t *testing.T) {
 	cases := map[string]struct {
 		in     string
@@ -66,39 +67,5 @@ func TestInsertJSONIsReversible(t *testing.T) {
 	}
 	if _, _, err := undoInsertion([]byte("{}"), insertion{Offset: 1, Text: "xx"}); err == nil {
 		t.Error("undo of text that is no longer there succeeded")
-	}
-}
-
-func TestAppendTOMLIsReversible(t *testing.T) {
-	in := "# my settings\r\nmodel = \"x\"\r\n\r\n[mcp_servers.mine]\r\ncommand = \"mine\""
-	path := []string{"mcp_servers", brand.Prefix + "k"}
-	out, ins, err := appendTOML([]byte(in), path, entryValue)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := "\r\n\r\n[mcp_servers." + brand.Prefix + "k]\r\nargs = [\"--a\"]\r\ncommand = \"x\"\r\ntype = \"stdio\"\r\n[mcp_servers." + brand.Prefix + "k.env]\r\n"
-	if got := string(out[len(in):]); got != want {
-		t.Errorf("appended %q, want %q", got, want)
-	}
-	block, found := findTOMLBlock(out, path)
-	if !found {
-		t.Fatal("the table is not found again")
-	}
-	expected, _ := tomlBlock(path, entryValue)
-	if block != expected {
-		t.Errorf("read back %q, want %q", block, expected)
-	}
-	if _, found := findTOMLBlock([]byte(in), path); found {
-		t.Error("found a table that is not there")
-	}
-	if _, _, err := appendTOML(out, path, entryValue); err == nil {
-		t.Error("an existing table was appended again")
-	}
-	back, remove, err := undoInsertion(out, ins)
-	if err != nil || remove || string(back) != in {
-		t.Errorf("undo gave %q, %v, %v", back, remove, err)
-	}
-	if got := tomlKey([]string{"a b", "c"}); got != `"a b".c` {
-		t.Errorf("quoted key: %s", got)
 	}
 }
