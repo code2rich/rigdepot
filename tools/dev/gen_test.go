@@ -74,18 +74,18 @@ func TestBrandFileProblemsAreErrors(t *testing.T) {
 	}
 	for name, content := range tests {
 		t.Run(name, func(t *testing.T) {
-			if _, err := generate(writeBrand(t, content), nil); err == nil {
+			if _, _, err := generate(writeBrand(t, content), nil); err == nil {
 				t.Error("generate succeeded")
 			}
 		})
 	}
-	if _, err := generate(t.TempDir(), nil); err == nil {
+	if _, _, err := generate(t.TempDir(), nil); err == nil {
 		t.Error("generate succeeded without a brand file")
 	}
 }
 
 func TestGenWithoutTheContractGeneratesOnlyTheBrand(t *testing.T) {
-	files, err := generate(writeBrand(t, sampleBrand), nil)
+	files, _, err := generate(writeBrand(t, sampleBrand), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestGenRefusesOutputsWithoutTheirContract(t *testing.T) {
 	if err := os.WriteFile(out, []byte("package apiclient\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := generate(root, nil)
+	_, _, err := generate(root, nil)
 	if err == nil || !strings.Contains(err.Error(), apiSpec) {
 		t.Errorf("generate with an orphaned %s: err = %v, want it to name %s", apiTargets[1].output, err, apiSpec)
 	}

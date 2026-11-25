@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="__LANG__" data-default-locale="__DEFAULT_LOCALE__">
+  <head>
+    <meta charset="utf-8" />
+    <!-- The server fills in the base path, the language and the nonce of the content security policy for each request (internal/server/webui). -->
+    <base href="__BASE_HREF__" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="referrer" content="same-origin" />
+    <link rel="icon" href="brand/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="brand/apple-touch-icon.png" />
+    <title></title>
+    <!-- The theme the person picked, applied before the first paint. -->
+    <script nonce="__CSP_NONCE__">
+      try {
+        var t = localStorage.getItem('theme')
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t
+      } catch (e) {}
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>JavaScript is required. 需要启用 JavaScript。</noscript>
+  </body>
+</html>

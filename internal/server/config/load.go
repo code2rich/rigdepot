@@ -56,6 +56,7 @@ var settings = []Setting{
 	{Key: "cli_download_base", Env: EnvName("CLI_DOWNLOAD_BASE"), Flag: "cli-download-base", InFile: true, Help: "where install scripts download from when the directory above is empty"},
 	{Key: "backup.dir", Env: EnvName("BACKUP_DIR"), Flag: "backup-dir", InFile: true, Help: "directory for daily backups (default off)"},
 	{Key: "backup.keep", Env: EnvName("BACKUP_KEEP"), Flag: "backup-keep", InFile: true, Help: "how many backups to keep (default 14)"},
+	{Key: "web_dev_proxy", Env: EnvName("WEB_DEV_PROXY"), Flag: "web-dev-proxy", Help: "development only: serve the console from this local development server (such as http://127.0.0.1:5173) instead of the embedded files"},
 	{Key: "modules_disabled", Env: EnvName("MODULES_DISABLED"), Flag: "modules-disabled", InFile: true, Help: "modules never to load, comma-separated"},
 }
 

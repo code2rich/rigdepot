@@ -55,6 +55,27 @@ func Digest(fsys fs.FS, exclude ...string) (resource.Digest, error) {
 	if err != nil {
 		return "", err
 	}
+	return listDigest(paths, func(p string) (string, error) { return fileSum(fsys, p) })
+}
+
+// DigestContents returns the same digest as Digest for a set of files held in memory, keyed by
+// their slash-separated paths. MarkerFile is left out, as in Digest.
+func DigestContents(files map[string][]byte) (resource.Digest, error) {
+	paths := make([]string, 0, len(files))
+	for p := range files {
+		if p != MarkerFile {
+			paths = append(paths, p)
+		}
+	}
+	return listDigest(paths, func(p string) (string, error) {
+		sum := sha256.Sum256(files[p])
+		return hex.EncodeToString(sum[:]), nil
+	})
+}
+
+// listDigest is the digest of a listing: one "<sha256 of the file>  <path>" line per file, in
+// the order of the whole paths.
+func listDigest(paths []string, sumOf func(string) (string, error)) (resource.Digest, error) {
 	if len(paths) == 0 {
 		return "", ErrEmpty
 	}
@@ -62,7 +83,7 @@ func Digest(fsys fs.FS, exclude ...string) (resource.Digest, error) {
 	slices.Sort(paths)
 	list := sha256.New()
 	for _, p := range paths {
-		sum, err := fileSum(fsys, p)
+		sum, err := sumOf(p)
 		if err != nil {
 			return "", err
 		}

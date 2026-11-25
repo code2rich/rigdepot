@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="__LANG__" data-default-locale="__DEFAULT_LOCALE__">
+  <head>
+    <meta charset="utf-8" />
+    <base href="__BASE_HREF__" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Web console not built</title>
+    <style nonce="__CSP_NONCE__">
+      :root {
+        --bg: #f6f4ee;
+        --panel: #fff;
+        --ink: #14161a;
+        --ink-2: #4a4f59;
+        --line: rgba(20, 22, 26, 0.19);
+        --accent: #ef4a12;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0e1014;
+          --panel: #14171c;
+          --ink: #f2f0ea;
+          --ink-2: #b4b7be;
+          --line: rgba(242, 240, 234, 0.16);
+          color-scheme: dark;
+        }
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        box-sizing: border-box;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px/1.65 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          'PingFang SC',
+          'Microsoft YaHei',
+          sans-serif;
+      }
+      main {
+        width: min(560px, 100%);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-top: 2px solid var(--accent);
+        border-radius: 4px;
+        padding: 22px 24px;
+      }
+      h1 {
+        font-size: 17px;
+        margin: 0 0 8px;
+      }
+      p {
+        margin: 0 0 10px;
+        color: var(--ink-2);
+      }
+      code {
+        font:
+          12.5px ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Consolas,
+          monospace;
+        color: var(--ink);
+      }
+      pre {
+        margin: 0 0 14px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        overflow-x: auto;
+      }
+      hr {
+        border: 0;
+        border-top: 1px solid var(--line);
+        margin: 18px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>The web console is not built into this program</h1>
+      <p>
+        This server was built without the console's files. The API and the command line work as usual. To
+        include the console, build it and then the server with the <code>webdist</code> tag:
+      </p>
+      <pre><code>go run ./tools/dev web-deps
+go run ./tools/dev web
+go build -tags webdist ./cmd/...</code></pre>
+      <p>Building the console needs Node and pnpm. Released programs always include it.</p>
+      <hr />
+      <h1 lang="zh-CN">这个程序里没有构建控制台</h1>
+      <p lang="zh-CN">
+        这个服务端构建时没有带上控制台的文件。接口和命令行照常可用。要带上控制台：先构建它，再用
+        <code>webdist</code> 标签构建服务端（命令同上）。构建控制台需要 Node 和 pnpm；正式发布的程序都带着它。
+      </p>
+    </main>
+  </body>
+</html>

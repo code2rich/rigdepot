@@ -58,6 +58,10 @@ type Config struct {
 	BackupDir          string // "" when the built-in backup is off
 	BackupKeep         int
 	ModulesDisabled    []string
+	// WebDevProxy is the console's development server (Vite) on this machine:
+	// when set, the console is not served from the files built into the
+	// program but proxied from there. nil in production.
+	WebDevProxy *url.URL
 
 	// Origins tells, for each setting (by its file key), where its value came
 	// from. "config check" prints it.
@@ -347,6 +351,19 @@ func (c *Config) apply(raw map[string]rawValue) error {
 				continue
 			}
 			c.ModulesDisabled = append(c.ModulesDisabled, id)
+		}
+	}
+
+	if v, ok := get("web_dev_proxy"); ok {
+		u, err := url.Parse(v)
+		switch {
+		case err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || (u.Path != "" && u.Path != "/"):
+			fail("web_dev_proxy", "want the address of the development server, such as http://127.0.0.1:5173")
+		case !IsLoopbackHost(u.Hostname()):
+			fail("web_dev_proxy", "the development server must be on this machine (localhost or a loopback address)")
+		default:
+			u.Path = ""
+			c.WebDevProxy = u
 		}
 	}
 

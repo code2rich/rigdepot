@@ -42,8 +42,21 @@ var requiredLanguages = []string{"en", "zh-CN"}
 const metaFile = "meta.json"
 
 // webDomains are the files only the web console uses. Their keys are used
-// from TypeScript, which the usage rule cannot see yet.
+// from TypeScript (web/src), never from Go.
 var webDomains = []string{"web"}
+
+// consoleDomains are the files the web console loads: its own and the two
+// it shares with the programs. Their keys make up the MessageKey type of
+// web/src/i18n/keys.gen.ts.
+var consoleDomains = []string{"catalog", "check", "web"}
+
+// webKeysOutput is the TypeScript type of every key the console can use, so
+// that a misspelt key fails the type check.
+const webKeysOutput = "web/src/i18n/keys.gen.ts"
+
+// webSourceDir is where the console's TypeScript lives; the usage rule reads
+// it.
+const webSourceDir = "web/src"
 
 // msgPackage is where the constants for the keys are generated.
 const msgPackage = "internal/i18n/msg"
@@ -319,8 +332,51 @@ func generateMessages(root string) ([]generated, error) {
 		return nil, err
 	}
 	out = append(out, generated{path: msgPackage + "/keys_gen.go", data: src})
+	if hasWebConsole(root) {
+		out = append(out, generated{path: webKeysOutput, data: l.keysTS()})
+	}
 	sort.Slice(out, func(i, j int) bool { return out[i].path < out[j].path })
 	return out, nil
+}
+
+// consoleKeys returns the base keys of the source language's console
+// domains, sorted.
+func (l *locales) consoleKeys() []messageKey {
+	seen := map[string]bool{}
+	var keys []messageKey
+	for domain, mf := range l.files[sourceLanguage] {
+		if !slices.Contains(consoleDomains, domain) {
+			continue
+		}
+		for _, k := range mf.keys {
+			base, _ := baseKey(k)
+			if !seen[base] {
+				seen[base] = true
+				keys = append(keys, messageKey{key: base, domain: domain})
+			}
+		}
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i].key < keys[j].key })
+	return keys
+}
+
+// keysTS is web/src/i18n/keys.gen.ts.
+func (l *locales) keysTS() []byte {
+	var b bytes.Buffer
+	b.WriteString(webHeader("//", "", localesDir+"/"+sourceLanguage))
+	b.WriteString("\n/**\n * Every key the console can pass to t(): the keys of " + localesDir + "/" + sourceLanguage + "/{" +
+		strings.Join(consoleDomains, ",") + "}.json,\n * with the plural forms (_one, _other …) folded into one key.\n */\nexport type MessageKey =")
+	keys := l.consoleKeys()
+	if len(keys) == 0 {
+		b.WriteString(" never\n")
+		return b.Bytes()
+	}
+	for _, k := range keys {
+		b.WriteString("\n  | ")
+		b.Write(jsonString(k.key))
+	}
+	b.WriteString("\n")
+	return b.Bytes()
 }
 
 func keysGo(keys []messageKey) ([]byte, error) {
@@ -465,10 +521,25 @@ func checkMessages(root, module string, goFiles []goFile) (string, error) {
 	if err != nil {
 		add("%v", err)
 	}
+	tsUsed, err := tsStringLiterals(root)
+	if err != nil {
+		return "", err
+	}
 	for _, k := range keys {
-		if !used[k.key] {
+		if !used[k.key] && !(slices.Contains(consoleDomains, k.domain) && tsUsed[k.key]) {
 			add("%s/%s/%s.json: key %q (constant msg.%s) is not used by any code; remove it from every language",
 				localesDir, sourceLanguage, k.domain, k.key, k.constName)
+		}
+	}
+	webKeyCount := 0
+	for _, k := range l.consoleKeys() {
+		if goDomain(k.domain) {
+			continue
+		}
+		webKeyCount++
+		if !tsUsed[k.key] {
+			add("%s/%s/%s.json: key %q is not used anywhere in %s (keys are written out in full there); remove it from every language",
+				localesDir, sourceLanguage, k.domain, k.key, webSourceDir)
 		}
 	}
 	problems = append(problems, unknown...)
@@ -492,10 +563,8 @@ func checkMessages(root, module string, goFiles []goFile) (string, error) {
 	}
 	detail := fmt.Sprintf("%s complete (%d keys), placeholders match, every key used; other languages: %s",
 		strings.Join(requiredLanguages, ", "), len(keys), other)
-	for _, d := range webDomains {
-		if src[d] != nil {
-			detail += "; " + d + ".json usage not checked (TypeScript)"
-		}
+	if webKeyCount > 0 {
+		detail += fmt.Sprintf("; %d console keys, each used in %s", webKeyCount, webSourceDir)
 	}
 	return detail, nil
 }
@@ -618,6 +687,143 @@ func checkRuleOf(rel string) string {
 		return ""
 	}
 	return id
+}
+
+// tsStringLiterals returns the contents of every string literal in the
+// console's TypeScript sources: that is how the usage rule sees which
+// message keys the console uses, so keys are written out in full rather
+// than assembled. Tests and generated files do not count.
+func tsStringLiterals(root string) (map[string]bool, error) {
+	out := map[string]bool{}
+	dir := filepath.Join(root, filepath.FromSlash(webSourceDir))
+	err := filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if errors.Is(err, os.ErrNotExist) && p == dir {
+			return filepath.SkipAll
+		}
+		if err != nil {
+			return err
+		}
+		name := d.Name()
+		if d.IsDir() {
+			if slices.Contains(skippedDirs, name) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		ext := filepath.Ext(name)
+		if ext != ".ts" && ext != ".tsx" {
+			return nil
+		}
+		stem := strings.TrimSuffix(name, ext)
+		if strings.HasSuffix(stem, ".gen") || strings.HasSuffix(stem, ".test") || strings.HasSuffix(stem, ".d") {
+			return nil
+		}
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		for _, lit := range scanTSStrings(string(data)) {
+			out[lit] = true
+		}
+		return nil
+	})
+	return out, err
+}
+
+// scanTSStrings returns the string literals of TypeScript source: quoted
+// strings and template literals without substitutions. It skips comments
+// and follows ${…} inside templates. It is a scanner, not a parser: an
+// apostrophe in JSX text (<p>don't</p>) reads as a quote up to the end of
+// the line, so a key on that line may be missed and reported as unused,
+// never the other way round. Console text comes from t(), so JSX text is
+// rare.
+func scanTSStrings(src string) []string {
+	var out []string
+	var scan func(i int, closeBrace bool) int
+	// quoted reads a '…' or "…" string starting at src[i] and returns the
+	// index after it.
+	quoted := func(i int) int {
+		q := src[i]
+		var b strings.Builder
+		for j := i + 1; j < len(src); j++ {
+			switch c := src[j]; {
+			case c == '\\' && j+1 < len(src):
+				b.WriteByte(src[j+1])
+				j++
+			case c == q:
+				out = append(out, b.String())
+				return j + 1
+			case c == '\n':
+				return j
+			default:
+				b.WriteByte(c)
+			}
+		}
+		return len(src)
+	}
+	// template reads a `…` literal starting at src[i].
+	template := func(i int) int {
+		var b strings.Builder
+		plain := true
+		for j := i + 1; j < len(src); j++ {
+			switch c := src[j]; {
+			case c == '\\' && j+1 < len(src):
+				b.WriteByte(src[j+1])
+				j++
+			case c == '`':
+				if plain {
+					out = append(out, b.String())
+				}
+				return j + 1
+			case c == '$' && j+1 < len(src) && src[j+1] == '{':
+				plain = false
+				j = scan(j+2, true) - 1
+			default:
+				b.WriteByte(c)
+			}
+		}
+		return len(src)
+	}
+	// scan reads code from i; with closeBrace it stops after the } that
+	// closes a ${ substitution.
+	scan = func(i int, closeBrace bool) int {
+		depth := 0
+		for i < len(src) {
+			c := src[i]
+			switch {
+			case strings.HasPrefix(src[i:], "//"):
+				if n := strings.IndexByte(src[i:], '\n'); n >= 0 {
+					i += n
+				} else {
+					i = len(src)
+				}
+			case strings.HasPrefix(src[i:], "/*"):
+				if n := strings.Index(src[i+2:], "*/"); n >= 0 {
+					i += n + 4
+				} else {
+					i = len(src)
+				}
+			case c == '\'' || c == '"':
+				i = quoted(i)
+			case c == '`':
+				i = template(i)
+			case c == '{':
+				depth++
+				i++
+			case c == '}':
+				if closeBrace && depth == 0 {
+					return i + 1
+				}
+				depth--
+				i++
+			default:
+				i++
+			}
+		}
+		return i
+	}
+	scan(0, false)
+	return out
 }
 
 // moduleOf reads the module path from go.mod.

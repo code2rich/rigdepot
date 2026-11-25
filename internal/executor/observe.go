@@ -13,7 +13,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"testing/fstest"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/internal/bundle"
@@ -182,11 +181,18 @@ var emptyDigest = func() string {
 // digest package repoformat records for a resource, so that the digest of a skill in the
 // repository and the digest of the directory written from it are the same value.
 func filesDigest(files []adapter.File) string {
-	fsys := make(fstest.MapFS, len(files))
+	contents := make(map[string][]byte, len(files))
 	for _, f := range files {
-		fsys[f.Path] = &fstest.MapFile{Data: f.Data}
+		contents[f.Path] = f.Data
 	}
-	return digestOf(fsys)
+	d, err := bundle.DigestContents(contents)
+	if errors.Is(err, bundle.ErrEmpty) {
+		return emptyDigest
+	}
+	if err != nil {
+		return "other:" + err.Error()
+	}
+	return string(d)
 }
 
 func digestOf(fsys fs.FS) string {

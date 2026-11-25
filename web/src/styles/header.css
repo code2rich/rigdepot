@@ -1,0 +1,17 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* Page header: the page code eyebrow, title and lead. From the prototype (页头). */
+
+.ph { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; margin-bottom: 22px }
+.ph > div:first-child { min-width: 0; flex: 1 1 420px }
+.eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 12px }
+.eyebrow b { font-family: var(--display); font-weight: 800; font-size: 15px; line-height: 1; letter-spacing: .06em; color: var(--ink) } .eyebrow b i { font-style: normal; color: var(--ink-3); margin: 0 1px }
+.eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line) }
+.ph h1 { font-size: var(--f-xl); font-weight: 600; letter-spacing: -.01em; line-height: 1.25 }
+.ph p.lead { margin-top: 6px; font-size: 13px; color: var(--ink-2); max-width: 760px; line-height: 1.65 }
+.ph .acts { display: flex; flex-wrap: wrap; gap: 8px }
+
+@media (max-width: 760px) {
+  .ph { margin-bottom: 18px } .ph h1 { font-size: 20px }
+}
