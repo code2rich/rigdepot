@@ -55,7 +55,7 @@
 // The entry records how to take the key out again byte for byte (manifest.KeyEdit). Revert does
 // that while those bytes are still in place, and otherwise removes the key by its meaning, with
 // the parents the edit created if they are empty; a file the edit created goes when nothing else
-// is in it. Its digest is KeyDigest of the value.
+// is in it. Its digest is what Expect gives for the operation.
 //
 // # Not yet
 //

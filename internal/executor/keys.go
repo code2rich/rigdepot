@@ -47,16 +47,14 @@ const stepFileChecked = "file-checked"
 // would turn a link the person made into a plain file, so it is left alone.
 var ErrNotRegularFile = errors.New("the configuration file is not a regular file")
 
-// KeyDigest returns the digest the manifest records for the value of a key: the SHA-256 of the
-// value as JSON (encoding/json: object keys sorted, no spaces), normalised the way configedit
-// reads values back, so that the value an operation sets and the value read back from the file
-// give the same digest.
-func KeyDigest(v any) string {
-	data, err := json.Marshal(configedit.Normalize(v))
+// valueDigest is keyDigest for a value read from a file, which always encodes; should one not,
+// it gets a digest that equals nothing that was written.
+func valueDigest(v any) string {
+	d, err := keyDigest(v)
 	if err != nil {
-		return "other:unencodable " + err.Error() // never equal to a digest that was written
+		return "other:unencodable " + err.Error()
 	}
-	return fileDigest(data)
+	return d
 }
 
 // keyOwned reports whether the last element of a key is ours: it carries the prefix, or it is
@@ -133,7 +131,7 @@ func readConfig(t target, format adapter.Format, key []string) configFile {
 	case !ok:
 		cf.key = Observed{State: Absent}
 	default:
-		cf.key = Observed{State: Present, Digest: KeyDigest(v)}
+		cf.key = Observed{State: Present, Digest: valueDigest(v)}
 	}
 	return cf
 }
@@ -180,7 +178,11 @@ func (e *Executor) applyKey(tool Tool, op adapter.SetKey, pre Observed, opt Opti
 		return Applied{}, fmt.Errorf("%s %q: %w", t.display, op.Path, err)
 	}
 
-	entry := e.newEntry(tool, op.Resource, manifest.OpKey, t, KeyDigest(op.Value))
+	digest, err := keyDigest(op.Value)
+	if err != nil {
+		return Applied{}, &DefectError{Tool: tool.ID, Target: op.File, Problem: err.Error()}
+	}
+	entry := e.newEntry(tool, op.Resource, manifest.OpKey, t, digest)
 	entry.ID = manifest.EntryID(tool.ID, manifest.OpKey, t.display, op.Path)
 	entry.Format = string(op.Format)
 	entry.Key = slices.Clone(op.Path)

@@ -215,7 +215,8 @@ func toExec(o observed) coreexec.Observed {
 
 // Expect computes the digest the executor records for op: the content digest of a tree
 // (package bundle, which leaves the marker file out), the sha256 of a file, and for a key the
-// digest of its value (executor.KeyDigest), which is what reading the key back gives.
+// digest of its value; for a key it asks executor.Expect, which is what reading the key back
+// gives.
 func (c *coreExecutor) Expect(op adapter.Op) (string, error) {
 	switch o := op.(type) {
 	case adapter.WriteTree:
@@ -229,7 +230,7 @@ func (c *coreExecutor) Expect(op adapter.Op) (string, error) {
 		sum := sha256.Sum256(o.Data)
 		return "sha256:" + hex.EncodeToString(sum[:]), nil
 	case adapter.SetKey:
-		return coreexec.KeyDigest(o.Value), nil
+		return coreexec.Expect(o)
 	}
 	return "", fmt.Errorf("the suite has no digest for %T", op)
 }

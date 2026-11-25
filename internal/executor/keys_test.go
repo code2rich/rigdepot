@@ -97,7 +97,7 @@ func TestSetKeyWritesTheKeyAndRecordsHowToTakeItOut(t *testing.T) {
 	res := e.applyKey(t, claudeKeys, op)
 
 	got := e.read(t, ".claude.json")
-	if v, ok, err := configedit.Get(adapter.JSON, []byte(got), op.Path); err != nil || !ok || KeyDigest(v) != KeyDigest(op.Value) {
+	if v, ok, err := configedit.Get(adapter.JSON, []byte(got), op.Path); err != nil || !ok || keyDigestOf(t, v) != keyDigestOf(t, op.Value) {
 		t.Fatalf("the key does not read back: %v %v\n%s", ok, err, got)
 	}
 	if !strings.HasPrefix(got, claudeJSON[:strings.Index(claudeJSON, `      "url"`)]) {
@@ -106,7 +106,7 @@ func TestSetKeyWritesTheKeyAndRecordsHowToTakeItOut(t *testing.T) {
 	en := res.Entry
 	want := manifest.Entry{
 		ID: manifest.EntryID("claude-code", manifest.OpKey, "~/.claude.json", op.Path), Tool: "claude-code", Resource: "jira",
-		Op: manifest.OpKey, Path: "~/.claude.json", Format: "json", Key: op.Path, Digest: KeyDigest(op.Value),
+		Op: manifest.OpKey, Path: "~/.claude.json", Format: "json", Key: op.Path, Digest: keyDigestOf(t, op.Value),
 	}
 	if en.ID != want.ID || en.Path != want.Path || en.Format != want.Format || strings.Join(en.Key, "/") != strings.Join(want.Key, "/") || en.Digest != want.Digest || len(en.Created) != 0 {
 		t.Errorf("entry %+v\nwant  %+v", en, want)
@@ -538,7 +538,7 @@ func TestAPreviewWithoutALocalDataDirectoryMakesNoBackup(t *testing.T) {
 	}
 }
 
-func TestKeyDigestIsTheSameForTheValueAndWhatReadsBack(t *testing.T) {
+func TestExpectOfAKeyIsWhatReadsBack(t *testing.T) {
 	value := map[string]any{"n": 1, "big": float64(1 << 60), "f": 0.5, "s": "<a&b>", "l": []any{true, int64(-3)}, "m": map[string]any{}}
 	for _, format := range []adapter.Format{adapter.JSON, adapter.JSONC, adapter.TOML} {
 		out, _, err := configedit.Set(format, nil, []string{"x", ourKey}, value)
@@ -549,12 +549,12 @@ func TestKeyDigestIsTheSameForTheValueAndWhatReadsBack(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatal(err)
 		}
-		if KeyDigest(back) != KeyDigest(value) {
+		if keyDigestOf(t, back) != keyDigestOf(t, value) {
 			t.Errorf("%s: the digest of the value read back differs", format)
 		}
 	}
-	if !strings.HasPrefix(KeyDigest("x"), "sha256:") {
-		t.Errorf("KeyDigest = %q", KeyDigest("x"))
+	if !strings.HasPrefix(keyDigestOf(t, "x"), "sha256:") {
+		t.Errorf("keyDigest = %q", keyDigestOf(t, "x"))
 	}
 }
 
@@ -564,8 +564,8 @@ func TestAnInterruptedKeyEditIsSettled(t *testing.T) {
 	// A write whose intent was logged and whose temporary file was left behind by a crash.
 	in, err := e.locked.Intend(manifest.Intent{Kind: manifest.Write, Entry: manifest.Entry{
 		ID: manifest.EntryID("claude-code", manifest.OpKey, "~/.claude.json", op.Path), Tool: "claude-code", Resource: "jira",
-		Op: manifest.OpKey, Path: "~/.claude.json", Format: "json", Key: op.Path, Digest: KeyDigest(op.Value),
-	}, After: KeyDigest(op.Value)})
+		Op: manifest.OpKey, Path: "~/.claude.json", Format: "json", Key: op.Path, Digest: keyDigestOf(t, op.Value),
+	}, After: keyDigestOf(t, op.Value)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -596,4 +596,14 @@ func TestByteExactUndoNeedsTheBytesWhereTheyWere(t *testing.T) {
 	if !bytes.Contains([]byte(got), []byte(`"theme": "dark"`)) || strings.Contains(got, "zzz") || strings.Contains(got, ourKey) {
 		t.Errorf("after undoing with a record that does not fit:\n%s", got)
 	}
+}
+
+// keyDigestOf is Expect for a SetKey of v.
+func keyDigestOf(t *testing.T, v any) string {
+	t.Helper()
+	d, err := Expect(adapter.SetKey{Value: v})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return d
 }
