@@ -721,10 +721,18 @@ const (
 	SyncExitCodeNeedsPlan = "sync.exit_code_needs_plan"
 	// SyncGroupDeferred (cli.json): Waiting for your consent: not changed
 	SyncGroupDeferred = "sync.group.deferred"
+	// SyncGroupKnowledge (cli.json): Knowledge bases (fetched with your own git, straight from their reposi…
+	SyncGroupKnowledge = "sync.group.knowledge"
 	// SyncGroupRetry (cli.json): Changed by another program while syncing: not written
 	SyncGroupRetry = "sync.group.retry"
 	// SyncKept (cli.json): Your changed versions are kept in {{path}}
 	SyncKept = "sync.kept"
+	// SyncKnowledgeFailed (cli.json): could not be fetched, the copy from before stays: {{detail}}
+	SyncKnowledgeFailed = "sync.knowledge.failed"
+	// SyncKnowledgeFetched (cli.json): {{count}} files · commit {{commit}}
+	SyncKnowledgeFetched = "sync.knowledge.fetched"
+	// SyncKnowledgeFrom (cli.json): from {{repo}}
+	SyncKnowledgeFrom = "sync.knowledge.from"
 	// SyncNothing (cli.json): Nothing to change: everything is as wanted
 	SyncNothing = "sync.nothing"
 	// SyncOverwriteUnknown (cli.json): --overwrite {{resource}}: the repository has no such resource.

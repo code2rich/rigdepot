@@ -22,6 +22,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/cli"
 	"github.com/code2rich/rigdepot/internal/cliout"
+	"github.com/code2rich/rigdepot/internal/sync"
 	"github.com/code2rich/rigdepot/internal/testenv"
 )
 
@@ -95,6 +96,8 @@ type world struct {
 	lang     string
 	// realTools runs with the tool adapters the program links instead of the two made-up ones.
 	realTools bool
+	// knowledge fetches the knowledge bases; nil is the program's own (the person's git).
+	knowledge sync.Fetcher
 }
 
 func newWorld(t *testing.T) *world {
@@ -164,6 +167,7 @@ func (w *world) run(args ...string) result {
 		IsTerminal:      func(any) bool { return w.terminal },
 		GOOS:            runtime.GOOS,
 		Adapters:        adapters,
+		Knowledge:       w.knowledge,
 	})
 	return result{code, stdout.String(), stderr.String()}
 }
