@@ -173,3 +173,15 @@ func memberships(ms []access.Membership) []httpapi.Membership {
 	}
 	return out
 }
+
+// ProblemOf turns an error of package access into the problem document this
+// package answers it with, for the operations of other packages that call
+// access (the sign-in operations of package authnapi). It returns false for
+// errors that are faults rather than answers.
+func ProblemOf(ctx context.Context, err error) (httpapi.Problem, bool) {
+	return problem(ctx, err)
+}
+
+// MeOf returns an account as the contract's Me shows it, for the operations
+// that sign someone in and answer with their account.
+func MeOf(u access.User) httpapi.Me { return me(u) }

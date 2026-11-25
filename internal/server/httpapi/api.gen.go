@@ -1191,6 +1191,12 @@ type CatalogResource struct {
 	When    *string `json:"when,omitempty"`
 }
 
+// ChangePasswordRequest defines model for ChangePasswordRequest.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
 // CheckCounts defines model for CheckCounts.
 type CheckCounts struct {
 	// Advisory Should-fix findings. They never block.
@@ -3383,6 +3389,9 @@ type CreateJoinRequestsJSONRequestBody = CreateJoinRequestsRequest
 // MarkMyNotificationsReadJSONRequestBody defines body for MarkMyNotificationsRead for application/json ContentType.
 type MarkMyNotificationsReadJSONRequestBody = MarkNotificationsReadRequest
 
+// ChangeMyPasswordJSONRequestBody defines body for ChangeMyPassword for application/json ContentType.
+type ChangeMyPasswordJSONRequestBody = ChangePasswordRequest
+
 // SetMySecretJSONRequestBody defines body for SetMySecret for application/json ContentType.
 type SetMySecretJSONRequestBody = SetSecretRequest
 
@@ -3601,6 +3610,9 @@ type ServerInterface interface {
 	// MarkMyNotificationsRead Mark notifications as read
 	// (POST /api/v1/me/notifications/mark-read)
 	MarkMyNotificationsRead(w http.ResponseWriter, r *http.Request)
+	// ChangeMyPassword Change one's own password
+	// (POST /api/v1/me/password)
+	ChangeMyPassword(w http.ResponseWriter, r *http.Request)
 	// ListMySecrets The personal secrets resources ask me for
 	// (GET /api/v1/me/secrets)
 	ListMySecrets(w http.ResponseWriter, r *http.Request)
@@ -5386,6 +5398,20 @@ func (siw *ServerInterfaceWrapper) MarkMyNotificationsRead(w http.ResponseWriter
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.MarkMyNotificationsRead(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangeMyPassword operation middleware
+func (siw *ServerInterfaceWrapper) ChangeMyPassword(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangeMyPassword(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7299,6 +7325,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/auth/invites/{invite_token}/accept", wrapper.AcceptInvite)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/me", wrapper.GetMe)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/me", wrapper.UpdateMe)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/me/password", wrapper.ChangeMyPassword)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/me/devices", wrapper.ListMyDevices)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1/me/devices/{device_id}", wrapper.SignOutDevice)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/me/sign-out-all", wrapper.SignOutEverywhere)
@@ -9572,6 +9599,39 @@ type MarkMyNotificationsReaddefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response MarkMyNotificationsReaddefaultApplicationProblemPlusJSONResponse) VisitMarkMyNotificationsReadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeMyPasswordRequestObject struct {
+	Body *ChangeMyPasswordJSONRequestBody
+}
+
+type ChangeMyPasswordResponseObject interface {
+	VisitChangeMyPasswordResponse(w http.ResponseWriter) error
+}
+
+type ChangeMyPassword204Response struct {
+}
+
+func (response ChangeMyPassword204Response) VisitChangeMyPasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ChangeMyPassworddefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ChangeMyPassworddefaultApplicationProblemPlusJSONResponse) VisitChangeMyPasswordResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
@@ -12823,6 +12883,9 @@ type StrictServerInterface interface {
 	// MarkMyNotificationsRead Mark notifications as read
 	// (POST /api/v1/me/notifications/mark-read)
 	MarkMyNotificationsRead(ctx context.Context, request MarkMyNotificationsReadRequestObject) (MarkMyNotificationsReadResponseObject, error)
+	// ChangeMyPassword Change one's own password
+	// (POST /api/v1/me/password)
+	ChangeMyPassword(ctx context.Context, request ChangeMyPasswordRequestObject) (ChangeMyPasswordResponseObject, error)
 	// ListMySecrets The personal secrets resources ask me for
 	// (GET /api/v1/me/secrets)
 	ListMySecrets(ctx context.Context, request ListMySecretsRequestObject) (ListMySecretsResponseObject, error)
@@ -14448,6 +14511,37 @@ func (sh *strictHandler) MarkMyNotificationsRead(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(MarkMyNotificationsReadResponseObject); ok {
 		if err := validResponse.VisitMarkMyNotificationsReadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ChangeMyPassword operation middleware
+func (sh *strictHandler) ChangeMyPassword(w http.ResponseWriter, r *http.Request) {
+	var request ChangeMyPasswordRequestObject
+
+	var body ChangeMyPasswordJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.ChangeMyPassword(ctx, request.(ChangeMyPasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ChangeMyPassword")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ChangeMyPasswordResponseObject); ok {
+		if err := validResponse.VisitChangeMyPasswordResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

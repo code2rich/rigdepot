@@ -17,8 +17,10 @@ import (
 
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
+	"github.com/code2rich/rigdepot/internal/server/authn"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
+	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/migrations"
 	"github.com/code2rich/rigdepot/internal/server/settings"
@@ -49,6 +51,8 @@ type App struct {
 	keys     *masterkey.Keyring
 	audit    *audit.Log
 	access   *access.Service
+	authn    *authn.Service
+	authnOps *authnapi.Ops // the sign-in operations and middleware
 	settings *settings.Service
 	hooks    hooks
 
