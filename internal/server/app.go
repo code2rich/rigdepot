@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/config"
@@ -52,6 +53,10 @@ type App struct {
 	access   *access.Service
 	settings *settings.Service
 	hooks    hooks
+
+	// mailChannels finds a notification channel by ID; nil means the
+	// registry (ext/notify). Tests put a fake channel here.
+	mailChannels func(id string) (extnotify.Channel, bool)
 
 	checks   []ReadyCheck
 	draining atomic.Bool

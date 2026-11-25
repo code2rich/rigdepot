@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/logging"
 	"github.com/code2rich/rigdepot/internal/server/access"
@@ -73,6 +74,8 @@ type fixtureOptions struct {
 	// background makes and starts the event bus, the jobs, the outbox and
 	// the module host the way serve does; they stop when the test ends.
 	background bool
+	// channels stands in for the notification channel registry.
+	channels func(id string) (extnotify.Channel, bool)
 }
 
 func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
@@ -108,6 +111,7 @@ func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
 	if o.hooks {
 		app.hooks.firstAdmin = fakeFirstAdmin{}
 	}
+	app.mailChannels = o.channels
 	if o.background {
 		app.bg = newBackground(app)
 	}

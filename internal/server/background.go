@@ -42,20 +42,27 @@ func newBackground(app *App) *Background {
 // made and openServices has handed to the domain services, and starts them. The returned
 // function stops them.
 //
-// Still to connect once their domain packages exist: the settings store (M1-10) for the mail
-// settings (notify.Options.Config, then the readiness item "mail" from Notify.Check) and for
-// modules.enabled (modhost.Deps.Settings); the audit log (M1-10) and permissions (M1-12) for
-// modules (modhost.Deps.Audit, Authz); the module routes (Modules.Handler) under /api/v1/x/ in
-// apiMounts. Until then mail waits in the outbox and no module is on.
+// The outbox takes the mail server from the platform settings (mailSettings) and adds the
+// readiness item "mail"; the settings page's test mail goes through notify too.
+//
+// Still to connect: the settings store for modules.enabled (modhost.Deps.Settings); the audit
+// log and permissions for modules (modhost.Deps.Audit, Authz); the module routes
+// (Modules.Handler) under /api/v1/x/ in apiMounts. Until then no module is on.
 func startBackground(ctx context.Context, app *App) (func(), error) {
 	b := app.bg
 	cat, err := i18n.Load(locales.FS, "server")
 	if err != nil {
 		return nil, err
 	}
-	b.Notify, err = notify.New(notify.Options{DB: app.db, Jobs: b.Jobs, Catalog: cat, DefaultLocale: app.cfg.DefaultLocale, Log: app.log})
+	b.Notify, err = notify.New(notify.Options{DB: app.db, Jobs: b.Jobs, Config: mailSettings{app.settings}, Channels: app.mailChannels,
+		Catalog: cat, DefaultLocale: app.cfg.DefaultLocale, Log: app.log})
 	if err != nil {
 		return nil, err
+	}
+	// Mail that does not work degrades the server; it still serves.
+	app.AddReadyCheck(ReadyCheck{Name: "mail", Check: b.Notify.Check})
+	if app.hooks.sendTestMail == nil {
+		app.hooks.sendTestMail = testMailSender(app, cat, app.mailChannels)
 	}
 	b.Modules, err = modhost.New(modhost.Deps{DB: app.db, Events: b.Events, Jobs: b.Jobs, Log: app.log, Locked: app.cfg.ModulesDisabled})
 	if err != nil {

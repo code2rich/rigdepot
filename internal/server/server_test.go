@@ -214,8 +214,9 @@ func TestServe(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &ready); err != nil {
 		t.Fatal(err)
 	}
-	if resp.StatusCode != http.StatusOK || ready.Status != "ok" || ready.Checks["database"] != "ok" || ready.Checks["migrations"] != "ok" ||
-		ready.Checks["master_key"] != "ok" {
+	// A fresh server has no mail server yet: degraded, still ready.
+	if resp.StatusCode != http.StatusOK || ready.Status != "degraded" || ready.Checks["database"] != "ok" || ready.Checks["migrations"] != "ok" ||
+		ready.Checks["master_key"] != "ok" || ready.Checks["mail"] != "degraded" {
 		t.Errorf("readyz: %s %s", resp.Status, body)
 	}
 
