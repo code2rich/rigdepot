@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/internal/bundle"
@@ -66,13 +67,16 @@ type Target struct {
 	// Format and Key are for OpKey.
 	Format adapter.Format
 	Key    []string
+	// Local are the directories inside a tree whose content belongs to the person's computer
+	// (adapter.WriteTree.Local); they do not count towards its digest.
+	Local []string
 }
 
 // TargetOf returns the target of an operation.
 func TargetOf(op adapter.Op) Target {
 	switch op := op.(type) {
 	case adapter.WriteTree:
-		return Target{Op: manifest.OpTree, Path: op.Dir}
+		return Target{Op: manifest.OpTree, Path: op.Dir, Local: op.Local}
 	case adapter.WriteFile:
 		return Target{Op: manifest.OpFile, Path: op.Path}
 	case adapter.SetKey:
@@ -85,19 +89,20 @@ func TargetOf(op adapter.Op) Target {
 
 // TargetOfEntry returns the target a manifest entry records.
 func TargetOfEntry(en manifest.Entry) Target {
-	return Target{Op: en.Op, Path: en.Path, Format: adapter.Format(en.Format), Key: en.Key}
+	return Target{Op: en.Op, Path: en.Path, Format: adapter.Format(en.Format), Key: en.Key, Local: en.Local}
 }
 
 // Expect returns the digest the target of op will have once op is applied, in the form Observe
 // reports and the manifest records. It writes nothing, so that the sync engine can tell "already
 // as wanted" from "has to change" while it plans.
 //
-// For a SetKey it is the SHA-256 of the value serialised as canonical JSON (keys sorted, no HTML
+// For a WriteTree it is the content digest of its files, leaving out those below its local
+// directories. For a SetKey it is the SHA-256 of the value serialised as canonical JSON (keys sorted, no HTML
 // escaping), the digest the manifest records for a key. An Exec has no digest.
 func Expect(op adapter.Op) (string, error) {
 	switch op := op.(type) {
 	case adapter.WriteTree:
-		return filesDigest(op.Files), nil
+		return filesDigest(op.Files, op.Local...), nil
 	case adapter.WriteFile:
 		return fileDigest(op.Data), nil
 	case adapter.SetKey:
@@ -135,10 +140,11 @@ func (e *Executor) Observe(t Target) Observed {
 	if err != nil {
 		return Observed{Err: err}
 	}
-	return observe(r, t.Op)
+	return observe(r, t.Op, t.Local...)
 }
 
-func observe(t target, op manifest.Op) Observed {
+// observe looks at a target. local are the directories of a tree that do not count.
+func observe(t target, op manifest.Op, local ...string) Observed {
 	name := filepath.FromSlash(t.rel)
 	fi, err := t.root.Lstat(name)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -149,7 +155,7 @@ func observe(t target, op manifest.Op) Observed {
 	}
 	switch {
 	case op == manifest.OpTree && fi.IsDir():
-		d, err := treeDigest(t.root, t.rel)
+		d, err := treeDigest(t.root, t.rel, local)
 		if err != nil {
 			return Observed{Err: err}
 		}
@@ -179,11 +185,14 @@ var emptyDigest = func() string {
 
 // filesDigest is the content digest of the files a WriteTree writes. It is bundle.Digest, the
 // digest package repoformat records for a resource, so that the digest of a skill in the
-// repository and the digest of the directory written from it are the same value.
-func filesDigest(files []adapter.File) string {
+// repository and the digest of the directory written from it are the same value. Files at or
+// below one of the local directories are left out, as bundle.Digest leaves them out.
+func filesDigest(files []adapter.File, local ...string) string {
 	contents := make(map[string][]byte, len(files))
 	for _, f := range files {
-		contents[f.Path] = f.Data
+		if !underAny(f.Path, local) {
+			contents[f.Path] = f.Data
+		}
 	}
 	d, err := bundle.DigestContents(contents)
 	if errors.Is(err, bundle.ErrEmpty) {
@@ -195,8 +204,18 @@ func filesDigest(files []adapter.File) string {
 	return string(d)
 }
 
-func digestOf(fsys fs.FS) string {
-	d, err := bundle.Digest(fsys)
+// underAny reports whether the slash-separated path p is one of dirs or lies below one.
+func underAny(p string, dirs []string) bool {
+	for _, d := range dirs {
+		if p == d || strings.HasPrefix(p, d+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func digestOf(fsys fs.FS, local []string) string {
+	d, err := bundle.Digest(fsys, local...)
 	if errors.Is(err, bundle.ErrEmpty) {
 		return emptyDigest
 	}
@@ -209,10 +228,10 @@ func digestOf(fsys fs.FS) string {
 }
 
 // treeDigest is the content digest of a directory on disk, computed by bundle.Digest. The
-// marker at its top is left out. Anything that is neither a file nor a directory (a symbolic
-// link someone put there) makes the digest one that equals no content digest, so that it shows
-// up as a change.
-func treeDigest(root *os.Root, rel string) (string, error) {
+// marker at its top and the local directories are left out. Anything else that is neither a
+// file nor a directory (a symbolic link someone put there) makes the digest one that equals no
+// content digest, so that it shows up as a change.
+func treeDigest(root *os.Root, rel string, local []string) (string, error) {
 	fsys, err := fs.Sub(root.FS(), rel)
 	if err != nil {
 		return "", err
@@ -221,6 +240,12 @@ func treeDigest(root *os.Root, rel string) (string, error) {
 	err = fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if p != "." && underAny(p, local) {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
 		}
 		if !d.IsDir() && !d.Type().IsRegular() && other == "" {
 			other = "other:contains-" + d.Type().String() + ":" + p
@@ -233,5 +258,5 @@ func treeDigest(root *os.Root, rel string) (string, error) {
 	if other != "" {
 		return other, nil
 	}
-	return digestOf(fsys), nil
+	return digestOf(fsys, local), nil
 }

@@ -40,6 +40,7 @@
   "check.structure.repo.parse": "无法按它的类型读取这个资源：{{detail}}",
   "check.structure.repo.read": "文件读不了：{{detail}}",
   "check.structure.repo.schema": "不符合格式：{{detail}}",
+  "check.structure.repo.undefined_ref": "引用了仓库里没有的资源，或用不了的资源：{{detail}}",
   "check.structure.repo.undefined_secret": "引用了仓库没有定义的密钥：{{detail}}",
   "check.structure.repo.undefined_stage": "写了仓库没有的环节：{{detail}}",
   "check.structure.repo.unknown_dir": "没有哪种资源类型用这个目录，已跳过：{{detail}}",

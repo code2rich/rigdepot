@@ -9,29 +9,26 @@
 import { useState } from 'preact/hooks'
 import { useLocation, useRoute } from 'preact-iso'
 import { api, unwrap } from '../../api/client'
-import { stageName, useStages } from '../../api/stages'
-import { useLoad } from '../../api/use-load'
+import { useLoad } from '../../ui/load'
 import { t } from '../../i18n'
 import { href } from '../../router/paths'
 import { role } from '../../shell/session'
 import { Empty } from '../../ui/empty'
 import { Icon } from '../../ui/icons'
-import { KINDS, KindIcon, kindName } from '../../ui/kind'
+import { KindIcon, PolicyBadge, kindName, scopeName, stageName, useStages } from '../../ui/resource'
 import { KindShape } from '../../ui/kind-shape'
 import { PageHeader } from '../../ui/page-header'
-import { LoadFailed } from '../../ui/problem'
-import { Toasts } from '../../ui/toast'
+import { LoadError } from '../../ui/load'
 import { Create } from './create'
 import { Editor } from './editor'
 import './resources.css'
 import {
   ChecksBadge,
-  PolicyBadge,
   STATUS_FILTERS,
+  WEB_KINDS,
   StatusBadges,
   matchesStatus,
   originName,
-  scopeName,
   statusFilterName,
   type StatusFilter,
 } from './labels'
@@ -39,11 +36,11 @@ import {
 export default function Resources() {
   const { params } = useRoute()
   const { route } = useLocation()
-  const open = params.sub ? decodeURIComponent(params.sub.split('/')[0] ?? '') : undefined
+  const open = params.code ? decodeURIComponent(params.code) : undefined
   const admin = role.value === 'admin'
   const stages = useStages()
-  const [list, reload] = useLoad(async () => unwrap(await api.GET('/api/v1/resources')).items, [])
-  const [products] = useLoad(async () => unwrap(await api.GET('/api/v1/products')).items, [])
+  const list = useLoad(async () => unwrap(await api.GET('/api/v1/resources')).items, [])
+  const products = useLoad(async () => unwrap(await api.GET('/api/v1/products')).items, [])
   const [kind, setKind] = useState<string>('all')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [creating, setCreating] = useState(false)
@@ -52,10 +49,7 @@ export default function Resources() {
     route(href(code ? `/manage/resources/${encodeURIComponent(code)}` : '/manage/resources'))
   const all = list.data ?? []
   const shown = all.filter((r) => (kind === 'all' || r.kind === kind) && matchesStatus(r, status))
-  const kinds = [
-    ...KINDS,
-    ...new Set(all.map((r) => r.kind).filter((k) => !(KINDS as readonly string[]).includes(k))),
-  ]
+  const kinds = [...WEB_KINDS, ...new Set(all.map((r) => r.kind).filter((k) => !WEB_KINDS.includes(k)))]
   const productList = products.data ?? []
 
   const createButton = (cls: string) => (
@@ -69,7 +63,7 @@ export default function Resources() {
   if (list.state === 'failed' && !list.data) {
     body = (
       <div class="card">
-        <LoadFailed error={list.error} retry={reload} />
+        <LoadError error={list.error} retry={list.reload} />
       </div>
     )
   } else if (!list.data) {
@@ -177,7 +171,7 @@ export default function Resources() {
                         {r.stages.length ? (
                           r.stages.map((s) => (
                             <span key={s} class="badge">
-                              {stageName(stages, s)}
+                              {stageName(s)}
                             </span>
                           ))
                         ) : (
@@ -246,7 +240,7 @@ export default function Resources() {
           products={productList}
           stages={stages}
           onClose={() => go()}
-          onChanged={() => void reload()}
+          onChanged={() => void list.reload()}
         />
       )}
       {creating && (
@@ -256,12 +250,11 @@ export default function Resources() {
           onClose={() => setCreating(false)}
           onCreated={(code: string) => {
             setCreating(false)
-            void reload()
+            void list.reload()
             go(code)
           }}
         />
       )}
-      <Toasts />
     </>
   )
 }

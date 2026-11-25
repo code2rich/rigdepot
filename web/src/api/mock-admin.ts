@@ -6,14 +6,17 @@
 // command-line versions and the audit log. The data follows the examples in api/openapi.yaml and lives in
 // memory, so changes made on the pages stick until the page is reloaded. Only development builds include it.
 //
-// Besides ?mock=<who>, ?fail=403, ?fail=500 or ?fail=network make every request answered here fail that way,
-// to look at the pages' error states; ?fail= (empty) turns it off again. ?empty=1 starts from a deployment
-// with no products, resources or repositories yet.
+// The people are mock-auth.ts's (same ids and names), so the users page and these pages agree. This file is
+// the only answer for its routes: products and members, join requests, sources, modules and adapters are
+// not answered by the other mocks. Failures (?mockfail=403|500|network) come from mock-auth.ts before any
+// mock answers; ?mockempty=1, and the first-run wizard (?mock=setup…), start without products, requests,
+// resources or repositories.
 
 import type { Schemas } from './client'
 
 type S = Schemas
-type Who = 'admin' | 'owner' | 'member' | 'signed-out'
+/** Who is signed in; pending is someone not yet in any product (they may list products to apply). */
+type Who = 'admin' | 'owner' | 'member' | 'pending'
 
 const id = (n: number) => `0193a4b2-6c1e-7a00-8000-${String(n).padStart(12, '0')}`
 
@@ -30,35 +33,14 @@ const P = {
   wyan: person(12, 'wyan', 'Wen Yan'),
   gyuan: person(13, 'gyuan', 'Gu Yuan'),
   blu: person(14, 'blu', 'Bai Lu'),
-  sqing: person(15, 'sqing', 'Shao Qing'),
-  rcheng: person(16, 'rcheng', 'River Cheng'),
-  kye: person(17, 'kye', 'Kai Ye'),
-  mluo: person(18, 'mluo', 'Mo Luo'),
+  yzhou: person(15, 'yzhou', 'Ye Zhou'),
+  sshen: person(16, 'sshen', 'Sam Shen'),
+  cyuan: person(17, 'cyuan', 'Chen Yuan'),
+  qshao: person(19, 'qshao', 'Quinn Shao'),
 }
 
 const now = Date.now()
 const ago = (minutes: number) => new Date(now - minutes * 60_000).toISOString()
-
-const STAGES: S['Stage'][] = [
-  { id: 'requirement', name: 'Requirements', hidden: false },
-  { id: 'architecture', name: 'Architecture', hidden: false },
-  { id: 'design', name: 'Design', hidden: false },
-  { id: 'develop', name: 'Development', hidden: false },
-  { id: 'test', name: 'Testing', hidden: false },
-  { id: 'scm', name: 'Source control', hidden: false },
-  { id: 'release', name: 'Release', hidden: false },
-  { id: 'ops', name: 'Operations', hidden: false },
-]
-const STAGES_ZH: Record<string, string> = {
-  requirement: '需求',
-  architecture: '架构',
-  design: '设计',
-  develop: '开发',
-  test: '测试',
-  scm: '配管',
-  release: '发布',
-  ops: '运维',
-}
 
 interface MemberRow {
   user: S['UserRef']
@@ -96,8 +78,7 @@ function seedProducts(): ProductRow[] {
         m(P.gyuan, 'owner', 'Developer', ['design', 'develop'], 80_000),
         m(P.owner, 'member', 'Tester', ['test'], 60_000),
         m(P.jdoe, 'member', 'Developer', ['develop'], 40_000),
-        m(P.kye, 'member', 'Product manager', ['requirement'], 30_000),
-        m(P.mluo, 'member', 'Tester', ['test'], 20_000),
+        m(P.sshen, 'member', 'Operations', ['release', 'ops'], 30_000),
       ],
     },
     {
@@ -108,15 +89,15 @@ function seedProducts(): ProductRow[] {
       members: [
         m(P.owner, 'owner', 'Tester', ['test'], 70_000),
         m(P.blu, 'owner', 'Developer', ['develop'], 65_000),
-        m(P.rcheng, 'member', 'Developer', ['develop', 'test'], 10_000),
+        m(P.cyuan, 'member', 'Developer', ['develop', 'test'], 10_000),
       ],
     },
     {
       code: 'app',
-      name: 'Mobile app',
-      line: 'Consumer',
+      name: 'Mobile',
+      line: 'Users',
       extra: 41,
-      members: [m(P.kye, 'owner', 'Developer', ['develop'], 50_000)],
+      members: [m(P.yzhou, 'owner', 'Developer', ['develop'], 50_000)],
     },
     { code: 'data', name: 'Data platform', line: 'Data', extra: 0, members: [] },
   ]
@@ -148,7 +129,7 @@ function seedRequests(): S['JoinRequest'][] {
     },
     {
       id: id(503),
-      user: P.sqing,
+      user: P.qshao,
       job: 'Tester',
       focus_stages: ['test'],
       identity: 'Single sign-on',
@@ -556,7 +537,7 @@ function auditSeed(): S['AuditEntry'][] {
     action: 'product.member_add',
     action_label: 'Add member',
     object: { kind: 'product', id: 'pay', label: 'Payments' },
-    change: { user: 'rcheng', role: 'member' },
+    change: { user: 'cyuan', role: 'member' },
     result: 'ok',
   })
   add(51, {
@@ -640,7 +621,7 @@ function auditSeed(): S['AuditEntry'][] {
     method: 'local',
     action: 'auth.login',
     action_label: 'Sign in',
-    object: { kind: 'user', id: id(16), label: 'rcheng' },
+    object: { kind: 'user', id: id(17), label: 'cyuan' },
     change: { failed_attempts: 3 },
     result: 'denied',
     reason: 'wrong password',
@@ -676,59 +657,60 @@ function auditSeed(): S['AuditEntry'][] {
 
 // ---------------------------------------------------------------- state
 
-const empty = new URLSearchParams(location.search).get('empty') === '1'
-
-const db = {
-  products: empty ? [] : seedProducts(),
-  requests: empty ? [] : seedRequests(),
-  resources: empty ? [] : seedResources(),
-  sources: empty ? [] : seedSources(),
-  settings: {
-    organization: { name: 'Example Corp' },
-    mail: {
-      enabled: true,
-      host: 'smtp.example.com',
-      port: 465,
-      security: 'tls',
-      username: 'hub@example.com',
-      has_password: true,
-      from: 'hub@example.com',
-    },
-    etag: '"settings-1"',
-  } as S['PlatformSettings'],
-  modules: [
-    {
-      id: 'insights',
-      name: 'Usage insights',
-      description:
-        'Counts, outcomes and durations of resource use. Never prompts, code, arguments or results.',
-      enabled: true,
-      notice:
-        'Computers start reporting usage metadata at their next sync. Each person can still turn it off on their own computer.',
-      locked: false,
-    },
-    {
-      id: 'env-resources',
-      name: 'Environment resources',
-      description: 'Databases, servers and test environments handed to the people they are granted to.',
-      enabled: false,
-      notice: 'Connection details go to the computers of the people you grant them to.',
-      locked: true,
-    },
-  ] as S['Module'][],
-  adapters: ADAPTERS.map((a) => ({ ...a })),
-  cli: {
-    min_version: '0.4.0',
-    latest_version: '0.5.0',
-    min_version_floor: '0.4.0',
-    distribution: [
-      { version: '0.5.0', people: 171 },
-      { version: '0.4.2', people: 16 },
-    ],
-  } as S['CLIPolicy'],
-  audit: auditSeed(),
+function startDB(empty: boolean) {
+  return {
+    products: empty ? [] : seedProducts(),
+    requests: empty ? [] : seedRequests(),
+    resources: empty ? [] : seedResources(),
+    sources: empty ? [] : seedSources(),
+    settings: {
+      organization: { name: 'Example Corp' },
+      mail: {
+        enabled: true,
+        host: 'smtp.example.com',
+        port: 465,
+        security: 'tls',
+        username: 'hub@example.com',
+        has_password: true,
+        from: 'hub@example.com',
+      },
+      etag: '"settings-1"',
+    } as S['PlatformSettings'],
+    modules: [
+      {
+        id: 'insights',
+        name: 'Usage insights',
+        description:
+          'Counts, outcomes and durations of resource use. Never prompts, code, arguments or results.',
+        enabled: true,
+        notice:
+          'Computers start reporting usage metadata at their next sync. Each person can still turn it off on their own computer.',
+        locked: false,
+      },
+      {
+        id: 'env-resources',
+        name: 'Environment resources',
+        description: 'Databases, servers and test environments handed to the people they are granted to.',
+        enabled: false,
+        notice: 'Connection details go to the computers of the people you grant them to.',
+        locked: true,
+      },
+    ] as S['Module'][],
+    adapters: ADAPTERS.map((a) => ({ ...a })),
+    cli: {
+      min_version: '0.4.0',
+      latest_version: '0.5.0',
+      min_version_floor: '0.4.0',
+      distribution: [
+        { version: '0.5.0', people: 171 },
+        { version: '0.4.2', people: 16 },
+      ],
+    } as S['CLIPolicy'],
+    audit: auditSeed(),
+  }
 }
 
+let db = startDB(false)
 let settingsN = 1
 
 // ---------------------------------------------------------------- helpers
@@ -756,12 +738,6 @@ const problem = (status: number, code: string, detail?: string, params?: Record<
 const denied = () => problem(403, 'access.denied', 'You are not allowed to do this.')
 const notFound = () => problem(404, 'object.not_found', 'Not there, or not visible to you.')
 const noContent = () => new Response(null, { status: 204 })
-
-function failMode(): string {
-  const q = new URLSearchParams(location.search).get('fail')
-  if (q !== null) sessionStorage.setItem('mockfail', q)
-  return sessionStorage.getItem('mockfail') ?? ''
-}
 
 async function body<T>(request: Request): Promise<T> {
   return (await request.json()) as T
@@ -815,7 +791,7 @@ function product(row: ProductRow, who: Who): S['Product'] {
 }
 
 function meOf(who: Who): S['UserRef'] | undefined {
-  return who === 'admin' ? P.admin : who === 'owner' ? P.owner : who === 'member' ? P.jdoe : undefined
+  return who === 'admin' ? P.admin : who === 'owner' ? P.owner : who === 'member' ? P.jdoe : P.wyan
 }
 
 function owns(who: Who, code: string): boolean {
@@ -837,38 +813,11 @@ function audited(e: Omit<S['AuditEntry'], 'seq' | 'at' | 'category' | 'origin'>,
   })
 }
 
-function user(ref: S['UserRef']): S['User'] {
-  const memberships = db.products.flatMap((p) =>
-    p.members
-      .filter((x) => x.user.id === ref.id)
-      .map((x) => ({ product: { code: p.code, name: p.name }, role: x.role })),
-  )
-  return {
-    ...ref,
-    email: `${ref.username}@example.com`,
-    status: ref.id === P.wyan.id || ref.id === P.sqing.id ? 'pending' : 'active',
-    platform_admin: ref.id === P.admin.id,
-    focus_stages: [],
-    memberships,
-    identities: ['local'],
-    created_at: ago(60 * 24 * 60),
-  }
-}
-
 // ---------------------------------------------------------------- routes
 
 type Handler = (request: Request, url: URL, who: Who, match: RegExpMatchArray) => Promise<Response> | Response
 
 const routes: [string, RegExp, Handler][] = [
-  [
-    'GET',
-    /^\/api\/v1\/stages$/,
-    () => {
-      const zh = document.documentElement.lang.startsWith('zh')
-      return json(200, { items: STAGES.map((s) => (zh ? { ...s, name: STAGES_ZH[s.id] ?? s.name } : s)) })
-    },
-  ],
-
   // ------------------------------------------------------------ products
   [
     'GET',
@@ -1014,19 +963,6 @@ const routes: [string, RegExp, Handler][] = [
           p.members.push(m(q.user, 'member', q.job ?? '', q.focus_stages ?? [], 0))
       }
       return json(200, { ...q, decided_by: meOf(who), decided_at: new Date().toISOString() })
-    },
-  ],
-  [
-    'GET',
-    /^\/api\/v1\/users$/,
-    (_r, url, who) => {
-      if (who === 'member') return denied()
-      const q = (url.searchParams.get('q') ?? '').toLowerCase()
-      const items = Object.values(P)
-        .filter((u) => !q || u.username.includes(q) || u.display_name.toLowerCase().includes(q))
-        .map(user)
-        .sort((a, b) => a.display_name.localeCompare(b.display_name))
-      return json(200, { items })
     },
   ],
 
@@ -1424,38 +1360,6 @@ const routes: [string, RegExp, Handler][] = [
       return json(201, f.waiver)
     },
   ],
-  // The catalog's view of a resource, for the live document of one registered on the web. The catalog
-  // page's own mock (if any) answers first.
-  [
-    'GET',
-    /^\/api\/v1\/catalog\/([^/]+)$/,
-    (_r, _u, _who, [, code]) => {
-      const row = db.resources.find((x) => x.res.code === code && x.res.status === 'published')
-      if (!row) return notFound()
-      const r = row.res
-      return json(200, {
-        code: r.code,
-        kind: r.kind,
-        name: r.name,
-        summary: r.summary,
-        stages: r.stages,
-        audience: r.audience,
-        scope: r.scope,
-        policy: r.policy,
-        origin: r.origin,
-        version: r.version ?? 1,
-        enabled: true,
-        installed_people: 0,
-        digest: row.versions[0]?.digest ?? digest(r.code),
-        published_at: r.published_at ?? r.updated_at,
-        files: [],
-        definition: row.definition ?? {},
-        references: r.references,
-        referenced_by: [],
-        my_installs: [],
-      })
-    },
-  ],
   [
     'GET',
     /^\/api\/v1\/check-rules$/,
@@ -1776,23 +1680,23 @@ function auditFilter(url: URL, who: Who): S['AuditEntry'][] {
 }
 
 /**
- * adminRoutes answers a request for one of the pages above, or returns undefined to let mock.ts answer it.
- * The network failure of ?fail=network is a rejected promise, as fetch gives.
+ * adminMock starts the data (after mock-auth.ts has read ?mockempty and ?mock=setup…) and returns what answers
+ * a request for one of the pages above, or undefined to let the other mocks answer it.
  */
-export function adminRoutes(request: Request, who: Who): Promise<Response> | undefined {
-  const url = new URL(request.url)
-  const path = url.pathname.replace(/^.*\/api\//, '/api/')
-  for (const [method, pattern, handler] of routes) {
-    const match = path.match(pattern)
-    if (!match || request.method !== method) continue
-    return (async () => {
-      await new Promise((r) => setTimeout(r, 120))
-      const fail = failMode()
-      if (fail === 'network') throw new TypeError('Failed to fetch')
-      if (fail === '403') return denied()
-      if (fail === '500') return problem(500, 'server.error', 'Something went wrong on the server.')
-      return handler(request, url, who, match)
-    })()
+export function adminMock(): (request: Request, who: Who) => Promise<Response> | undefined {
+  const setup = sessionStorage.getItem('mock-setup')
+  db = startDB(sessionStorage.getItem('mockempty') === '1' || setup === 'open' || setup === 'admin')
+  return (request, who) => {
+    const url = new URL(request.url)
+    const path = url.pathname.replace(/^.*\/api\//, '/api/')
+    for (const [method, pattern, handler] of routes) {
+      const match = path.match(pattern)
+      if (!match || request.method !== method) continue
+      return (async () => {
+        await new Promise((r) => setTimeout(r, 120))
+        return handler(request, url, who, match)
+      })()
+    }
+    return undefined
   }
-  return undefined
 }

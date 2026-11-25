@@ -1,0 +1,25 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* Applying for access: what the prototype (V.apply) writes inline. */
+
+.ap-lead {
+  margin-top: 6px;
+}
+.ap-who {
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-2);
+  background: var(--panel-2);
+}
+.ap-chips {
+  gap: 6px;
+}
+.ap-picks {
+  display: grid;
+  gap: 6px;
+}
+.ap-why {
+  white-space: normal;
+  line-height: 1.6;
+}

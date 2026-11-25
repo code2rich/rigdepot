@@ -8,19 +8,21 @@
 
 import { useState } from 'preact/hooks'
 import { ApiError, api, unwrap, type Schemas } from '../../api/client'
-import { stageName, useStages } from '../../api/stages'
-import { useLoad } from '../../api/use-load'
+import { stageName, useStages } from '../../ui/resource'
+import { useLoad } from '../../ui/load'
 import { t } from '../../i18n'
 import { fmtNumber, fmtRelative } from '../../i18n/format'
 import { role } from '../../shell/session'
 import { initial } from '../../shell/user-menu'
-import { AiTip, Seg } from '../../ui/controls'
+import { Seg } from '../../ui/controls'
+import { AiTip } from '../../ui/say'
 import { Empty } from '../../ui/empty'
 import { Icon } from '../../ui/icons'
 import { Modal } from '../../ui/overlay'
 import { PageHeader } from '../../ui/page-header'
-import { ErrorNote, LoadFailed, errorText } from '../../ui/problem'
-import { Toasts, toast } from '../../ui/toast'
+import { Fail, failText } from '../../ui/fail'
+import { LoadError } from '../../ui/load'
+import { toast } from '../../ui/toast'
 import { PeoplePicker } from './people'
 
 type Product = Schemas['Product']
@@ -34,11 +36,8 @@ type Dialog =
 
 export default function Products() {
   const admin = role.value === 'admin'
-  const [products, reloadProducts] = useLoad(async () => unwrap(await api.GET('/api/v1/products')).items, [])
-  const [requests, reloadRequests] = useLoad(
-    async () => unwrap(await api.GET('/api/v1/join-requests')).items,
-    [],
-  )
+  const products = useLoad(async () => unwrap(await api.GET('/api/v1/products')).items, [])
+  const requests = useLoad(async () => unwrap(await api.GET('/api/v1/join-requests')).items, [])
   const [picked, setPicked] = useState<string | null>(null)
   const [dialog, setDialog] = useState<Dialog | null>(null)
 
@@ -57,7 +56,7 @@ export default function Products() {
   if (products.state === 'failed' && !products.data) {
     body = (
       <div class="card">
-        <LoadFailed error={products.error} retry={reloadProducts} />
+        <LoadError error={products.error} retry={products.reload} />
       </div>
     )
   } else if (!products.data) {
@@ -83,7 +82,7 @@ export default function Products() {
             key={current.code}
             product={current}
             onAdd={(members) => setDialog({ kind: 'add', product: current, members })}
-            onChanged={reloadProducts}
+            onChanged={products.reload}
           />
         )}
       </div>
@@ -101,9 +100,9 @@ export default function Products() {
       {requests.state === 'failed' &&
         !(requests.error instanceof ApiError && requests.error.status === 403) && (
           <div class="callout bad mb" role="alert">
-            <span class="grow">{t('products.requests.failed', { why: errorText(requests.error) })}</span>
-            <button type="button" class="btn sm" onClick={reloadRequests}>
-              {t('ui.load.retry')}
+            <span class="grow">{t('products.requests.failed', { why: failText(requests.error) })}</span>
+            <button type="button" class="btn sm" onClick={requests.reload}>
+              {t('ui.retry')}
             </button>
           </div>
         )}
@@ -112,8 +111,8 @@ export default function Products() {
           list={pending}
           onReject={(request) => setDialog({ kind: 'reject', request })}
           onDecided={() => {
-            void reloadRequests()
-            void reloadProducts()
+            void requests.reload()
+            void products.reload()
           }}
         />
       )}
@@ -124,7 +123,7 @@ export default function Products() {
           onCreated={(p) => {
             setDialog(null)
             setPicked(p.code)
-            void reloadProducts()
+            void products.reload()
             toast(t('products.create.done', { name: p.name }))
           }}
         />
@@ -136,7 +135,7 @@ export default function Products() {
           onClose={() => setDialog(null)}
           onAdded={() => {
             setDialog(null)
-            void reloadProducts()
+            void products.reload()
             setPicked(dialog.product.code)
             // The members card reloads when the product's counts change.
           }}
@@ -148,12 +147,11 @@ export default function Products() {
           onClose={() => setDialog(null)}
           onRejected={() => {
             setDialog(null)
-            void reloadRequests()
+            void requests.reload()
             toast(t('products.requests.rejected'))
           }}
         />
       )}
-      <Toasts />
     </>
   )
 }
@@ -196,7 +194,7 @@ function ProductTable(props: { list: Product[]; current?: Product; onPick: (code
                   <td class="dim">{p.line || <span class="faint">—</span>}</td>
                   <td>
                     {p.owners.length ? (
-                      p.owners.map((o) => o.display_name).join(t('products.list_sep'))
+                      p.owners.map((o) => o.display_name).join(t('ui.list_sep'))
                     ) : (
                       <span class="badge warn">{t('products.no_owner')}</span>
                     )}
@@ -219,9 +217,10 @@ function Members(props: {
   onChanged: () => void
 }) {
   const p = props.product
-  const stages = useStages()
+  // Loads the stages' names once; stageName reads them.
+  useStages()
   // Reload whenever the product's counts change (someone was added, a request approved).
-  const [members, reload] = useLoad(
+  const members = useLoad(
     async () =>
       unwrap(await api.GET('/api/v1/products/{product}/members', { params: { path: { product: p.code } } }))
         .items,
@@ -243,7 +242,7 @@ function Members(props: {
     setBusy(null)
     if (res instanceof Error) {
       setError(res)
-      void reload()
+      void members.reload()
       return
     }
     toast(
@@ -251,7 +250,7 @@ function Members(props: {
         ? t('products.members.made_owner', { name: m.user.display_name, product: p.name })
         : t('products.members.made_member', { name: m.user.display_name, product: p.name }),
     )
-    void reload()
+    void members.reload()
     props.onChanged()
   }
 
@@ -270,7 +269,7 @@ function Members(props: {
       return
     }
     toast(t('products.members.removed', { name: m.user.display_name, product: p.name }))
-    void reload()
+    void members.reload()
     props.onChanged()
   }
 
@@ -291,11 +290,11 @@ function Members(props: {
       </div>
       {error !== null && (
         <div style={{ padding: '12px 18px 0' }}>
-          <ErrorNote error={error} />
+          <Fail error={error} />
         </div>
       )}
       {members.state === 'failed' && !members.data ? (
-        <LoadFailed error={members.error} retry={reload} />
+        <LoadError error={members.error} retry={members.reload} />
       ) : !members.data ? (
         <div aria-busy="true" style={{ minHeight: '120px' }} />
       ) : list.length === 0 ? (
@@ -312,7 +311,7 @@ function Members(props: {
               <span class="avatar">{initial(m.user.display_name)}</span>
               <div class="grow">
                 <div class="name">{m.user.display_name}</div>
-                <div class="desc">{memberLine(m, stages)}</div>
+                <div class="desc">{memberLine(m)}</div>
               </div>
               <select
                 class="field sm"
@@ -344,14 +343,15 @@ function Members(props: {
   )
 }
 
-function memberLine(m: Member, stages: readonly Schemas['Stage'][]): string {
-  const focus = (m.focus_stages ?? []).map((s) => stageName(stages, s)).join(t('products.list_sep'))
+function memberLine(m: Member): string {
+  const focus = (m.focus_stages ?? []).map((s) => stageName(s)).join(t('ui.list_sep'))
   if (m.job && focus) return t('products.members.line', { job: m.job, focus })
   return m.job || (focus ? t('products.members.focus', { focus }) : '')
 }
 
 function JoinRequests(props: { list: Request[]; onReject: (q: Request) => void; onDecided: () => void }) {
-  const stages = useStages()
+  // Loads the stages' names once; stageName reads them.
+  useStages()
   const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const approve = async (q: Request) => {
@@ -380,13 +380,13 @@ function JoinRequests(props: { list: Request[]; onReject: (q: Request) => void; 
       </div>
       {error !== null && (
         <div style={{ padding: '12px 18px 0' }}>
-          <ErrorNote error={error} />
+          <Fail error={error} />
         </div>
       )}
       <div style={{ padding: '2px 18px' }}>
         <div class="list">
           {props.list.map((q) => {
-            const focus = (q.focus_stages ?? []).map((s) => stageName(stages, s)).join(t('products.list_sep'))
+            const focus = (q.focus_stages ?? []).map((s) => stageName(s)).join(t('ui.list_sep'))
             const bits = [
               q.job,
               focus && t('products.members.focus', { focus }),
@@ -533,7 +533,7 @@ function CreateProduct(props: { onClose: () => void; onCreated: (p: Product) => 
           />
         </div>
         <PeoplePicker id="d-po" label={t('products.create.owners')} picked={owners} onChange={setOwners} />
-        <ErrorNote error={error} />
+        <Fail error={error} />
       </form>
     </Modal>
   )
@@ -609,7 +609,7 @@ function AddMembers(props: {
         />
         <p class="hint">{t('products.add.hint')}</p>
       </div>
-      <ErrorNote error={error} />
+      <Fail error={error} />
     </Modal>
   )
 }
@@ -668,7 +668,7 @@ function RejectRequest(props: { request: Request; onClose: () => void; onRejecte
           placeholder={t('products.reject.reason_ph')}
         />
       </div>
-      <ErrorNote error={error} />
+      <Fail error={error} />
     </Modal>
   )
 }

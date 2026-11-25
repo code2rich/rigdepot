@@ -10,13 +10,13 @@ import { useRef, useState } from 'preact/hooks'
 import { ApiError, type Schemas } from '../../api/client'
 import { t } from '../../i18n'
 import { Icon } from '../../ui/icons'
-import { KINDS, KindIcon, kindName } from '../../ui/kind'
+import { KindIcon, kindName } from '../../ui/resource'
 import { Drawer } from '../../ui/overlay'
-import { ErrorNote } from '../../ui/problem'
+import { Fail } from '../../ui/fail'
 import { toast } from '../../ui/toast'
 import { parseDefinition, putDocument, templateFor, tooBig, uploadBundle } from './content'
 import { BasicFields, DeliveryFields, type Settings } from './fields'
-import { DIRECTORY_KINDS, kindDescription } from './labels'
+import { DIRECTORY_KINDS, WEB_KINDS, kindDescription } from './labels'
 
 export function Create(props: {
   products: readonly Schemas['Product'][]
@@ -56,7 +56,7 @@ function KindPicker(props: { onPick: (kind: string) => void; onClose: () => void
         <span>{t('resources.new.repo_first')}</span>
       </div>
       <div style={{ display: 'grid', gap: '6px' }}>
-        {KINDS.map((k) => {
+        {WEB_KINDS.map((k) => {
           const [what, how] = kindDescription(k)
           return (
             <button key={k} type="button" class="pick" onClick={() => props.onPick(k)}>
@@ -197,7 +197,7 @@ function NewUpload(props: {
       <p class="hint" style={{ marginTop: '-8px' }}>
         {t('resources.new.upload_hint')}
       </p>
-      <ErrorNote error={error} />
+      <Fail error={error} />
     </Drawer>
   )
 }
@@ -315,7 +315,7 @@ function NewDocument(props: {
         stages={props.stages}
         products={props.products}
       />
-      <ErrorNote error={error} />
+      <Fail error={error} />
     </Drawer>
   )
 }

@@ -14,19 +14,21 @@ import { findPage, groupLetter, pageCode, visibleGroups } from '../pages/registr
 import { href, stripBase } from '../router/paths'
 import { Logo, Lockup } from '../ui/brand'
 import { Icon } from '../ui/icons'
+import { Toast } from '../ui/toast'
+import { loadMissingSecrets, missingSecrets } from './counts'
+import { FeedbackDialog, openFeedback } from './feedback-dialog'
 import { DOCS_URL } from './links'
 import { me, meta, role } from './session'
 import { ThemeButton } from './theme-button'
 import { initial, UserMenu } from './user-menu'
 
 export function Shell(props: { children: ComponentChildren }) {
-  const { path, route } = useLocation()
+  const { path } = useLocation()
   const here = stripBase(path)
   const page = findPage(here)
-  // A page and the paths under it (/manage/resources/<code>) are one screen: moving between them keeps the
-  // page mounted and scrolled where it was; only a different page starts afresh.
-  const screen = page?.id ?? here
   const code = page && pageCode(page.id)
+  // A sub-path of the same page (a resource's details at /catalog/<code>) keeps the page where it is.
+  const pageKey = page?.id ?? here
   const [navOpen, setNavOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const main = useRef<HTMLElement>(null)
@@ -39,7 +41,9 @@ export function Shell(props: { children: ComponentChildren }) {
     if (main.current) main.current.scrollTop = 0
     if (innerWidth <= 760) scrollTo(0, 0)
     document.title = page ? `${t(page.label)} · ${BRAND.name}` : BRAND.name
-  }, [screen])
+  }, [pageKey, page])
+
+  useEffect(loadMissingSecrets, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -105,6 +109,11 @@ export function Shell(props: { children: ComponentChildren }) {
                     >
                       <Icon name={p.icon} />
                       {t(p.label)}
+                      {p.id === 'keys' && missingSecrets.value > 0 && (
+                        <span class="cnt" title={t('shell.count.secrets', { count: missingSecrets.value })}>
+                          {missingSecrets.value}
+                        </span>
+                      )}
                     </a>
                   )
                 })}
@@ -146,22 +155,23 @@ export function Shell(props: { children: ComponentChildren }) {
           )}
         </aside>
         <main class="main" ref={main}>
-          <div key={screen} class="wrap pg-in" tabIndex={-1} ref={wrap}>
+          <div key={pageKey} class="wrap pg-in" tabIndex={-1} ref={wrap}>
             {props.children}
           </div>
         </main>
       </div>
-      {/* Until the feedback dialog exists (task M1-37), the button opens the feedback page. */}
       <button
         type="button"
         class="fab"
-        onClick={() => route(href('/feedback'))}
+        onClick={() => openFeedback()}
         aria-label={t('shell.feedback')}
         title={t('shell.feedback')}
       >
         <Icon name="chat" />
         <span class="fab-t">{t('shell.feedback')}</span>
       </button>
+      <FeedbackDialog />
+      <Toast />
     </>
   )
 }

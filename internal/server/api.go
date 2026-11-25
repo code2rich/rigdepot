@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/code2rich/rigdepot/internal/buildinfo"
+	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/authn"
@@ -17,6 +18,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/modhost"
 	"github.com/code2rich/rigdepot/internal/server/settings"
+	"github.com/code2rich/rigdepot/locales"
 )
 
 // api is the whole contract, httpapi.StrictServerInterface, assembled from
@@ -45,6 +47,8 @@ type api struct {
 	*auditAPI
 	*modulesAPI
 	*toolsAPI
+	*catalogAPI
+	*notificationsAPI
 }
 
 // fallback puts notImplemented's methods one embedding level below the
@@ -67,12 +71,12 @@ type hooks struct {
 	// answers 501.
 	firstAdmin firstAdminCreator
 	// names turns user and device ids into names for the audit log's
-	// entries. openServices sets it to read users from access; device
-	// names come with the device table (authn, M1-22). Nil: the ids stand
-	// in for the names.
+	// entries. openServices sets it to read users from access and devices
+	// from authn. Nil: the ids stand in for the names.
 	names auditNames
-	// devices verifies the command-line program's device tokens (the device
-	// code flow, M1-22). Nil: every device token is refused.
+	// devices verifies the command-line program's device tokens.
+	// openServices sets it to the device code flow (authn.Devices); tests
+	// put a stand-in here.
 	devices authn.DeviceTokens
 	// sendTestMail sends a test message with the given mail server
 	// (notify, M1-18). Nil: sendTestMail answers 501.
@@ -82,6 +86,12 @@ type hooks struct {
 	// the tool adapters page shows no counts (0 people, an empty
 	// distribution).
 	toolUsage toolUsage
+	// delivery tells the catalog pages what people turned on or off and where resources are
+	// installed (delivery, M1-27). Nil: everything is on by its policy and installed nowhere.
+	delivery catalogDelivery
+	// secretsConfigured returns, by secret name, which secrets a person has set (secrets,
+	// M1-28). Nil: none.
+	secretsConfigured func(ctx context.Context, userID string) (map[string]bool, error)
 }
 
 // apiMounts builds the handlers that serve mounts: the API under /api/ and
@@ -94,17 +104,30 @@ type hooks struct {
 // checks the credential each operation's security list asks for and puts
 // the caller into the context with access.WithActor.
 func apiMounts(app *App) Mounts {
+	texts, err := i18n.Load(locales.FS, "check")
+	if err != nil {
+		panic(err) // the catalogues are embedded and checked by tools/dev check
+	}
+	accessOpts := accessapi.Options{
+		BaseURL:        app.cfg.BaseURL,
+		SignIns:        authnapi.SignIns(app.authn),
+		ResourceCounts: app.catalog.ResourceCounts,
+	}
+	if bg := app.bg; bg != nil && bg.Notify != nil {
+		// Invitations go out by mail once mail is set up; until then the
+		// administrator gets the link (notify.ErrMailOff).
+		accessOpts.MailInvite = bg.Notify.MailInvite
+	}
 	impl := api{
-		Handlers: accessapi.New(app.access, accessapi.Options{
-			BaseURL: app.cfg.BaseURL,
-			SignIns: authnapi.SignIns(app.authn),
-		}),
-		Ops:         app.authnOps,
-		settingsAPI: &settingsAPI{settings: app.settings, hooks: &app.hooks},
-		setupAPI:    &setupAPI{settings: app.settings, hooks: &app.hooks},
-		auditAPI:    &auditAPI{log: app.audit, hooks: &app.hooks},
-		modulesAPI:  &modulesAPI{settings: app.settings},
-		toolsAPI:    &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
+		Handlers:         accessapi.New(app.access, accessOpts),
+		Ops:              app.authnOps,
+		settingsAPI:      &settingsAPI{settings: app.settings, hooks: &app.hooks},
+		setupAPI:         &setupAPI{settings: app.settings, hooks: &app.hooks},
+		auditAPI:         &auditAPI{log: app.audit, hooks: &app.hooks},
+		modulesAPI:       &modulesAPI{settings: app.settings},
+		toolsAPI:         &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
+		catalogAPI:       &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
+		notificationsAPI: &notificationsAPI{access: app.access},
 	}
 	if impl.toolsAPI.version == "" {
 		impl.toolsAPI.version = buildinfo.Get().Version
@@ -117,6 +140,10 @@ func apiMounts(app *App) Mounts {
 		impl.modulesAPI.text = bg.text
 		modules = bg.Modules.Handler(http.HandlerFunc(notFound))
 	}
+	if bg := app.bg; bg != nil && bg.Notify != nil {
+		impl.notificationsAPI.notify = bg.Notify
+	}
+	uploadLimit := int64(app.cfg.MaxBundleMB) << 20
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", notFound) // paths the contract does not have
 	h := httpapi.NewHandler(impl, mux)
@@ -128,7 +155,11 @@ func apiMounts(app *App) Mounts {
 			modules.ServeHTTP(w, r)
 			return
 		}
-		h.ServeHTTP(w, r)
+		// An upload over the limit is refused before its body is read.
+		if !limitUpload(w, r, uploadLimit) {
+			return
+		}
+		h.ServeHTTP(w, withAcceptLanguage(r))
 	}))}
 }
 

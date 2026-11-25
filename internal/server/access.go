@@ -9,6 +9,7 @@ import (
 
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
+	"github.com/code2rich/rigdepot/internal/server/authn"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
@@ -63,32 +64,47 @@ func (a accessAuditor) Append(ctx context.Context, tx *dbx.Tx, e access.AuditEnt
 // settings, the wizard, modules, the tool switches and the minimum
 // command-line version is settings.manage on the platform;
 // reading the whole audit log is audit.read on the platform.
-func accessAuthorizer(svc *access.Service) func(ctx context.Context, a audit.Actor, action string, object audit.Object) (bool, error) {
+//
+// The log of one resource (object kind "resource", id its code, as package catalog records
+// it) is for those who manage the resource: its maintainers, the owners of its product and
+// platform administrators (access.ActionResourceDraftRead on it). resourceTarget describes
+// the resource; it is package catalog's.
+func accessAuthorizer(svc *access.Service, resourceTarget func(ctx context.Context, code string) (access.Target, bool, error)) func(ctx context.Context, a audit.Actor, action string, object audit.Object) (bool, error) {
 	return func(ctx context.Context, a audit.Actor, action string, object audit.Object) (bool, error) {
 		var act access.Action
+		target := access.TargetPlatform()
 		switch action {
 		case settings.ActionSettingsRead, settings.ActionSettingsUpdate, settings.ActionSetupComplete,
 			settings.ActionModuleEnable, settings.ActionModuleDisable,
 			settings.ActionAdapterEnable, settings.ActionAdapterDisable, settings.ActionCLIPolicyUpdate:
 			act = access.ActionSettingsManage
 		case actionAuditRead:
-			if object != (audit.Object{}) {
-				// The log of one resource for its maintainers needs the
-				// resource's maintainers from catalog. TODO(M1-24).
+			switch {
+			case object == (audit.Object{}):
+				act = access.ActionAuditRead
+			case object.Kind == "resource" && resourceTarget != nil:
+				t, found, err := resourceTarget(ctx, object.ID)
+				if err != nil || !found {
+					return false, err
+				}
+				act, target = access.ActionResourceDraftRead, t
+			default:
 				return false, nil
 			}
-			act = access.ActionAuditRead
 		default:
 			return false, fmt.Errorf("no permission rule maps action %q", action)
 		}
-		d := svc.Can(ctx, accessActor(a), act, access.TargetPlatform())
+		d := svc.Can(ctx, accessActor(a), act, target)
 		return d.Allowed, d.Err
 	}
 }
 
-// accessNames is auditNames from the users access keeps. Devices come with
-// the device code flow (authn, M1-22): until then their ids stand in.
-type accessNames struct{ svc *access.Service }
+// accessNames is auditNames from the users access keeps and the devices
+// authn keeps.
+type accessNames struct {
+	svc     *access.Service
+	devices *authn.Devices // nil: device ids stand in for their names
+}
 
 func (n accessNames) User(ctx context.Context, id string) (string, string, bool) {
 	u, err := n.svc.GetUser(ctx, access.System, id)
@@ -98,4 +114,9 @@ func (n accessNames) User(ctx context.Context, id string) (string, string, bool)
 	return u.Username, u.DisplayName, true
 }
 
-func (accessNames) Device(context.Context, string) (string, bool) { return "", false }
+func (n accessNames) Device(ctx context.Context, id string) (string, bool) {
+	if n.devices == nil {
+		return "", false
+	}
+	return n.devices.DeviceName(ctx, id)
+}

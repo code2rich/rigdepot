@@ -9,7 +9,7 @@ import { api, unwrap, type Schemas } from '../../api/client'
 import { t } from '../../i18n'
 import { initial } from '../../shell/user-menu'
 import { Icon } from '../../ui/icons'
-import { errorText } from '../../ui/problem'
+import { failText } from '../../ui/fail'
 
 export function PeoplePicker(props: {
   id: string
@@ -93,7 +93,7 @@ export function PeoplePicker(props: {
       )}
       {error !== null && (
         <p class="hint" role="alert">
-          {errorText(error)}
+          {failText(error)}
         </p>
       )}
       {found && found.length === 0 && <p class="hint">{t('products.people.none')}</p>}

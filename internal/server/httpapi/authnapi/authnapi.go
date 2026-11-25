@@ -22,6 +22,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/code2rich/rigdepot/internal/brand"
@@ -47,8 +48,8 @@ type Options struct {
 	// TrustedProxies are the reverse proxies whose X-Forwarded-For is
 	// believed, for limits by client address.
 	TrustedProxies []netip.Prefix
-	// SignInRate limits signing in and opening invitation links per client
-	// address; UserRate limits every other operation per account. The zero
+	// SignInRate limits signing in, opening invitation links and starting
+	// rgd login per client address; UserRate limits every other operation per account. The zero
 	// value is DefaultSignInRate and DefaultUserRate; a negative Burst
 	// turns a limit off.
 	SignInRate, UserRate Rate
@@ -56,6 +57,9 @@ type Options struct {
 	Now func() time.Time
 	// Log receives faults while authenticating; nil discards them.
 	Log *slog.Logger
+	// Devices runs the device code flow and keeps the devices (rgd login,
+	// the confirmation page, my devices). Nil: those operations answer 501.
+	Devices *authn.Devices
 	// Protected are path prefixes outside the contract (the optional
 	// modules' routes, /api/v1/x/) whose requests are authenticated like an
 	// operation that accepts a session, a device token or an access token
@@ -69,16 +73,19 @@ type Options struct {
 type Ops struct {
 	protected []string
 	svc       *authn.Service
+	devices   *authn.Devices
+	base      string // the public address without a trailing slash, for verification_uri
 	log       *slog.Logger
 	ops       *operations
 	cop       *http.CrossOriginProtection
 	secure    bool
 	path      string
 
-	trusted []netip.Prefix
-	signIn  *limiter
-	invite  *limiter
-	user    *limiter
+	trusted    []netip.Prefix
+	signIn     *limiter
+	invite     *limiter
+	deviceCode *limiter
+	user       *limiter
 }
 
 // New returns the operations on svc. It fails when the contract built into
@@ -101,12 +108,13 @@ func New(svc *authn.Service, o Options) (*Ops, error) {
 		o.UserRate = DefaultUserRate
 	}
 	h := &Ops{
-		protected: o.Protected,
-		svc:       svc, log: o.Log, ops: ops, cop: http.NewCrossOriginProtection(), path: "/", trusted: o.TrustedProxies,
-		signIn: newLimiter(o.SignInRate, o.Now), invite: newLimiter(o.SignInRate, o.Now), user: newLimiter(o.UserRate, o.Now),
+		protected: o.Protected, devices: o.Devices,
+		svc: svc, log: o.Log, ops: ops, cop: http.NewCrossOriginProtection(), path: "/", trusted: o.TrustedProxies,
+		signIn: newLimiter(o.SignInRate, o.Now), invite: newLimiter(o.SignInRate, o.Now), deviceCode: newLimiter(o.SignInRate, o.Now), user: newLimiter(o.UserRate, o.Now),
 	}
 	if b := o.BaseURL; b != nil {
 		h.secure = b.Scheme == "https"
+		h.base = strings.TrimSuffix(b.String(), "/")
 		if b.Path != "" && b.Path != "/" {
 			h.path = b.Path
 		}
@@ -149,6 +157,12 @@ var details = map[string]string{
 	"object.not_found":         "Not found, or not visible to you.",
 	"request.invalid":          "The request has invalid fields.",
 	"rate.limited":             "Too many requests. Try again in a moment.",
+
+	"device.authorization_pending": "Waiting for confirmation in the browser.",
+	"device.slow_down":             "Polling too fast; wait longer between requests.",
+	"device.expired":               "This sign-in request has expired or was already used. Start again.",
+	"device.denied":                "The sign-in request was refused in the browser.",
+	"device.decided":               "This sign-in request was already approved or refused.",
 }
 
 var statusOf = map[authn.Kind]int{
@@ -158,6 +172,7 @@ var statusOf = map[authn.Kind]int{
 	authn.KindNotFound:        http.StatusNotFound,
 	authn.KindConflict:        http.StatusConflict,
 	authn.KindLocked:          http.StatusTooManyRequests,
+	authn.KindDeviceFlow:      http.StatusBadRequest, // RFC 8628, 3.5
 }
 
 // newProblem is a problem document with this package's detail text and the
@@ -190,6 +205,13 @@ func fail(ctx context.Context, err error) error {
 				fields[i] = httpapi.FieldError{Field: f.Field, Code: f.Code}
 			}
 			p.Errors = &fields
+		}
+		if len(e.Params) > 0 {
+			params := make(map[string]any, len(e.Params))
+			for k, v := range e.Params {
+				params[k] = v
+			}
+			p.Params = &params
 		}
 		if e.RetryAfter > 0 {
 			setRetryAfter(ctx, e.RetryAfter)

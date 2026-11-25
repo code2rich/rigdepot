@@ -7,12 +7,13 @@
 
 import { useEffect, useState } from 'preact/hooks'
 import { ApiError, api, unwrap, type Schemas } from '../../api/client'
-import type { Load } from '../../api/use-load'
+import type { Load } from '../../ui/load'
 import { t } from '../../i18n'
 import { me, meta } from '../../shell/session'
 import { Switch } from '../../ui/controls'
 import { Modal } from '../../ui/overlay'
-import { ErrorNote, LoadFailed } from '../../ui/problem'
+import { Fail } from '../../ui/fail'
+import { LoadError } from '../../ui/load'
 import { toast } from '../../ui/toast'
 
 type Settings = Schemas['PlatformSettings']
@@ -57,7 +58,7 @@ export function MailCard(props: Props) {
       <section class="card pad">
         <h3>{t('settings.mail.title')}</h3>
         {props.settings.state === 'failed' ? (
-          <LoadFailed error={props.settings.error} retry={props.reload} />
+          <LoadError error={props.settings.error} retry={props.reload} />
         ) : (
           <div aria-busy="true" style={{ minHeight: '120px' }} />
         )}
@@ -209,7 +210,7 @@ export function MailCard(props: Props) {
           />
           <p class="hint">{!portOk ? t('settings.mail.port_bad') : t('settings.mail.hint')}</p>
         </div>
-        <ErrorNote error={error} />
+        <Fail error={error} />
         <div class="row">
           <button type="submit" class="btn primary" disabled={busy || !dirty || !portOk}>
             {t('ui.save')}
@@ -283,7 +284,7 @@ function TestMail(props: { onClose: () => void }) {
         />
         <p class="hint">{t('settings.mail.test_hint')}</p>
       </div>
-      <ErrorNote error={error} />
+      <Fail error={error} />
     </Modal>
   )
 }
@@ -298,7 +299,7 @@ export function OrganizationCard(props: Props) {
       <section class="card pad">
         <h3>{t('settings.org.title')}</h3>
         {props.settings.state === 'failed' ? (
-          <LoadFailed error={props.settings.error} retry={props.reload} />
+          <LoadError error={props.settings.error} retry={props.reload} />
         ) : (
           <div aria-busy="true" style={{ minHeight: '60px' }} />
         )}
@@ -347,7 +348,7 @@ export function OrganizationCard(props: Props) {
           </div>
           <p class="hint">{t('settings.org.hint')}</p>
         </div>
-        <ErrorNote error={error} />
+        <Fail error={error} />
       </form>
     </section>
   )

@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Rigdepot Authors
 
-// Small controls from the prototype: the segmented choice (segBtn), the square switch, the toggle chip and the
-// AI tip ("让 AI 来做") with its copy button.
+// Small controls from the prototype: the segmented choice (segBtn), the square switch and the toggle chip
+// (chip). The sentence for the AI tool is AiTip in say.tsx.
 
 import type { ComponentChildren } from 'preact'
-import { t } from '../i18n'
-import { Icon } from './icons'
-import { toast } from './toast'
 
 /** Seg is a choice of one among a few, as buttons; `lined` is the tab style. */
 export function Seg<V extends string>(props: {
@@ -65,40 +62,5 @@ export function Chip(props: { on: boolean; onClick: () => void; children: Compon
     >
       {props.children}
     </button>
-  )
-}
-
-/** copyText puts text on the clipboard and says so. */
-export async function copyText(text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-    toast(t('ui.copied'))
-  } catch {
-    toast(t('ui.copy_failed'))
-  }
-}
-
-/** AiTip is the line that says what to ask an AI tool to do instead of clicking through the page. */
-export function AiTip(props: { say: string; note?: string }) {
-  return (
-    <div class="aitip">
-      <span class="lab">
-        <Icon name="spark" />
-        {t('ui.aitip.label')}
-      </span>
-      <span class="say">
-        {t('ui.aitip.quote', { say: props.say })}
-        {props.note && <span class="note">{props.note}</span>}
-      </span>
-      <button
-        type="button"
-        class="btn ghost icon"
-        onClick={() => void copyText(props.say)}
-        aria-label={t('ui.aitip.copy')}
-        title={t('ui.aitip.copy')}
-      >
-        <Icon name="copy" />
-      </button>
-    </div>
   )
 }

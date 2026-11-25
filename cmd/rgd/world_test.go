@@ -22,6 +22,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/cli"
 	"github.com/code2rich/rigdepot/internal/cliout"
+	"github.com/code2rich/rigdepot/internal/sync"
 	"github.com/code2rich/rigdepot/internal/testenv"
 )
 
@@ -93,6 +94,10 @@ type world struct {
 	terminal bool
 	stdin    string
 	lang     string
+	// realTools runs with the tool adapters the program links instead of the two made-up ones.
+	realTools bool
+	// knowledge fetches the knowledge bases; nil is the program's own (the person's git).
+	knowledge sync.Fetcher
 }
 
 func newWorld(t *testing.T) *world {
@@ -148,6 +153,10 @@ type result struct {
 func (w *world) run(args ...string) result {
 	w.t.Helper()
 	var stdout, stderr bytes.Buffer
+	adapters := []adapter.Adapter{fakeCode(), otherAI()}
+	if w.realTools {
+		adapters = nil
+	}
 	code := cli.Run(append([]string{"--lang", w.lang}, args...), cli.Env{
 		Stdin:           strings.NewReader(w.stdin),
 		Stdout:          &stdout,
@@ -157,7 +166,8 @@ func (w *world) run(args ...string) result {
 		SystemLanguages: func() []string { return nil },
 		IsTerminal:      func(any) bool { return w.terminal },
 		GOOS:            runtime.GOOS,
-		Adapters:        []adapter.Adapter{fakeCode(), otherAI()},
+		Adapters:        adapters,
+		Knowledge:       w.knowledge,
 	})
 	return result{code, stdout.String(), stderr.String()}
 }

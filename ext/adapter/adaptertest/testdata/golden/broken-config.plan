@@ -1,4 +1,5 @@
 op write-tree ~/.fakecode/skills/rgd-contract-skill (skill/contract-skill@3): SKILL.md, scripts/check.sh*
+op write-tree ~/.fakecode/skills/rgd-contract-agent (agent/contract-agent@1): SKILL.md, memory/README.md, skills/review/SKILL.md local memory, workspace
 op write-file ~/.fakecode/commands/rgd-contract-command.md (workflow/contract-command@1)
 op write-file ~/.fakecode/agents/rgd-contract-agent.md (agent/contract-agent@1)
 skip mcp/contract-stdio@2 config_unreadable: ~/.fakecode/settings.jsonc: not valid jsonc at byte 87

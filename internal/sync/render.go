@@ -6,6 +6,7 @@ package sync
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/ext/kind"
@@ -31,9 +32,24 @@ type rendered struct {
 	failed map[string]error
 }
 
+// renderOptions are the options every resource is rendered with on this computer: the product's
+// prefix and command, and the local data directory written as "~/…" when it is inside the home
+// directory, which is how the AI tools' shells reach it on every system.
+func (e *Engine) renderOptions() kind.RenderOptions {
+	return kind.RenderOptions{Prefix: brand.Prefix, CLI: brand.CLI, Data: e.dataForAI()}
+}
+
+// dataForAI is the local data directory the way the AI can use it in a shell command.
+func (e *Engine) dataForAI() string {
+	if rel, err := filepath.Rel(e.sys.Home, e.data.Path()); err == nil && filepath.IsLocal(rel) {
+		return "~/" + filepath.ToSlash(rel)
+	}
+	return filepath.ToSlash(e.data.Path())
+}
+
 // render picks, for each resource, the first form of its kind that the tool's capabilities
 // satisfy and whose Render does not say ErrNotApplicable. That order is the fallback rule.
-func render(resources []desired.Resource, caps adapter.Capabilities) rendered {
+func render(resources []desired.Resource, caps adapter.Capabilities, opt kind.RenderOptions) rendered {
 	out := rendered{failed: map[string]error{}}
 	for _, r := range resources {
 		if r.Kind == nil {
@@ -45,7 +61,7 @@ func render(resources []desired.Resource, caps adapter.Capabilities) rendered {
 			if !f.Needs.SatisfiedBy(caps) || f.Render == nil {
 				continue
 			}
-			arts, err := f.Render(r.Spec, caps, kind.RenderOptions{Prefix: brand.Prefix, CLI: brand.CLI})
+			arts, err := f.Render(r.Spec, caps, opt)
 			if errors.Is(err, kind.ErrNotApplicable) {
 				continue
 			}

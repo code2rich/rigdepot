@@ -21,6 +21,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/authn"
+	"github.com/code2rich/rigdepot/internal/server/catalog"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
@@ -56,9 +57,14 @@ type App struct {
 	audit    *audit.Log
 	access   *access.Service
 	authn    *authn.Service
-	authnOps *authnapi.Ops // the sign-in operations and middleware
+	devices  *authn.Devices // the device code flow and the devices
+	authnOps *authnapi.Ops  // the sign-in operations and middleware
 	settings *settings.Service
+	catalog  *catalog.Service
 	hooks    hooks
+	// catalogOptions are the kinds and the rule set the catalog uses; the zero value is the
+	// program's registries (builtin/all). Tests, which cannot import builtin, set their own.
+	catalogOptions catalog.Options
 
 	// mailChannels finds a notification channel by ID; nil means the
 	// registry (ext/notify). Tests put a fake channel here.

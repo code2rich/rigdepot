@@ -9,7 +9,7 @@
 
 import { useState } from 'preact/hooks'
 import { api, unwrap, type Schemas } from '../../api/client'
-import { useLoad } from '../../api/use-load'
+import { useLoad } from '../../ui/load'
 import { t } from '../../i18n'
 import { fmtDateTime } from '../../i18n/format'
 import { role } from '../../shell/session'
@@ -17,8 +17,10 @@ import { Seg } from '../../ui/controls'
 import { Empty } from '../../ui/empty'
 import { Icon } from '../../ui/icons'
 import { PageHeader } from '../../ui/page-header'
-import { ErrorNote, LoadFailed } from '../../ui/problem'
-import { Toasts, toast } from '../../ui/toast'
+import { Fail } from '../../ui/fail'
+import { toolName } from '../../ui/resource'
+import { LoadError } from '../../ui/load'
+import { toast } from '../../ui/toast'
 import './audit.css'
 import { changeText } from './change'
 
@@ -28,34 +30,33 @@ type Category = Schemas['AuditCategory']
 export default function Audit() {
   const admin = role.value === 'admin'
   const [category, setCategory] = useState<Category>('platform')
-  const [pages, setPages] = useState(1)
-  const [log, reload] = useLoad(async () => {
-    const items: Entry[] = []
-    let cursor: string | undefined
-    for (let i = 0; i < pages; i++) {
-      const page = unwrap(
-        await api.GET('/api/v1/audit', {
-          params: { query: { category, limit: 50, ...(cursor ? { cursor } : {}) } },
-        }),
-      )
-      items.push(...page.items)
-      cursor = page.next_cursor
-      if (!cursor) break
-    }
-    return { items, next: cursor }
-  }, [category, pages])
-  // Tool names for the "来源" column; only administrators may read them, everyone else sees the tool's id.
-  const [adapters] = useLoad(
-    async () => (admin ? unwrap(await api.GET('/api/v1/adapters')).items : []),
-    [admin],
-  )
+  const page = (cursor?: string) =>
+    api
+      .GET('/api/v1/audit', { params: { query: { category, limit: 50, ...(cursor ? { cursor } : {}) } } })
+      .then(unwrap)
+  // The first page; "加载更多" appends the next ones without reloading what is shown.
+  const log = useLoad(() => page(), [category])
+  const [more, setMore] = useState<{ items: Entry[]; next?: string; busy: boolean; error?: unknown }>({
+    items: [],
+    busy: false,
+  })
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<unknown>(null)
 
-  const toolName = (id: string) => adapters.data?.find((a) => a.id === id)?.name ?? id
   const pick = (c: Category) => {
     setCategory(c)
-    setPages(1)
+    setMore({ items: [], busy: false })
+  }
+  const next = more.items.length ? more.next : log.data?.next_cursor
+  const loadMore = async () => {
+    if (!next) return
+    setMore({ ...more, busy: true, error: undefined })
+    const out = await page(next).catch((err: unknown) => err)
+    if (out instanceof Error) setMore({ ...more, busy: false, error: out })
+    else {
+      const p = out as Schemas['AuditPage']
+      setMore({ items: [...more.items, ...p.items], next: p.next_cursor, busy: false })
+    }
   }
 
   const exportCSV = async () => {
@@ -81,7 +82,7 @@ export default function Audit() {
     toast(t('audit.exported'))
   }
 
-  const entries = log.data?.items ?? []
+  const entries = [...(log.data?.items ?? []), ...more.items]
   return (
     <>
       <PageHeader
@@ -97,7 +98,7 @@ export default function Audit() {
       />
       {exportError !== null && (
         <div class="mb">
-          <ErrorNote error={exportError} />
+          <Fail error={exportError} />
         </div>
       )}
       {!admin && (
@@ -119,7 +120,7 @@ export default function Audit() {
       </div>
       <section class="card">
         {log.state === 'failed' && !log.data ? (
-          <LoadFailed error={log.error} retry={reload} />
+          <LoadError error={log.error} retry={log.reload} />
         ) : log.data && entries.length === 0 ? (
           <Empty
             title={t('audit.empty.title')}
@@ -147,7 +148,7 @@ export default function Audit() {
                         <When at={e.at} />
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>{actorName(e)}</td>
-                      <td>{originText(e, toolName)}</td>
+                      <td>{originText(e)}</td>
                       <td>{e.action_label}</td>
                       <td>
                         {e.object.label}
@@ -193,26 +194,20 @@ export default function Audit() {
             )}
           </div>
         )}
-        {log.data?.next && (
+        {next && (
           <div class="row" style={{ padding: '10px 18px', borderTop: '1px solid var(--line)' }}>
-            <button
-              type="button"
-              class="btn sm"
-              disabled={log.state === 'loading'}
-              onClick={() => setPages(pages + 1)}
-            >
+            <button type="button" class="btn sm" disabled={more.busy} onClick={() => void loadMore()}>
               {t('ui.load.more')}
             </button>
           </div>
         )}
-        {log.state === 'failed' && log.data && (
+        {more.error !== undefined && (
           <div style={{ padding: '0 18px 12px' }}>
-            <ErrorNote error={log.error} />
+            <Fail error={more.error} retry={() => void loadMore()} />
           </div>
         )}
         <p class="card-f">{category === 'login' ? t('audit.note.login') : t('audit.note.platform')}</p>
       </section>
-      <Toasts />
     </>
   )
 }
@@ -241,7 +236,7 @@ function originName(o: Entry['origin']): string {
   }
 }
 
-function originText(e: Entry, toolName: (id: string) => string): string {
+function originText(e: Entry): string {
   return [originName(e.origin), e.via_tool && toolName(e.via_tool), e.device?.name]
     .filter(Boolean)
     .join(' · ')

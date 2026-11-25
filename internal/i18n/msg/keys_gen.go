@@ -7,6 +7,8 @@ const (
 	AdapterDetectLookpathFailed = "adapter.detect.lookpath_failed"
 	// AdapterDetectUnreadable (cli.json): A file or directory it needs is there but cannot be read.
 	AdapterDetectUnreadable = "adapter.detect.unreadable"
+	// AgentAsSkill (catalog.json): This tool has no sub-agents, so the agent arrives as a skill of the sa…
+	AgentAsSkill = "agent.as_skill"
 	// CheckBundledenvFound (check.json): {{file}} holds real configuration values and would be handed to everyo…
 	CheckBundledenvFound = "check.bundledenv.found"
 	// CheckCLIBlockedHint (cli.json): A resource with a problem that must be fixed cannot be published.
@@ -133,6 +135,8 @@ const (
 	CheckStructureRepoRead = "check.structure.repo.read"
 	// CheckStructureRepoSchema (check.json): Does not match the format: {{detail}}
 	CheckStructureRepoSchema = "check.structure.repo.schema"
+	// CheckStructureRepoUndefinedRef (check.json): Refers to a resource the repository does not have, or one that cannot …
+	CheckStructureRepoUndefinedRef = "check.structure.repo.undefined_ref"
 	// CheckStructureRepoUndefinedSecret (check.json): Refers to a secret the repository does not define: {{detail}}
 	CheckStructureRepoUndefinedSecret = "check.structure.repo.undefined_secret"
 	// CheckStructureRepoUndefinedStage (check.json): Names a stage the repository does not have: {{detail}}
@@ -461,6 +465,14 @@ const (
 	FlagDir = "flag.dir"
 	// FlagExitCode (cli.json): With --plan: exit with 5 when there is something to change
 	FlagExitCode = "flag.exit_code"
+	// FlagFlowConfirmed (cli.json): The person confirmed their checks and agreed to go on, in this convers…
+	FlagFlowConfirmed = "flag.flow.confirmed"
+	// FlagFlowDir (cli.json): The project's directory: where the run belongs and the checks that are…
+	FlagFlowDir = "flag.flow.dir"
+	// FlagFlowEvidence (cli.json): Your evidence for the checks you make (the AI's own checks): what show…
+	FlagFlowEvidence = "flag.flow.evidence"
+	// FlagFlowRestart (cli.json): Throw away the run under way in this directory and start with the firs…
+	FlagFlowRestart = "flag.flow.restart"
 	// FlagHelp (cli.json): Show help
 	FlagHelp = "flag.help"
 	// FlagHome (cli.json): Local data directory (default ~/{{home}})
@@ -501,6 +513,74 @@ const (
 	FlagVersion = "flag.version"
 	// FlagYesGlobal (cli.json): Agree to every change of global configuration in this sync, without be…
 	FlagYesGlobal = "flag.yes_global"
+	// FlowBadCode (cli.json): "{{workflow}}" is not the code of a workflow: lower-case letters, digi…
+	FlowBadCode = "flow.bad_code"
+	// FlowBadDir (cli.json): {{dir}} is not a directory.
+	FlowBadDir = "flow.bad_dir"
+	// FlowByAi (cli.json): you check it: state your evidence
+	FlowByAi = "flow.by.ai"
+	// FlowByCommand (cli.json): {{cli}} runs: {{run}}
+	FlowByCommand = "flow.by.command"
+	// FlowByHuman (cli.json): the person confirms it
+	FlowByHuman = "flow.by.human"
+	// FlowChanged (cli.json): The workflow {{workflow}} changed since this run started: a sync updat…
+	FlowChanged = "flow.changed"
+	// FlowCheckedHead (cli.json): {{workflow}} · checks of step {{step}} of {{total}}
+	FlowCheckedHead = "flow.checked_head"
+	// FlowDone (cli.json): {{workflow}}: all {{total}} steps are done. Tell the person.
+	FlowDone = "flow.done"
+	// FlowFailed (cli.json): Not every check passed, so the next step is not handed out. Put it rig…
+	FlowFailed = "flow.failed"
+	// FlowNextShort (cli.json): Check the step handed out last and hand out the next one; without a ru…
+	FlowNextShort = "flow.next.short"
+	// FlowReasonConfirmation (cli.json): Not confirmed: ask the person, and once they agree, run "{{command}}".
+	FlowReasonConfirmation = "flow.reason.confirmation"
+	// FlowReasonError (cli.json): The check could not be made.
+	FlowReasonError = "flow.reason.error"
+	// FlowReasonEvidence (cli.json): No evidence given: run "{{command}}" with what shows it holds.
+	FlowReasonEvidence = "flow.reason.evidence"
+	// FlowReasonExit (cli.json): The command exited with {{code}}.
+	FlowReasonExit = "flow.reason.exit"
+	// FlowReasonNotRun (cli.json): Not run yet: the other checks have to pass first.
+	FlowReasonNotRun = "flow.reason.not_run"
+	// FlowRefAgent (cli.json): the agent {{name}} ({{title}}): hand the step to it
+	FlowRefAgent = "flow.ref.agent"
+	// FlowRefKnowledge (cli.json): the knowledge base {{name}} ({{title}})
+	FlowRefKnowledge = "flow.ref.knowledge"
+	// FlowRefMCP (cli.json): the MCP server {{name}} ({{title}})
+	FlowRefMCP = "flow.ref.mcp"
+	// FlowRefMissing (cli.json): {{name}}, which the resource repository does not have
+	FlowRefMissing = "flow.ref.missing"
+	// FlowRefNotHere (cli.json): — not installed on this computer: ask the person to run "{{command}}" …
+	FlowRefNotHere = "flow.ref.not_here"
+	// FlowRefOther (cli.json): {{name}} ({{title}})
+	FlowRefOther = "flow.ref.other"
+	// FlowRefSkill (cli.json): the skill {{name}} ({{title}})
+	FlowRefSkill = "flow.ref.skill"
+	// FlowShort (cli.json): Workflows synced to this computer: their steps, one at a time
+	FlowShort = "flow.short"
+	// FlowStepChecks (cli.json): Checks at the end of this step:
+	FlowStepChecks = "flow.step.checks"
+	// FlowStepConfirm (cli.json): After the checks, this step waits for the person to say to go on.
+	FlowStepConfirm = "flow.step.confirm"
+	// FlowStepForbid (cli.json): Do not: {{what}}
+	FlowStepForbid = "flow.step.forbid"
+	// FlowStepHead (cli.json): {{workflow}} · step {{step}} of {{total}}
+	FlowStepHead = "flow.step.head"
+	// FlowStepNext (cli.json): Do this step, and only this step. When it is done, run "{{command}}".
+	FlowStepNext = "flow.step.next"
+	// FlowStepUse (cli.json): Do it with {{what}}
+	FlowStepUse = "flow.step.use"
+	// FlowStepWith (cli.json): Also use {{what}}
+	FlowStepWith = "flow.step.with"
+	// FlowUnknown (cli.json): There is no workflow {{workflow}} on this computer.
+	FlowUnknown = "flow.unknown"
+	// FlowUnknownHint (cli.json): Workflows arrive with "{{command}}"; if it is optional, turn it on fir…
+	FlowUnknownHint = "flow.unknown_hint"
+	// FlowUnreadable (cli.json): The run cannot be read, so it is not known which step it is at: {{deta…
+	FlowUnreadable = "flow.unreadable"
+	// FlowWaiting (cli.json): The checks passed. This step waits for the person: ask them whether to…
+	FlowWaiting = "flow.waiting"
 	// HelpCommands (cli.json): Commands:
 	HelpCommands = "help.commands"
 	// HelpFlags (cli.json): Options:
@@ -513,6 +593,48 @@ const (
 	HelpShort = "help.short"
 	// HelpUsage (cli.json): Usage:
 	HelpUsage = "help.usage"
+	// LoginAlready (cli.json): This computer is already signed in to {{address}} as {{user}}.
+	LoginAlready = "login.already"
+	// LoginAlreadyHint (cli.json): To sign in again, run "{{cli}} logout" first.
+	LoginAlreadyHint = "login.already_hint"
+	// LoginBadServer (cli.json): {{value}} is not an http or https address.
+	LoginBadServer = "login.bad_server"
+	// LoginConfigFailed (cli.json): Signed in, but the server's address could not be saved in {{path}}: {{…
+	LoginConfigFailed = "login.config_failed"
+	// LoginDenied (cli.json): The sign-in was refused in the browser.
+	LoginDenied = "login.denied"
+	// LoginDone (cli.json): Signed in to {{address}} as {{user}}. This computer is listed there as…
+	LoginDone = "login.done"
+	// LoginExpired (cli.json): The code was not confirmed in time. Run "{{cli}} login" again for a ne…
+	LoginExpired = "login.expired"
+	// LoginKeyringFallback (cli.json): There is no system keychain here, so the device key and token are kept…
+	LoginKeyringFallback = "login.keyring_fallback"
+	// LoginKeyringUnknown (cli.json): The keychain cannot be read right now, so nothing was changed and no n…
+	LoginKeyringUnknown = "login.keyring_unknown"
+	// LoginLong (cli.json): Signs this computer in with a code you confirm in a browser where you …
+	LoginLong = "login.long"
+	// LoginNoServer (cli.json): Which server? Give its address, such as: {{cli}} login https://hub.exa…
+	LoginNoServer = "login.no_server"
+	// LoginPrompt (cli.json): To sign in, open this page in a browser where you are signed in:
+	LoginPrompt = "login.prompt"
+	// LoginPromptEnter (cli.json): Press Enter to open the page in your browser.
+	LoginPromptEnter = "login.prompt_enter"
+	// LoginServerFailed (cli.json): {{address}} refused: {{detail}}
+	LoginServerFailed = "login.server_failed"
+	// LoginShort (cli.json): Sign this computer in to a {{product}} server
+	LoginShort = "login.short"
+	// LoginUnreachable (cli.json): {{address}} cannot be reached: {{detail}}
+	LoginUnreachable = "login.unreachable"
+	// LoginWaiting (cli.json): Waiting for the confirmation (the code is valid for {{count}} minutes)…
+	LoginWaiting = "login.waiting"
+	// LogoutDone (cli.json): Signed out of {{address}}. The device token and key are deleted from t…
+	LogoutDone = "logout.done"
+	// LogoutNotSignedIn (cli.json): This computer is not signed in.
+	LogoutNotSignedIn = "logout.not_signed_in"
+	// LogoutServerFailed (cli.json): {{address}} could not be told ({{detail}}). The token is deleted here …
+	LogoutServerFailed = "logout.server_failed"
+	// LogoutShort (cli.json): Sign this computer out and delete its device token and key
+	LogoutShort = "logout.short"
 	// MailDigestIntro (server.json): You have reached the limit of {{limit}} messages an hour, so the rest …
 	MailDigestIntro = "mail.digest.intro"
 	// MailDigestSubject (server.json): {{count}} more notifications
@@ -527,6 +649,90 @@ const (
 	MailTestSubject = "mail.test.subject"
 	// MCPAsSkill (catalog.json): This tool cannot connect to the MCP server directly, so it gets a skil…
 	MCPAsSkill = "mcp.as_skill"
+	// NotifyAdminGrantedBody (server.json): You can manage users and sign-in, tool adapters, the audit log and the…
+	NotifyAdminGrantedBody = "notify.admin_granted.body"
+	// NotifyAdminGrantedTitle (server.json): You are now a platform administrator
+	NotifyAdminGrantedTitle = "notify.admin_granted.title"
+	// NotifyAdminRevokedBody (server.json): Your roles in products stay as they are.
+	NotifyAdminRevokedBody = "notify.admin_revoked.body"
+	// NotifyAdminRevokedTitle (server.json): You are no longer a platform administrator
+	NotifyAdminRevokedTitle = "notify.admin_revoked.title"
+	// NotifyAuditBrokenBody (server.json): The daily check found entry #{{seq}} changed, removed or inserted; the…
+	NotifyAuditBrokenBody = "notify.audit_broken.body"
+	// NotifyAuditBrokenTitle (server.json): The audit log was tampered with
+	NotifyAuditBrokenTitle = "notify.audit_broken.title"
+	// NotifyFeedbackAcceptedBody (server.json): Someone is looking into your feedback.
+	NotifyFeedbackAcceptedBody = "notify.feedback_accepted.body"
+	// NotifyFeedbackAcceptedTitle (server.json): FB-{{number}} was accepted
+	NotifyFeedbackAcceptedTitle = "notify.feedback_accepted.title"
+	// NotifyFeedbackCommentedBody (server.json): Open the feedback to read the reply.
+	NotifyFeedbackCommentedBody = "notify.feedback_commented.body"
+	// NotifyFeedbackCommentedTitle (server.json): New reply on FB-{{number}}
+	NotifyFeedbackCommentedTitle = "notify.feedback_commented.title"
+	// NotifyFeedbackInProgressBody (server.json): You will hear when it is resolved.
+	NotifyFeedbackInProgressBody = "notify.feedback_in_progress.body"
+	// NotifyFeedbackInProgressTitle (server.json): Work on FB-{{number}} has started
+	NotifyFeedbackInProgressTitle = "notify.feedback_in_progress.title"
+	// NotifyFeedbackReopenedBody (server.json): The outcome was rated low, so the feedback is open again.
+	NotifyFeedbackReopenedBody = "notify.feedback_reopened.body"
+	// NotifyFeedbackReopenedTitle (server.json): FB-{{number}} was reopened
+	NotifyFeedbackReopenedTitle = "notify.feedback_reopened.title"
+	// NotifyFeedbackResolvedBody (server.json): If it works for you now, rate how it was handled.
+	NotifyFeedbackResolvedBody = "notify.feedback_resolved.body"
+	// NotifyFeedbackResolvedTitle (server.json): FB-{{number}} was resolved
+	NotifyFeedbackResolvedTitle = "notify.feedback_resolved.title"
+	// NotifyFeedbackWontFixBody (server.json): Open the feedback to read why.
+	NotifyFeedbackWontFixBody = "notify.feedback_wont_fix.body"
+	// NotifyFeedbackWontFixTitle (server.json): FB-{{number}} will not be fixed
+	NotifyFeedbackWontFixTitle = "notify.feedback_wont_fix.title"
+	// NotifyInviteBody (server.json): {{inviter}} invited you to {{product}}, where your team shares Skills,…
+	NotifyInviteBody = "notify.invite.body"
+	// NotifyInviteTitle (server.json): You are invited to {{product}}
+	NotifyInviteTitle = "notify.invite.title"
+	// NotifyJoinApprovedBody (server.json): Your request to join {{product_name}} was approved. Its resources reac…
+	NotifyJoinApprovedBody = "notify.join_approved.body"
+	// NotifyJoinApprovedTitle (server.json): You can now use {{product_name}}
+	NotifyJoinApprovedTitle = "notify.join_approved.title"
+	// NotifyJoinRejectedBody (server.json): The reason given: {{reason}}
+	NotifyJoinRejectedBody = "notify.join_rejected.body"
+	// NotifyJoinRejectedTitle (server.json): Your request to join {{product_name}} was not approved
+	NotifyJoinRejectedTitle = "notify.join_rejected.title"
+	// NotifyJoinRequestedBody (server.json): Approve or reject the request under Products and members.
+	NotifyJoinRequestedBody = "notify.join_requested.body"
+	// NotifyJoinRequestedTitle (server.json): {{user}} asked to join {{product_name}}
+	NotifyJoinRequestedTitle = "notify.join_requested.title"
+	// NotifyMemberAddedBody (server.json): Its resources reach your computer at your next sync.
+	NotifyMemberAddedBody = "notify.member_added.body"
+	// NotifyMemberAddedTitle (server.json): You were added to {{product_name}}
+	NotifyMemberAddedTitle = "notify.member_added.title"
+	// NotifyMemberRemovedBody (server.json): Its resources leave your computer at your next sync.
+	NotifyMemberRemovedBody = "notify.member_removed.body"
+	// NotifyMemberRemovedTitle (server.json): You were removed from {{product_name}}
+	NotifyMemberRemovedTitle = "notify.member_removed.title"
+	// NotifyOwnerAddedBody (server.json): You can manage its members, join requests and resources.
+	NotifyOwnerAddedBody = "notify.owner_added.body"
+	// NotifyOwnerAddedTitle (server.json): You are now an owner of {{product_name}}
+	NotifyOwnerAddedTitle = "notify.owner_added.title"
+	// NotifyOwnerRemovedBody (server.json): You remain a member of it.
+	NotifyOwnerRemovedBody = "notify.owner_removed.body"
+	// NotifyOwnerRemovedTitle (server.json): You are no longer an owner of {{product_name}}
+	NotifyOwnerRemovedTitle = "notify.owner_removed.title"
+	// NotifyResourceDraftBody (server.json): Look at the changes and the check results, then publish it or leave it…
+	NotifyResourceDraftBody = "notify.resource_draft.body"
+	// NotifyResourceDraftTitle (server.json): {{resource}} has an update waiting to be published
+	NotifyResourceDraftTitle = "notify.resource_draft.title"
+	// NotifyResourceNewDraftBody (server.json): Look at it and the check results, then publish it or leave it as a dra…
+	NotifyResourceNewDraftBody = "notify.resource_new_draft.body"
+	// NotifyResourceNewDraftTitle (server.json): New resource {{resource}} is waiting to be published
+	NotifyResourceNewDraftTitle = "notify.resource_new_draft.title"
+	// NotifyResourcePublishedBody (server.json): It reaches the computers of the people it is for at their next sync.
+	NotifyResourcePublishedBody = "notify.resource_published.body"
+	// NotifyResourcePublishedTitle (server.json): {{resource}} v{{version}} is published
+	NotifyResourcePublishedTitle = "notify.resource_published.title"
+	// NotifyResourceRolledBackBody (server.json): The content of v{{rollback_of}} is published again as v{{version}}. It…
+	NotifyResourceRolledBackBody = "notify.resource_rolled_back.body"
+	// NotifyResourceRolledBackTitle (server.json): {{resource}} was rolled back to v{{rollback_of}}
+	NotifyResourceRolledBackTitle = "notify.resource_rolled_back.title"
 	// PlanDetected (cli.json): Detected AI tools: {{tools}}
 	PlanDetected = "plan.detected"
 	// PlanGroupAttention (cli.json): Left alone: needs you
@@ -717,10 +923,18 @@ const (
 	SyncExitCodeNeedsPlan = "sync.exit_code_needs_plan"
 	// SyncGroupDeferred (cli.json): Waiting for your consent: not changed
 	SyncGroupDeferred = "sync.group.deferred"
+	// SyncGroupKnowledge (cli.json): Knowledge bases (fetched with your own git, straight from their reposi…
+	SyncGroupKnowledge = "sync.group.knowledge"
 	// SyncGroupRetry (cli.json): Changed by another program while syncing: not written
 	SyncGroupRetry = "sync.group.retry"
 	// SyncKept (cli.json): Your changed versions are kept in {{path}}
 	SyncKept = "sync.kept"
+	// SyncKnowledgeFailed (cli.json): could not be fetched, the copy from before stays: {{detail}}
+	SyncKnowledgeFailed = "sync.knowledge.failed"
+	// SyncKnowledgeFetched (cli.json): {{count}} files · commit {{commit}}
+	SyncKnowledgeFetched = "sync.knowledge.fetched"
+	// SyncKnowledgeFrom (cli.json): from {{repo}}
+	SyncKnowledgeFrom = "sync.knowledge.from"
 	// SyncNothing (cli.json): Nothing to change: everything is as wanted
 	SyncNothing = "sync.nothing"
 	// SyncOverwriteUnknown (cli.json): --overwrite {{resource}}: the repository has no such resource.
@@ -779,4 +993,6 @@ const (
 	UninstallUntouched = "uninstall.untouched"
 	// VersionShort (cli.json): Show the version, commit, build time and platform
 	VersionShort = "version.short"
+	// WorkflowAsSkill (catalog.json): This tool has no slash commands, so the workflow arrives as a skill of…
+	WorkflowAsSkill = "workflow.as_skill"
 )

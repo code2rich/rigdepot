@@ -1,65 +1,66 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Rigdepot Authors
 
-// Drawers and dialogs, as in the prototype (抽屉与对话框): a drawer slides in from the right over a scrim, a
-// dialog sits in the middle. Both take the focus when they open, keep Tab inside, close on Escape or a click
-// on the scrim, and give the focus back to where it was. Only the top one answers Escape when a dialog is
-// open over a drawer.
+// Drawers and dialogs, as in the prototype (抽屉与对话框): a scrim, the box, Esc and a click outside close
+// it. Keyboard behaviour is built in so pages do not each redo it: when one opens, focus moves to its first
+// field (or the box itself, so a screen reader reads the title); Tab stays inside; when it closes, focus
+// returns to whatever opened it. Only the topmost one answers Esc when a dialog is open over a drawer.
+//
+// Both are rendered at the end of <body>: the page's entrance animation transforms the page, and a
+// transformed ancestor would pin a fixed overlay to the page instead of the window (the drawer would stop
+// short of the bottom, the feedback button would cover its foot).
 
 import type { ComponentChildren, RefObject } from 'preact'
 import { createPortal } from 'preact/compat'
-import { useEffect, useRef } from 'preact/hooks'
+import { useEffect, useId, useRef } from 'preact/hooks'
 import { t } from '../i18n'
 import { Icon } from './icons'
 
-const stack: object[] = []
-
 const focusable =
-  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  'a[href],button:not([disabled]),input:not([type=hidden]),select,textarea,[tabindex]:not([tabindex="-1"])'
 
-/** useOverlay gives an overlay the focus, traps Tab inside it and closes it on Escape. */
-function useOverlay(box: RefObject<HTMLElement>, onClose: () => void) {
+/** useOverlay gives an open drawer or dialog its keyboard behaviour. */
+function useOverlay(box: RefObject<HTMLDivElement>, onClose: () => void, firstField: string) {
   const close = useRef(onClose)
   close.current = onClose
   useEffect(() => {
-    const token = {}
-    stack.push(token)
-    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const opener = document.activeElement as HTMLElement | null
     const el = box.current
-    const first = el?.querySelector<HTMLElement>('[autofocus]') ?? el
-    first?.focus()
+    if (el) {
+      const field = el.querySelector<HTMLElement>('[autofocus]') ?? el.querySelector<HTMLElement>(firstField)
+      ;(field ?? el).focus({ preventScroll: true })
+    }
     const onKey = (e: KeyboardEvent) => {
-      if (stack.at(-1) !== token || !el) return
+      if (!el) return
+      // Only the topmost overlay answers.
+      const all = document.querySelectorAll('.drawer, .modal')
+      if (all[all.length - 1] !== el) return
       if (e.key === 'Escape') {
+        e.preventDefault()
         e.stopPropagation()
         close.current()
-        return
-      }
-      if (e.key !== 'Tab') return
-      const items = Array.from(el.querySelectorAll<HTMLElement>(focusable)).filter(
-        (x) => x.offsetParent !== null,
-      )
-      const head = items[0]
-      const tail = items.at(-1)
-      if (!head || !tail) {
-        e.preventDefault()
-        return
-      }
-      if (e.shiftKey && (document.activeElement === head || document.activeElement === el)) {
-        e.preventDefault()
-        tail.focus()
-      } else if (!e.shiftKey && document.activeElement === tail) {
-        e.preventDefault()
-        head.focus()
+      } else if (e.key === 'Tab') {
+        const items = Array.from(el.querySelectorAll<HTMLElement>(focusable)).filter(
+          (n) => n.offsetParent !== null,
+        )
+        const first = items[0]
+        const last = items[items.length - 1]
+        if (!first || !last) return
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === el)) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
       }
     }
     document.addEventListener('keydown', onKey, true)
     return () => {
       document.removeEventListener('keydown', onKey, true)
-      stack.splice(stack.indexOf(token), 1)
-      if (before?.isConnected) before.focus()
+      if (opener && opener.isConnected) opener.focus({ preventScroll: true })
     }
-  }, [box])
+  }, [box, firstField])
 }
 
 /** CloseButton is the × in the corner of a drawer or dialog. */
@@ -78,22 +79,20 @@ export function CloseButton(props: { onClick: () => void }) {
 }
 
 /**
- * Drawer is the panel on the right: head (title, subtitle, close), optional tabs, a scrolling body and a
- * foot with the actions.
+ * Drawer slides in from the right. `head` is the content of the header next to the close button; `tabs`
+ * (optional) sit under it; the body scrolls; `foot` (optional) is the row of buttons at the bottom.
  */
 export function Drawer(props: {
   label: string
   onClose: () => void
   head: ComponentChildren
   tabs?: ComponentChildren
+  children: ComponentChildren
   foot?: ComponentChildren
   wide?: boolean
-  children: ComponentChildren
 }) {
   const box = useRef<HTMLDivElement>(null)
-  useOverlay(box, props.onClose)
-  // Rendered into <body>: the page's entrance animation transforms the page, and a transformed ancestor
-  // would pin a fixed overlay to the page instead of the window.
+  useOverlay(box, props.onClose, '.d-body input:not([type=checkbox]), .d-body textarea')
   return createPortal(
     <div
       class="scrim enter"
@@ -122,16 +121,18 @@ export function Drawer(props: {
   )
 }
 
-/** Modal is a dialog in the middle of the screen with a title, a body and its buttons. */
+/** Modal is a dialog in the middle of the screen: title, body, and a row of buttons. */
 export function Modal(props: {
-  title: string
+  title: ComponentChildren
   onClose: () => void
-  foot: ComponentChildren
-  wide?: boolean
   children: ComponentChildren
+  foot?: ComponentChildren
+  wide?: boolean
+  titleClass?: string
 }) {
   const box = useRef<HTMLDivElement>(null)
-  useOverlay(box, props.onClose)
+  const titleId = useId()
+  useOverlay(box, props.onClose, '.m-body input:not([type=checkbox]):not([tabindex="-1"]), .m-body textarea')
   return createPortal(
     <div
       class="modal-wrap enter"
@@ -143,16 +144,18 @@ export function Modal(props: {
         class={props.wide ? 'modal wide' : 'modal'}
         role="dialog"
         aria-modal="true"
-        aria-label={props.title}
+        aria-labelledby={titleId}
         tabIndex={-1}
         ref={box}
       >
         <div class="m-head">
-          <h2>{props.title}</h2>
+          <h2 id={titleId} class={props.titleClass}>
+            {props.title}
+          </h2>
           <CloseButton onClick={props.onClose} />
         </div>
         <div class="m-body">{props.children}</div>
-        <div class="m-foot">{props.foot}</div>
+        {props.foot && <div class="m-foot">{props.foot}</div>}
       </div>
     </div>,
     document.body,

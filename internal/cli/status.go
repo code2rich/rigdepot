@@ -253,7 +253,9 @@ func (a *app) entryDiff(l *local, e sync.StatusEntry) *diffDoc {
 	switch op := e.Want.(type) {
 	case adapter.WriteTree:
 		for _, f := range op.Files {
-			want[f.Path] = f.Data
+			if !underLocal(f.Path, op.Local) {
+				want[f.Path] = f.Data
+			}
 		}
 	case adapter.WriteFile:
 		want[""] = op.Data
@@ -270,7 +272,17 @@ func (a *app) entryDiff(l *local, e sync.StatusEntry) *diffDoc {
 	} else {
 		fsys := os.DirFS(full)
 		_ = fs.WalkDir(fsys, ".", func(p string, de fs.DirEntry, err error) error {
-			if err != nil || de.IsDir() || p == executor.MarkerFile {
+			if err != nil || p == executor.MarkerFile {
+				return nil
+			}
+			if underLocal(p, e.Entry.Local) {
+				// What is in a local directory belongs to this computer, not to the resource.
+				if de.IsDir() {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			if de.IsDir() {
 				return nil
 			}
 			if data, err := fs.ReadFile(fsys, p); err == nil {
@@ -315,6 +327,17 @@ func (a *app) entryDiff(l *local, e sync.StatusEntry) *diffDoc {
 		d.Files = append(d.Files, fd)
 	}
 	return d
+}
+
+// underLocal reports whether the slash-separated path p is one of the local directories of a
+// tree, or lies below one.
+func underLocal(p string, local []string) bool {
+	for _, l := range local {
+		if p == l || strings.HasPrefix(p, l+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // nativePath is where a target ("~/…" or absolute) is on this computer.

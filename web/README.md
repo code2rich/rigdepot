@@ -29,7 +29,7 @@ RGD_WEB_DEV_PROXY=http://127.0.0.1:5173 go run ./cmd/rgd-server   # plus the usu
 
 Open the server's address, not 5173. The proxy works when the server is at the root of its address (no path in `RGD_BASE_URL`).
 
-Before a page's API exists, build against the contract's examples: `VITE_API_MOCK=1 pnpm --dir web dev` answers the console's requests from `src/api/mock.ts` instead of the server. `?mock=admin`, `?mock=owner`, `?mock=member` and `?mock=signed-out` choose who is signed in. Add the endpoints your page needs there, with data shaped like the examples in `api/openapi.yaml`. The mock is never part of a real build.
+Before a page's API exists, build against the contract's examples: `VITE_API_MOCK=1 pnpm --dir web dev` answers the console's requests from `src/api/mock.ts` instead of the server. `?mock=admin`, `?mock=owner`, `?mock=member` and `?mock=signed-out` choose who is signed in. Add the endpoints your page needs there, with data shaped like the examples in `api/openapi.yaml`. `src/api/mock-auth.ts` (sign-in, setup, device confirmation, users) adds `?mock=pending` (an account waiting for approval), `?mock=setup` and `?mock=setup-admin` (a server whose first-run wizard is open), `?mockfail=403`, `?mockfail=500` or `?mockfail=network` (every call but the console's start fails that way; `?mockfail=off` stops it) and `?mockempty=1` (empty lists). The mock is never part of a real build.
 
 ## Layout
 

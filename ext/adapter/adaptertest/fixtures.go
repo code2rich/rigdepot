@@ -189,9 +189,17 @@ func newToolEnv(home string, spec caseSpec, p adapter.Profile) toolEnv {
 }
 
 // The artifacts every adapter is tested with: one of each shape, an MCP server for each
-// transport, and one that refers to a personal secret. The suite passes the ones the adapter's
-// capabilities take, the way the core does after rendering.
+// transport, and one that refers to a personal secret; and what the resource kinds make of a
+// workflow and an agent: a skill directory with local directories (an agent's own skills and
+// its memory), and, for a tool without slash commands, the workflow as a skill. The suite passes
+// the ones the adapter's capabilities take, the way the core does after rendering.
 func standardArtifacts(caps adapter.Capabilities) []adapter.Artifact {
+	return artifactsAt(caps, "")
+}
+
+// artifactsAt is standardArtifacts at another version of the agent's directory: rev changes the
+// content of its files, the way a new version in the repository would.
+func artifactsAt(caps adapter.Capabilities, rev string) []adapter.Artifact {
 	name := func(code string) string { return brand.Prefix + code }
 	var out []adapter.Artifact
 	if caps.Skills {
@@ -202,6 +210,29 @@ func standardArtifacts(caps adapter.Capabilities) []adapter.Artifact {
 				{Path: "SKILL.md", Data: []byte("---\nname: " + name("contract-skill") + "\ndescription: Checks that the adapter contract holds. Use it when asked to.\n---\n\n# Contract skill\n\nRun `scripts/check.sh` and report what it prints.\n")},
 				{Path: "scripts/check.sh", Data: []byte("#!/bin/sh\necho ok\n"), Exec: true},
 			},
+		})
+	}
+	if caps.Skills {
+		agent := name("contract-agent")
+		out = append(out, adapter.SkillDir{
+			Resource: resource.Ref{Kind: resource.KindAgent, Code: "contract-agent", Version: 1},
+			DirName:  agent,
+			Files: []adapter.File{
+				{Path: "SKILL.md", Data: []byte("---\nname: " + agent + "\ndescription: The own skills and the memory of the agent " + agent + ". Load it when you work as that agent.\n---\n\n# Contract agent" + rev + "\n\nYour own skills are in skills/; keep notes in memory/.\n")},
+				{Path: "skills/review/SKILL.md", Data: []byte("---\nname: review\ndescription: Review a change against the contract.\n---\n\nSay what breaks the contract." + rev + "\n")},
+				{Path: "memory/README.md", Data: []byte("Notes the agent keeps between sessions.\n")},
+			},
+			Local: []string{"memory", "workspace"},
+		})
+	}
+	if caps.Skills && !caps.Commands {
+		out = append(out, adapter.SkillDir{
+			Resource: resource.Ref{Kind: resource.KindWorkflow, Code: "contract-command", Version: 1},
+			DirName:  name("contract-command"),
+			Files: []adapter.File{
+				{Path: "SKILL.md", Data: []byte("---\nname: " + name("contract-command") + "\ndescription: Walks through the contract, step by step. Use it when asked to.\n---\n\n1. Read the plan.\n2. Check every step.\n")},
+			},
+			Degraded: "workflow.as_skill",
 		})
 	}
 	if caps.Commands {
@@ -270,7 +301,11 @@ func describePlan(p adapter.Plan, details bool) string {
 				names = append(names, n)
 			}
 			sort.Strings(names)
-			fmt.Fprintf(&b, "op write-tree %s (%s): %s\n", o.Dir, o.Resource, strings.Join(names, ", "))
+			local := ""
+			if len(o.Local) > 0 {
+				local = " local " + strings.Join(o.Local, ", ")
+			}
+			fmt.Fprintf(&b, "op write-tree %s (%s): %s%s\n", o.Dir, o.Resource, strings.Join(names, ", "), local)
 		case adapter.WriteFile:
 			fmt.Fprintf(&b, "op write-file %s (%s)", o.Path, o.Resource)
 			if details {

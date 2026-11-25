@@ -9,21 +9,6 @@ import { fmtNumber } from '../../i18n/format'
 
 type Resource = Schemas['ResourceSummary']
 
-export function policyName(p: Schemas['Policy']): string {
-  switch (p) {
-    case 'required':
-      return t('resources.policy.required')
-    case 'recommended':
-      return t('resources.policy.recommended')
-    case 'optional':
-      return t('resources.policy.optional')
-  }
-}
-
-export function PolicyBadge({ policy }: { policy: Schemas['Policy'] }) {
-  return <span class={policy === 'required' ? 'badge brand' : 'badge'}>{policyName(policy)}</span>
-}
-
 export function originName(o: Schemas['Origin']): string {
   switch (o) {
     case 'repo':
@@ -33,13 +18,6 @@ export function originName(o: Schemas['Origin']): string {
     case 'web':
       return t('resources.origin.web')
   }
-}
-
-/** scopeName says who a resource is for: the whole organisation, one product, or only its author. */
-export function scopeName(scope: string, products: readonly Schemas['Product'][]): string {
-  if (scope === 'org') return t('resources.scope.org')
-  if (scope === 'me') return t('resources.scope.me')
-  return products.find((p) => p.code === scope)?.name ?? scope
 }
 
 export function ChecksBadge({ checks }: { checks: Schemas['CheckCounts'] }) {
@@ -112,6 +90,9 @@ export function matchesStatus(r: Resource, f: StatusFilter): boolean {
       return r.status === 'disabled'
   }
 }
+
+/** The built-in kinds a resource can be created as in this milestone, in the prototype's order. */
+export const WEB_KINDS: readonly string[] = ['skill', 'mcp', 'workflow', 'agent', 'knowledge']
 
 /** DIRECTORY_KINDS are uploaded as an archive; the other built-in kinds are one document filled in on the web. */
 export const DIRECTORY_KINDS: readonly string[] = ['skill', 'agent', 'workflow']

@@ -9,9 +9,11 @@ import (
 	"fmt"
 
 	"github.com/code2rich/rigdepot/internal/brand"
+	"github.com/code2rich/rigdepot/internal/buildinfo"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/authn"
+	"github.com/code2rich/rigdepot/internal/server/catalog"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/events"
@@ -57,20 +59,41 @@ func (a *App) openServices(ctx context.Context) error {
 	}
 	a.access = access.New(a.db, accessOpts)
 	if a.hooks.authorize == nil {
-		a.hooks.authorize = accessAuthorizer(a.access)
+		a.hooks.authorize = accessAuthorizer(a.access, func(ctx context.Context, code string) (access.Target, bool, error) {
+			return a.catalog.Target(ctx, code)
+		})
 	}
 	if a.hooks.names == nil {
-		a.hooks.names = accessNames{a.access}
+		a.hooks.names = accessNames{svc: a.access}
 	}
 	a.settings = settings.New(a.db, keys, log, settings.Options{Authorize: a.hooks.settingsAuthorizer(), SetupToken: a.cfg.SetupToken})
-	// Device tokens are refused until the device code flow (M1-22) sets
-	// hooks.devices.
+	// The device code flow keeps the devices and verifies their tokens;
+	// tests may put a stand-in into hooks.devices for the verification.
+	a.devices = authn.NewDevices(a.db, authn.DevicesOptions{Access: a.access, Audit: log})
+	if a.hooks.devices == nil {
+		a.hooks.devices = a.devices
+	}
+	if n, ok := a.hooks.names.(accessNames); ok && n.devices == nil {
+		n.devices = a.devices
+		a.hooks.names = n
+	}
 	a.authn = authn.New(a.db, authn.Options{Access: a.access, Audit: log, Devices: a.hooks.devices})
-	if a.authnOps, err = authnapi.New(a.authn, authnapi.Options{BaseURL: a.cfg.BaseURL, TrustedProxies: a.cfg.TrustedProxies, Log: a.log, Protected: []string{modhost.RoutePrefix}}); err != nil {
+	if a.authnOps, err = authnapi.New(a.authn, authnapi.Options{
+		BaseURL: a.cfg.BaseURL, TrustedProxies: a.cfg.TrustedProxies, Log: a.log, Devices: a.devices,
+		Protected: []string{modhost.RoutePrefix},
+	}); err != nil {
 		return err
 	}
 	if a.hooks.firstAdmin == nil {
 		a.hooks.firstAdmin = a.authnOps
+	}
+	co := a.catalogOptions
+	co.Auditor, co.Version = log, buildinfo.Version
+	if a.bg != nil {
+		co.Events = a.bg.Events
+	}
+	if a.catalog, err = catalog.New(a.db, a.access, co); err != nil {
+		return err
 	}
 
 	// The master key is loaded and is the one the database was sealed with.

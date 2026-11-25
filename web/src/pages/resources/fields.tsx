@@ -8,7 +8,7 @@
 import type { Schemas } from '../../api/client'
 import { t } from '../../i18n'
 import { Chip, Seg } from '../../ui/controls'
-import { policyName } from './labels'
+import { policyName } from '../../ui/resource'
 
 export interface Settings {
   name: string

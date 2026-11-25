@@ -1,36 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Rigdepot Authors
 
-// The short confirmation at the bottom of the screen after something was done ("已发布，大家下次同步时生效").
-// toast() shows one; a page renders <Toasts /> once. Failures are not toasts: they stay next to what failed.
+// The short note at the bottom after something is done ("Saved"), as in the prototype's toast(). It is
+// read out by screen readers and goes away by itself.
 
 import { signal } from '@preact/signals'
-import { createPortal } from 'preact/compat'
 
-const current = signal<{ text: string; n: number } | null>(null)
-let n = 0
+const message = signal('')
+let timer: ReturnType<typeof setTimeout> | undefined
 
-/** toast shows a message for a few seconds. */
+/** toast shows a note for a few seconds, replacing the one before. */
 export function toast(text: string) {
-  const mine = ++n
-  current.value = { text, n: mine }
-  setTimeout(() => {
-    if (current.value?.n === mine) current.value = null
-  }, 4200)
+  clearTimeout(timer)
+  message.value = text
+  timer = setTimeout(() => {
+    message.value = ''
+  }, 3200)
 }
 
-export function Toasts() {
-  const now = current.value
-  // In <body>, so that the page's transform does not move it (see overlay.tsx).
-  return createPortal(
+/** Toast is where the notes appear. The shell renders it once; pages outside the shell (sign-in, setup) render their own. */
+export function Toast() {
+  return (
     <div role="status" aria-live="polite">
-      {now && (
-        <div key={now.n} class="toast">
+      {message.value && (
+        <div class="toast">
           <i />
-          {now.text}
+          {message.value}
         </div>
       )}
-    </div>,
-    document.body,
+    </div>
   )
 }

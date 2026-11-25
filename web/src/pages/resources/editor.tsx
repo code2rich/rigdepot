@@ -15,19 +15,20 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { ApiError, api, unwrap, type Schemas } from '../../api/client'
-import { useLoad } from '../../api/use-load'
+import { useLoad } from '../../ui/load'
 import { t } from '../../i18n'
 import { fmtDateTime, fmtNumber, fmtRelative } from '../../i18n/format'
 import { role } from '../../shell/session'
 import { Seg } from '../../ui/controls'
 import { Icon } from '../../ui/icons'
-import { KindIcon, kindName } from '../../ui/kind'
+import { KindIcon, kindName, scopeName } from '../../ui/resource'
 import { Drawer, Modal } from '../../ui/overlay'
-import { ErrorNote, LoadFailed } from '../../ui/problem'
+import { Fail } from '../../ui/fail'
+import { LoadError } from '../../ui/load'
 import { toast } from '../../ui/toast'
 import { isStale, parseDefinition, putDocument, tooBig, uploadBundle } from './content'
 import { BasicFields, DeliveryFields, changes, settingsOf, type Settings } from './fields'
-import { DIRECTORY_KINDS, scopeName } from './labels'
+import { DIRECTORY_KINDS } from './labels'
 
 type Resource = Schemas['ManagedResource']
 type Draft = Schemas['Draft']
@@ -47,12 +48,12 @@ export function Editor(props: {
   onChanged: () => void
 }) {
   const code = props.code
-  const [res, reloadRes, setRes] = useLoad(
+  const res = useLoad(
     async () => unwrap(await api.GET('/api/v1/resources/{code}', { params: { path: { code } } })),
     [code],
   )
   const r = res.data
-  const [draft, reloadDraft] = useLoad(
+  const draft = useLoad(
     async () =>
       r?.has_draft
         ? unwrap(await api.GET('/api/v1/resources/{code}/draft', { params: { path: { code } } }))
@@ -71,7 +72,7 @@ export function Editor(props: {
   }, [r?.etag])
 
   const refresh = async () => {
-    await reloadRes()
+    await res.reload()
     props.onChanged()
   }
 
@@ -102,7 +103,7 @@ export function Editor(props: {
       await failed(out)
       return
     }
-    setRes(out as Resource)
+    res.set(out as Resource)
     props.onChanged()
     if (publish) await doPublish()
     else toast(t('resources.edit.saved'))
@@ -148,7 +149,7 @@ export function Editor(props: {
     setBusy(false)
     if (out instanceof Error) {
       await failed(out)
-      if (isStale(out)) await reloadDraft()
+      if (isStale(out)) await draft.reload()
       return
     }
     toast(t('resources.edit.published', { version: fmtNumber((out as Schemas['ResourceVersion']).number) }))
@@ -168,7 +169,7 @@ export function Editor(props: {
       await failed(out)
       return
     }
-    setRes(out as Resource)
+    res.set(out as Resource)
     props.onChanged()
     toast(t('resources.edit.enabled'))
   }
@@ -183,7 +184,7 @@ export function Editor(props: {
     return (
       <Drawer label={label} onClose={props.onClose} head={<h2>{code}</h2>}>
         {res.state === 'failed' ? (
-          <LoadFailed error={res.error} retry={reloadRes} />
+          <LoadError error={res.error} retry={res.reload} />
         ) : (
           <div aria-busy="true" />
         )}
@@ -282,7 +283,7 @@ export function Editor(props: {
         tabs={<Seg value={tab} onChange={setTab} items={tabs} lined label={t('resources.edit.tabs')} />}
         foot={foot}
       >
-        {error !== null && <ErrorNote error={error} />}
+        {error !== null && <Fail error={error} />}
         {tab === 'config' && blocked && (
           <div class="callout bad">
             <Icon name="alert" />
@@ -301,7 +302,7 @@ export function Editor(props: {
             onReset={() => void reset()}
             onDraft={async () => {
               await refresh()
-              await reloadDraft()
+              await draft.reload()
             }}
             onDiff={() => setTab('versions')}
           />
@@ -331,7 +332,7 @@ export function Editor(props: {
           onClose={() => setDialog(null)}
           onDone={async (next) => {
             setDialog(null)
-            setRes(next)
+            res.set(next)
             props.onChanged()
             toast(t('resources.edit.disabled'))
           }}
@@ -365,7 +366,7 @@ export function Editor(props: {
             setDialog(null)
             toast(t('resources.checks.waived'))
             await refresh()
-            await reloadDraft()
+            await draft.reload()
           }}
         />
       )}
@@ -419,7 +420,7 @@ function ConfigTab(props: {
   onDiff: () => void
 }) {
   const r = props.r
-  const sep = t('products.list_sep')
+  const sep = t('ui.list_sep')
   return (
     <>
       {r.status === 'disabled' && (
@@ -571,7 +572,7 @@ function Content(props: { r: Resource; draft?: Draft; onDraft: () => Promise<voi
             <span class="pk-d">{t('resources.upload.desc')}</span>
           </span>
         </button>
-        <ErrorNote error={error} />
+        <Fail error={error} />
         {pending}
       </>
     )
@@ -646,7 +647,7 @@ function Content(props: { r: Resource; draft?: Draft; onDraft: () => Promise<voi
           </button>
         </div>
       </div>
-      <ErrorNote error={error} />
+      <Fail error={error} />
       {pending}
     </>
   )
@@ -655,8 +656,8 @@ function Content(props: { r: Resource; draft?: Draft; onDraft: () => Promise<voi
 function ChecksTab(props: { r: Resource; draft?: Draft; onWaive: (f: Schemas['Finding']) => void }) {
   const admin = role.value === 'admin'
   const r = props.r
-  const [rules] = useLoad(async () => unwrap(await api.GET('/api/v1/check-rules')), [])
-  const [live] = useLoad(
+  const rules = useLoad(async () => unwrap(await api.GET('/api/v1/check-rules')), [])
+  const live = useLoad(
     async () =>
       !props.draft && r.version !== undefined
         ? unwrap(
@@ -681,7 +682,7 @@ function ChecksTab(props: { r: Resource; draft?: Draft; onWaive: (f: Schemas['Fi
       </div>
       <div class="card pad">
         {live.state === 'failed' ? (
-          <LoadFailed error={live.error} />
+          <LoadError error={live.error} />
         ) : loading ? (
           <div aria-busy="true" style={{ minHeight: '40px' }} />
         ) : !props.draft && r.version === undefined ? (
@@ -693,7 +694,7 @@ function ChecksTab(props: { r: Resource; draft?: Draft; onWaive: (f: Schemas['Fi
               {t('resources.checks.passed')}
             </span>{' '}
             <span class="dim">
-              {(rules.data?.rules ?? []).map((x) => x.name).join(t('products.list_sep'))}
+              {(rules.data?.rules ?? []).map((x) => x.name).join(t('ui.list_sep'))}
               {ruleset !== undefined &&
                 ` · ${t('resources.checks.ruleset', { version: fmtNumber(ruleset) })}`}
             </span>
@@ -755,21 +756,34 @@ function VersionsTab(props: {
   onRollback: (v: Schemas['ResourceVersion']) => void
 }) {
   const r = props.r
-  const [pages, setPages] = useState<string[]>([''])
-  const [versions, reload] = useLoad(async () => {
-    const items: Schemas['ResourceVersion'][] = []
-    let next: string | undefined
-    for (const cursor of pages) {
-      const page = unwrap(
-        await api.GET('/api/v1/resources/{code}/versions', {
-          params: { path: { code: r.code }, query: cursor ? { cursor } : {} },
-        }),
-      )
-      items.push(...page.items)
-      next = page.next_cursor
+  const page = (cursor?: string) =>
+    api
+      .GET('/api/v1/resources/{code}/versions', {
+        params: { path: { code: r.code }, query: cursor ? { cursor } : {} },
+      })
+      .then(unwrap)
+  // The newest page; "加载更多" appends older ones without reloading what is shown.
+  const versions = useLoad(() => page(), [r.code, r.version])
+  const [older, setOlder] = useState<{ items: Schemas['ResourceVersion'][]; next?: string; busy: boolean }>({
+    items: [],
+    busy: false,
+  })
+  const [olderError, setOlderError] = useState<unknown>(null)
+  useEffect(() => setOlder({ items: [], busy: false }), [r.code, r.version])
+  const next = older.items.length ? older.next : versions.data?.next_cursor
+  const loadOlder = async () => {
+    if (!next) return
+    setOlder({ ...older, busy: true })
+    setOlderError(null)
+    const out = await page(next).catch((err: unknown) => err)
+    if (out instanceof Error) {
+      setOlder({ ...older, busy: false })
+      setOlderError(out)
+    } else {
+      const p = out as Schemas['ResourceVersionPage']
+      setOlder({ items: [...older.items, ...p.items], next: p.next_cursor, busy: false })
     }
-    return { items, next }
-  }, [r.code, r.version, pages.length])
+  }
   const [diff, setDiff] = useState<Schemas['DraftDiff'] | 'loading' | null>(null)
   const [diffError, setDiffError] = useState<unknown>(null)
 
@@ -805,7 +819,7 @@ function VersionsTab(props: {
           </button>
         </div>
       )}
-      <ErrorNote error={diffError} />
+      <Fail error={diffError} />
       {diff && diff !== 'loading' && (
         <div style={{ display: 'grid', gap: '10px' }}>
           {diff.files.length === 0 && <p class="faint t13">{t('resources.versions.diff_none')}</p>}
@@ -832,11 +846,11 @@ function VersionsTab(props: {
       )}
       {versions.state === 'failed' && !versions.data ? (
         <div class="card">
-          <LoadFailed error={versions.error} retry={reload} />
+          <LoadError error={versions.error} retry={versions.reload} />
         </div>
       ) : (
         <div class="list card" style={{ padding: '2px 14px' }} aria-busy={versions.state === 'loading'}>
-          {(versions.data?.items ?? []).map((v) => {
+          {[...(versions.data?.items ?? []), ...older.items].map((v) => {
             const live = v.number === r.version
             return (
               <div class="li" key={v.number}>
@@ -881,14 +895,10 @@ function VersionsTab(props: {
           )}
         </div>
       )}
-      {versions.data?.next && (
+      <Fail error={olderError} />
+      {next && (
         <div class="row">
-          <button
-            type="button"
-            class="btn sm"
-            disabled={versions.state === 'loading'}
-            onClick={() => versions.data?.next && setPages([...pages, versions.data.next])}
-          >
+          <button type="button" class="btn sm" disabled={older.busy} onClick={() => void loadOlder()}>
             {t('ui.load.more')}
           </button>
         </div>
@@ -937,7 +947,7 @@ function DisableDialog(props: {
   onStale: () => Promise<void>
 }) {
   const r = props.r
-  const [impact] = useLoad(
+  const impact = useLoad(
     async () =>
       unwrap(await api.GET('/api/v1/resources/{code}/impact', { params: { path: { code: r.code } } })),
     [r.code],
@@ -985,7 +995,7 @@ function DisableDialog(props: {
       }
     >
       {impact.state === 'failed' ? (
-        <ErrorNote error={impact.error} />
+        <Fail error={impact.error} />
       ) : !i ? (
         <div aria-busy="true" style={{ minHeight: '40px' }} />
       ) : (
@@ -1024,7 +1034,7 @@ function DisableDialog(props: {
         />
         <p class="hint">{t('resources.disable.hint')}</p>
       </div>
-      <ErrorNote error={error} />
+      <Fail error={error} />
     </Modal>
   )
 }
@@ -1092,7 +1102,7 @@ function RollbackDialog(props: {
           placeholder={t('resources.rollback.note_ph')}
         />
       </div>
-      <ErrorNote error={error} />
+      <Fail error={error} />
     </Modal>
   )
 }
@@ -1165,7 +1175,7 @@ function WaiveDialog(props: {
         />
         <p class="hint">{t('resources.waive.hint')}</p>
       </div>
-      <ErrorNote error={error} />
+      <Fail error={error} />
     </Modal>
   )
 }

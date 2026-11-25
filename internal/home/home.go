@@ -41,6 +41,11 @@ const (
 	TmpDir           = "tmp"
 	SecretsDir       = "secrets"
 	LogsDir          = "logs"
+	// FlowsDir holds the workflows synced to this computer and the runs in progress
+	// (rgd flow next).
+	FlowsDir = "flows"
+	// KnowledgeDir holds the knowledge bases fetched onto this computer, one directory each.
+	KnowledgeDir = "knowledge"
 )
 
 // Dir is the local data directory. The zero value is not usable; get one from Locate or At.

@@ -7,22 +7,20 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { api, unwrap, type Schemas } from '../../api/client'
-import { useLoad } from '../../api/use-load'
+import { useLoad } from '../../ui/load'
 import { t } from '../../i18n'
 import { fmtDateTime, fmtNumber, fmtRelative } from '../../i18n/format'
 import { Icon } from '../../ui/icons'
 import { Modal } from '../../ui/overlay'
-import { ErrorNote, LoadFailed } from '../../ui/problem'
+import { Fail } from '../../ui/fail'
+import { LoadError } from '../../ui/load'
 import { toast } from '../../ui/toast'
 import './settings.css'
 
 type Source = Schemas['Source']
 
 export function SourcesCard() {
-  const [sources, reload, setSources] = useLoad(
-    async () => unwrap(await api.GET('/api/v1/sources')).items,
-    [],
-  )
+  const sources = useLoad(async () => unwrap(await api.GET('/api/v1/sources')).items, [])
   const [editing, setEditing] = useState<Source | 'new' | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState(false)
@@ -37,7 +35,7 @@ export function SourcesCard() {
       return
     }
     if (tries.current++ > 30) return
-    const timer = setTimeout(() => void reload(), 2000)
+    const timer = setTimeout(() => void sources.reload(), 2000)
     return () => clearTimeout(timer)
   }, [running, sources.data])
 
@@ -53,7 +51,7 @@ export function SourcesCard() {
       setError(out)
       return
     }
-    setSources(list.map((x) => (x.id === s.id ? (out as Source) : x)))
+    sources.set(list.map((x) => (x.id === s.id ? (out as Source) : x)))
     toast(t('settings.sources.pulling', { name: s.name }))
   }
 
@@ -70,7 +68,7 @@ export function SourcesCard() {
       .catch((err: unknown) => err)
     setBusy(false)
     if (out instanceof Error) setError(out)
-    else setSources((out as Schemas['SourceList']).items)
+    else sources.set((out as Schemas['SourceList']).items)
   }
 
   return (
@@ -81,7 +79,7 @@ export function SourcesCard() {
         </span>
       </h3>
       {sources.state === 'failed' && !sources.data ? (
-        <LoadFailed error={sources.error} retry={reload} />
+        <LoadError error={sources.error} retry={sources.reload} />
       ) : !sources.data ? (
         <div aria-busy="true" style={{ minHeight: '80px' }} />
       ) : list.length === 0 ? (
@@ -157,7 +155,7 @@ export function SourcesCard() {
           ))}
         </div>
       )}
-      <ErrorNote error={error} />
+      <Fail error={error} />
       {sources.data && (
         <button type="button" class="btn" style={{ marginTop: '10px' }} onClick={() => setEditing('new')}>
           <Icon name="plus" />
@@ -171,7 +169,7 @@ export function SourcesCard() {
           onClose={() => setEditing(null)}
           onDone={(text) => {
             setEditing(null)
-            void reload()
+            void sources.reload()
             toast(text)
           }}
         />
@@ -426,7 +424,7 @@ function SourceDialog(props: { source?: Source; onClose: () => void; onDone: (to
             </span>
           </div>
         )}
-        <ErrorNote error={error} />
+        <Fail error={error} />
       </form>
     </Modal>
   )

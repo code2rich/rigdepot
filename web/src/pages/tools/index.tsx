@@ -11,14 +11,15 @@
 
 import { useState } from 'preact/hooks'
 import { api, unwrap, type Schemas } from '../../api/client'
-import { useLoad } from '../../api/use-load'
+import { useLoad } from '../../ui/load'
 import { t } from '../../i18n'
 import { fmtDateTime, fmtNumber } from '../../i18n/format'
 import { BRAND } from '../../brand.gen'
 import { Switch } from '../../ui/controls'
 import { PageHeader } from '../../ui/page-header'
-import { ErrorNote, LoadFailed } from '../../ui/problem'
-import { Toasts, toast } from '../../ui/toast'
+import { Fail } from '../../ui/fail'
+import { LoadError } from '../../ui/load'
+import { toast } from '../../ui/toast'
 import './tools.css'
 
 type Adapter = Schemas['Adapter']
@@ -26,10 +27,7 @@ type Adapter = Schemas['Adapter']
 const KINDS = ['skill', 'mcp', 'command', 'agent'] as const
 
 export default function Tools() {
-  const [adapters, reload, setAdapters] = useLoad(
-    async () => unwrap(await api.GET('/api/v1/adapters')).items,
-    [],
-  )
+  const adapters = useLoad(async () => unwrap(await api.GET('/api/v1/adapters')).items, [])
   const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const list = adapters.data ?? []
@@ -47,7 +45,7 @@ export default function Tools() {
       setError(out)
       return
     }
-    setAdapters(list.map((x) => (x.id === a.id ? (out as Adapter) : x)))
+    adapters.set(list.map((x) => (x.id === a.id ? (out as Adapter) : x)))
     toast(enabled ? t('tools.enabled', { tool: a.name }) : t('tools.disabled', { tool: a.name }))
   }
 
@@ -72,11 +70,11 @@ export default function Tools() {
       <section class="card">
         {error !== null && (
           <div style={{ padding: '12px 18px 0' }}>
-            <ErrorNote error={error} />
+            <Fail error={error} />
           </div>
         )}
         {adapters.state === 'failed' && !adapters.data ? (
-          <LoadFailed error={adapters.error} retry={reload} />
+          <LoadError error={adapters.error} retry={adapters.reload} />
         ) : (
           <div class="tbl-wrap">
             <table class="tl-tbl" aria-busy={!adapters.data}>
@@ -174,7 +172,6 @@ export default function Tools() {
         </section>
         <CLIVersions />
       </div>
-      <Toasts />
     </>
   )
 }
@@ -211,7 +208,7 @@ function Hook(props: { target?: Schemas['AdapterTarget'] }) {
 
 /** The newest command line, the oldest one allowed to sync, and who runs which. */
 function CLIVersions() {
-  const [policy, reload, setPolicy] = useLoad(async () => unwrap(await api.GET('/api/v1/cli')), [])
+  const policy = useLoad(async () => unwrap(await api.GET('/api/v1/cli')), [])
   const [min, setMin] = useState<string | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState(false)
@@ -233,7 +230,7 @@ function CLIVersions() {
       setError(out)
       return
     }
-    setPolicy(out as Schemas['CLIPolicy'])
+    policy.set(out as Schemas['CLIPolicy'])
     setMin(null)
     toast(t('tools.cli.saved', { version: value }))
   }
@@ -243,7 +240,7 @@ function CLIVersions() {
     <section class="card pad">
       <h3>{t('tools.cli.title')}</h3>
       {policy.state === 'failed' && !p ? (
-        <LoadFailed error={policy.error} retry={reload} />
+        <LoadError error={policy.error} retry={policy.reload} />
       ) : !p ? (
         <div aria-busy="true" style={{ minHeight: '120px' }} />
       ) : (
@@ -293,7 +290,7 @@ function CLIVersions() {
               )}
             </dd>
           </dl>
-          <ErrorNote error={error} />
+          <Fail error={error} />
         </>
       )}
     </section>

@@ -28,7 +28,8 @@ var tasks = map[string]task{
 	"test":             {"run tests in an isolated environment: test [packages] [go test flags]", runTest},
 	"gen":              {"regenerate generated files; --check only reports whether they are stale", runGen},
 	"check-linux":      {"run check inside a local Linux container (needs Docker)", runCheckLinux},
-	"release-snapshot": {"build all release artifacts into dist/ without publishing", runReleaseSnapshot},
+	"release-snapshot": {"build all release artifacts into dist/ without publishing, twice, and compare", runReleaseSnapshot},
+	"release-files":    {"write the completions and third-party notices the release archives carry", runReleaseFiles},
 	"web-deps":         {"install the web console's dependencies (needs Node, pnpm and the network)", runWebDeps},
 	"web":              {"build the web console into web/dist for go build -tags webdist", runWeb},
 }

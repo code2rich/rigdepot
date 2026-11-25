@@ -10,19 +10,20 @@
 
 import { useState } from 'preact/hooks'
 import { ApiError, api, unwrap, type Schemas } from '../../api/client'
-import { useLoad } from '../../api/use-load'
+import { useLoad } from '../../ui/load'
 import { t } from '../../i18n'
 import { meta } from '../../shell/session'
 import { Switch } from '../../ui/controls'
 import { Modal } from '../../ui/overlay'
 import { PageHeader } from '../../ui/page-header'
-import { ErrorNote, LoadFailed } from '../../ui/problem'
-import { Toasts, toast } from '../../ui/toast'
+import { Fail } from '../../ui/fail'
+import { LoadError } from '../../ui/load'
+import { toast } from '../../ui/toast'
 import { MailCard, OrganizationCard } from './mail'
 import { SourcesCard } from './sources'
 
 export default function Settings() {
-  const [settings, reload, setSettings] = useLoad(async () => {
+  const settings = useLoad(async () => {
     const res = await api.GET('/api/v1/settings')
     return unwrap(res)
   }, [])
@@ -34,27 +35,23 @@ export default function Settings() {
       <PageHeader page="settings" title={t('nav.settings')} lead={t('settings.lead')} />
       {denied ? (
         <div class="card">
-          <LoadFailed error={settings.state === 'failed' ? settings.error : null} />
+          <LoadError error={settings.state === 'failed' ? settings.error : null} />
         </div>
       ) : (
         <div class="grid g2" style={{ alignItems: 'start' }}>
           <SourcesCard />
           <ModulesCard />
-          <MailCard settings={settings} reload={reload} onSaved={setSettings} />
-          <OrganizationCard settings={settings} reload={reload} onSaved={setSettings} />
+          <MailCard settings={settings} reload={settings.reload} onSaved={settings.set} />
+          <OrganizationCard settings={settings} reload={settings.reload} onSaved={settings.set} />
         </div>
       )}
-      <Toasts />
     </>
   )
 }
 
 /** The optional modules compiled into this server, each with its switch. */
 function ModulesCard() {
-  const [modules, reload, setModules] = useLoad(
-    async () => unwrap(await api.GET('/api/v1/modules')).items,
-    [],
-  )
+  const modules = useLoad(async () => unwrap(await api.GET('/api/v1/modules')).items, [])
   const [asking, setAsking] = useState<Schemas['Module'] | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -74,7 +71,7 @@ function ModulesCard() {
       return
     }
     const next = list.map((x) => (x.id === m.id ? (out as Schemas['Module']) : x))
-    setModules(next)
+    modules.set(next)
     // The navigation follows: a module's pages show only while it is on.
     if (meta.value) meta.value = { ...meta.value, modules: next.filter((x) => x.enabled).map((x) => x.id) }
     toast(enabled ? t('settings.modules.on', { name: m.name }) : t('settings.modules.off', { name: m.name }))
@@ -84,7 +81,7 @@ function ModulesCard() {
     <section class="card pad">
       <h3>{t('settings.modules.title')}</h3>
       {modules.state === 'failed' && !modules.data ? (
-        <LoadFailed error={modules.error} retry={reload} />
+        <LoadError error={modules.error} retry={modules.reload} />
       ) : !modules.data ? (
         <div aria-busy="true" style={{ minHeight: '80px' }} />
       ) : list.length === 0 ? (
@@ -110,7 +107,7 @@ function ModulesCard() {
           ))}
         </div>
       )}
-      <ErrorNote error={error} />
+      <Fail error={error} />
       <p class="hint">{t('settings.modules.hint')}</p>
       {asking && (
         <Modal

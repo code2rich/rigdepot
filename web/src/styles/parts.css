@@ -1,0 +1,41 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* Parts several pages share: commands and file contents to copy, sentences for the AI tool, status lines,
+   the confirmation-code box. From the prototype (终端、命令; 「说一句」; 等你确认 → stat-li). */
+
+/* 命令和文件内容 */
+.cmd { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 3px 3px 3px 12px; border-radius: var(--r-2); background: var(--sunken); border: 1px solid var(--line); font-family: var(--mono); font-size: 11.5px; letter-spacing: -.02em; color: var(--ink) }
+.cmd::before { content: "$"; color: var(--ink-3); flex: none }
+.cmd code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; scrollbar-width: none; font: inherit }
+.cmd button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: var(--r-1); color: var(--ink-3); flex: none; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease) }
+.cmd button:hover { background: var(--soft-2); color: var(--ink) } .cmd svg { width: 14px; height: 14px }
+.cmd + .cmd { margin-top: 6px }
+pre.code { margin: 0; padding: 14px 16px; border-radius: var(--r-2); background: var(--sunken); border: 1px solid var(--line); color: var(--ink); font-family: var(--code); font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-x: auto; max-height: 380px }
+.code-box { position: relative } .code-box > .btn { position: absolute; top: 6px; right: 6px; background: var(--panel) }
+.pl-code { display: inline-flex; align-items: baseline; gap: 14px; margin: 14px 0 4px; padding: 10px 14px; border: 1px dashed var(--line-3); font-family: var(--sans); letter-spacing: 0; color: var(--ink-2); font-size: 13px }
+.pl-code b { font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1; letter-spacing: .08em; color: var(--ink) }
+
+/* 「说一句」：发给 AI 的话 */
+.aitip { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 12px; border-radius: var(--r-2); border: 1px solid var(--line-2); background: var(--panel-2); font-size: 13px; min-width: 0 }
+.aitip .lab { display: inline-flex; align-items: center; gap: 5px; flex: none; font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .06em; color: var(--ink-3); padding-right: 12px; border-right: 1px solid var(--line-2); align-self: stretch }
+.aitip .lab svg { width: 12px; height: 12px; color: var(--ink-2) }
+.aitip .say { flex: 1; min-width: 0; color: var(--ink) } .aitip .note { display: block; font-size: 12px; color: var(--ink-3); margin-top: 1px }
+.aitip.self { border-color: color-mix(in srgb, var(--warn) 40%, transparent); background: color-mix(in srgb, var(--warn) 6%, var(--panel)) }
+.aitip.self .lab { color: var(--warn); border-right-color: color-mix(in srgb, var(--warn) 30%, transparent) } .aitip.self .lab svg { color: var(--warn) }
+.aitip .btn.icon { width: 28px; height: 28px }
+
+/* 状态列表 */
+.stat-li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px } .stat-li:last-child { border-bottom: 0 }
+.stat-li > span:first-child { color: var(--ink-2); flex: 1 }
+.sq { width: 7px; height: 7px; display: inline-block; flex: none; background: var(--ink-3) } .sq.ok { background: var(--ok) } .sq.warn { background: var(--warn) } .sq.bad { background: var(--bad) } .sq.off { background: none; border: 1px solid var(--ink-3) }
+.ok-t { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2) }
+.ticks { margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--ink-2); display: grid; gap: 5px }
+.ticks li { position: relative; padding-left: 16px } .ticks li::before { content: ""; position: absolute; left: 0; top: .62em; width: 7px; height: 1px; background: var(--ink-3) }
+
+/* 加载中（原型没有：数据都在内存里） */
+.loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px 20px; color: var(--ink-3); font-size: 13px }
+
+@media (max-width: 760px) {
+  .aitip { flex-wrap: wrap } .aitip .lab { border-right: 0; padding-right: 0; width: 100% }
+}
