@@ -99,7 +99,13 @@ export const NAV: readonly NavGroup[] = [
         icon: 'wrench',
         component: lazy(() => import('./tools')),
       },
-      { id: 'audit', path: '/admin/audit', label: 'nav.audit', icon: 'shield', component: notBuilt('audit') },
+      {
+        id: 'audit',
+        path: '/admin/audit',
+        label: 'nav.audit',
+        icon: 'shield',
+        component: lazy(() => import('./audit')),
+      },
       {
         id: 'settings',
         path: '/admin/settings',
