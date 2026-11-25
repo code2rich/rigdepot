@@ -4,18 +4,19 @@
 package executor
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
+	"testing/fstest"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/internal/bundle"
 	"github.com/code2rich/rigdepot/internal/manifest"
 )
 
@@ -87,6 +88,37 @@ func TargetOfEntry(en manifest.Entry) Target {
 	return Target{Op: en.Op, Path: en.Path, Format: adapter.Format(en.Format), Key: en.Key}
 }
 
+// Expect returns the digest the target of op will have once op is applied, in the form Observe
+// reports and the manifest records. It writes nothing, so that the sync engine can tell "already
+// as wanted" from "has to change" while it plans.
+//
+// For a SetKey it is the SHA-256 of the value serialised as canonical JSON (keys sorted, no HTML
+// escaping), the digest the manifest records for a key. An Exec has no digest.
+func Expect(op adapter.Op) (string, error) {
+	switch op := op.(type) {
+	case adapter.WriteTree:
+		return filesDigest(op.Files), nil
+	case adapter.WriteFile:
+		return fileDigest(op.Data), nil
+	case adapter.SetKey:
+		return keyDigest(op.Value)
+	case adapter.Exec:
+		return "", fmt.Errorf("running %v: an Exec operation has no digest", op.Argv)
+	}
+	return "", fmt.Errorf("unknown operation %T", op)
+}
+
+// keyDigest is the digest of a configuration value: canonical JSON, then SHA-256.
+func keyDigest(v any) (string, error) {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return "", err
+	}
+	return fileDigest(bytes.TrimSuffix(b.Bytes(), []byte("\n"))), nil
+}
+
 // Observe looks at a target without changing anything.
 func (e *Executor) Observe(t Target) Observed {
 	switch t.Op {
@@ -132,71 +164,62 @@ func fileDigest(data []byte) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
-// listed is one file of a content digest: its path inside the tree and the line it adds.
-type listed struct {
-	path, line string
-}
+// emptyDigest is the digest of a directory without files: the SHA-256 of an empty listing.
+// bundle.Digest refuses to digest nothing; a directory someone emptied still has to read as
+// present and changed.
+var emptyDigest = func() string {
+	sum := sha256.Sum256(nil)
+	return "sha256:" + hex.EncodeToString(sum[:])
+}()
 
-// digestOfListing is the content digest of package repoformat: one line "<hex>  <path>" per
-// file, sorted by path as bytes, and the sha256 of that text. It is what this shell command
-// prints, run inside the directory:
-//
-//	find . -type f | LC_ALL=C sort | sed 's|^\./||' | xargs sha256sum | sha256sum
-//
-// TODO(M0-10): use the digest function of internal/repoformat once it is merged.
-func digestOfListing(files []listed) string {
-	sort.Slice(files, func(i, j int) bool { return files[i].path < files[j].path })
-	h := sha256.New()
-	for _, f := range files {
-		io.WriteString(h, f.line)
-		io.WriteString(h, "\n")
-	}
-	return "sha256:" + hex.EncodeToString(h.Sum(nil))
-}
-
-func fileLine(data []byte, p string) listed {
-	sum := sha256.Sum256(data)
-	return listed{path: p, line: hex.EncodeToString(sum[:]) + "  " + p}
-}
-
-// filesDigest is the content digest of the files an operation writes.
+// filesDigest is the content digest of the files a WriteTree writes. It is bundle.Digest, the
+// digest package repoformat records for a resource, so that the digest of a skill in the
+// repository and the digest of the directory written from it are the same value.
 func filesDigest(files []adapter.File) string {
-	lines := make([]listed, 0, len(files))
+	fsys := make(fstest.MapFS, len(files))
 	for _, f := range files {
-		lines = append(lines, fileLine(f.Data, f.Path))
+		fsys[f.Path] = &fstest.MapFile{Data: f.Data}
 	}
-	return digestOfListing(lines)
+	return digestOf(fsys)
 }
 
-// treeDigest is the content digest of a directory on disk. The marker at its top is left out.
-// Anything that is neither a file nor a directory (a symbolic link someone put there) adds a
-// line no file can produce, so that it shows up as a change.
+func digestOf(fsys fs.FS) string {
+	d, err := bundle.Digest(fsys)
+	if errors.Is(err, bundle.ErrEmpty) {
+		return emptyDigest
+	}
+	if err != nil {
+		// Only an unreadable entry gets here, and the callers have ruled that out; a value
+		// that equals no digest keeps it from passing for anything.
+		return "other:" + err.Error()
+	}
+	return string(d)
+}
+
+// treeDigest is the content digest of a directory on disk, computed by bundle.Digest. The
+// marker at its top is left out. Anything that is neither a file nor a directory (a symbolic
+// link someone put there) makes the digest one that equals no content digest, so that it shows
+// up as a change.
 func treeDigest(root *os.Root, rel string) (string, error) {
-	var lines []listed
-	fsys := root.FS()
-	err := fs.WalkDir(fsys, rel, func(p string, d fs.DirEntry, err error) error {
+	fsys, err := fs.Sub(root.FS(), rel)
+	if err != nil {
+		return "", err
+	}
+	other := ""
+	err = fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		inside := strings.TrimPrefix(strings.TrimPrefix(p, rel), "/")
-		switch {
-		case d.IsDir():
-			return nil
-		case inside == MarkerFile:
-			return nil
-		case d.Type().IsRegular():
-			data, err := fs.ReadFile(fsys, p)
-			if err != nil {
-				return err
-			}
-			lines = append(lines, fileLine(data, inside))
-		default:
-			lines = append(lines, listed{path: inside, line: "other:" + d.Type().String() + "  " + inside})
+		if !d.IsDir() && !d.Type().IsRegular() && other == "" {
+			other = "other:contains-" + d.Type().String() + ":" + p
 		}
 		return nil
 	})
 	if err != nil {
 		return "", err
 	}
-	return digestOfListing(lines), nil
+	if other != "" {
+		return other, nil
+	}
+	return digestOf(fsys), nil
 }
