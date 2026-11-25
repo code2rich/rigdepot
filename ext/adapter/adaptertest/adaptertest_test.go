@@ -353,12 +353,8 @@ func TestBrokenCoreFailsItsAssertions(t *testing.T) {
 type keepDirs struct{ executor }
 
 func (k keepDirs) Revert(e entry) (bool, error) {
-	switch u := e.undo.(type) {
-	case coremanifest.Entry:
+	if u, ok := e.undo.(coremanifest.Entry); ok {
 		u.Created = nil
-		e.undo = u
-	case interimUndo: // TODO(M0-20)
-		u.createdDirs = nil
 		e.undo = u
 	}
 	return k.executor.Revert(e)
