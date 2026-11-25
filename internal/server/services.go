@@ -13,6 +13,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
+	"github.com/code2rich/rigdepot/internal/server/events"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
@@ -20,7 +21,9 @@ import (
 // openServices builds the domain services on the open, migrated database:
 // the master key, the audit log, access and the settings, then gets the
 // setup wizard ready. Other domains add theirs here, and set what they provide in
-// a.hooks.
+// a.hooks. When the app has background parts (a.bg, made by newBackground),
+// the services publish their events on its bus; without them (tests of the
+// API alone) events are dropped.
 func (a *App) openServices(ctx context.Context) error {
 	keys, err := loadKeys(ctx, a.cfg, a.db, true)
 	if err != nil {
@@ -43,8 +46,13 @@ func (a *App) openServices(ctx context.Context) error {
 		return err
 	}
 	a.keys, a.audit = keys, log
-	// Events stay nil until package events (M1-14) provides the Publisher.
-	a.access = access.New(a.db, access.Options{Auditor: accessAuditor{log}})
+	accessOpts := access.Options{Auditor: accessAuditor{log}}
+	if a.bg != nil {
+		// Access publishes after its own commit; the bus hands its events
+		// to notify and the modules.
+		accessOpts.Events = events.Publisher[access.Event]{Bus: a.bg.Events}
+	}
+	a.access = access.New(a.db, accessOpts)
 	if a.hooks.authorize == nil {
 		a.hooks.authorize = accessAuthorizer(a.access)
 	}

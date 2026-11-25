@@ -230,15 +230,22 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 	}
 
 	app := NewApp(cfg, log, db, Mounts{})
-	if err := app.openServices(ctx); err != nil {
-		return err
-	}
-	bg, stopBackground, err := startBackground(ctx, app)
+	// The event bus and the scheduler come first: the domain services
+	// publish and schedule on them.
+	app.bg = newBackground(app)
+	stopBackground, err := func() (func(), error) {
+		if err := app.openServices(ctx); err != nil {
+			return nil, err
+		}
+		return startBackground(ctx, app)
+	}()
 	if err != nil {
+		sctx, cancel := context.WithTimeout(context.Background(), backgroundShutdown)
+		defer cancel()
+		app.bg.stop(sctx, app)
 		return err
 	}
 	defer stopBackground()
-	app.bg = bg
 	mounts := apiMounts
 	if e.mounts != nil {
 		mounts = e.mounts

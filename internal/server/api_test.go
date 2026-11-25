@@ -64,6 +64,19 @@ type apiFixture struct {
 // stand-in for creating the first administrator.
 func newAPI(t *testing.T, withHooks bool) *apiFixture {
 	t.Helper()
+	return newAPIWith(t, fixtureOptions{hooks: withHooks})
+}
+
+// fixtureOptions choose what newAPIWith assembles besides the API.
+type fixtureOptions struct {
+	hooks bool // the stand-in for creating the first administrator
+	// background makes and starts the event bus, the jobs, the outbox and
+	// the module host the way serve does; they stop when the test ends.
+	background bool
+}
+
+func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
+	t.Helper()
 	dir := t.TempDir()
 	cfg, err := config.Load(config.Options{LookupEnv: func(k string) (string, bool) {
 		switch k {
@@ -92,11 +105,21 @@ func newAPI(t *testing.T, withHooks bool) *apiFixture {
 		}
 	}
 	app := NewApp(cfg, logging.Discard(), db, Mounts{})
-	if withHooks {
+	if o.hooks {
 		app.hooks.firstAdmin = fakeFirstAdmin{}
+	}
+	if o.background {
+		app.bg = newBackground(app)
 	}
 	if err := app.openServices(ctx); err != nil {
 		t.Fatal(err)
+	}
+	if o.background {
+		stop, err := startBackground(ctx, app)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(stop)
 	}
 	app.mounts = apiMounts(app)
 	api := app.mounts.API

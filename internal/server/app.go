@@ -42,6 +42,7 @@ type App struct {
 	db     *dbx.DB
 	mounts Mounts
 	// bg runs events, jobs, the mail outbox and modules; nil outside serve.
+	// It exists before openServices, which hands its bus to the services.
 	bg *Background
 
 	// The domain services (openServices) and what other packages provide

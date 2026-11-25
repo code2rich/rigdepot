@@ -29,27 +29,37 @@ type Background struct {
 // backgroundShutdown is how long jobs, event handlers and modules get to stop.
 const backgroundShutdown = 15 * time.Second
 
-// startBackground assembles and starts the background parts. The returned function stops them.
+// newBackground makes the parts the domain services publish to and schedule on, the event bus
+// and the job scheduler, without starting anything: openServices hands them to the domain
+// services, and startBackground adds what needs those services and starts it all.
+func newBackground(app *App) *Background {
+	b := &Background{Events: events.New(app.log), JobCounters: jobs.NewCounters()}
+	b.Jobs = jobs.New(app.db, jobs.Options{Log: app.log, Metrics: b.JobCounters})
+	return b
+}
+
+// startBackground assembles the rest of the background parts on app.bg, which newBackground
+// made and openServices has handed to the domain services, and starts them. The returned
+// function stops them.
 //
 // Still to connect once their domain packages exist: the settings store (M1-10) for the mail
 // settings (notify.Options.Config, then the readiness item "mail" from Notify.Check) and for
 // modules.enabled (modhost.Deps.Settings); the audit log (M1-10) and permissions (M1-12) for
 // modules (modhost.Deps.Audit, Authz); the module routes (Modules.Handler) under /api/v1/x/ in
 // apiMounts. Until then mail waits in the outbox and no module is on.
-func startBackground(ctx context.Context, app *App) (*Background, func(), error) {
-	b := &Background{Events: events.New(app.log), JobCounters: jobs.NewCounters()}
-	b.Jobs = jobs.New(app.db, jobs.Options{Log: app.log, Metrics: b.JobCounters})
+func startBackground(ctx context.Context, app *App) (func(), error) {
+	b := app.bg
 	cat, err := i18n.Load(locales.FS, "server")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	b.Notify, err = notify.New(notify.Options{DB: app.db, Jobs: b.Jobs, Catalog: cat, DefaultLocale: app.cfg.DefaultLocale, Log: app.log})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	b.Modules, err = modhost.New(modhost.Deps{DB: app.db, Events: b.Events, Jobs: b.Jobs, Log: app.log, Locked: app.cfg.ModulesDisabled})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	b.Jobs.Start()
 	if err := b.Modules.Start(ctx); err != nil {
@@ -59,10 +69,14 @@ func startBackground(ctx context.Context, app *App) (*Background, func(), error)
 		sctx, cancel := context.WithTimeout(context.Background(), backgroundShutdown)
 		defer cancel()
 		b.Modules.Stop(sctx)
-		err := errors.Join(b.Jobs.Stop(sctx), b.Events.Close(sctx))
-		if err != nil {
-			app.log.Warn("background work still running at shutdown", "err", err)
-		}
+		b.stop(sctx, app)
 	}
-	return b, stop, nil
+	return stop, nil
+}
+
+// stop stops the jobs and the event bus.
+func (b *Background) stop(ctx context.Context, app *App) {
+	if err := errors.Join(b.Jobs.Stop(ctx), b.Events.Close(ctx)); err != nil {
+		app.log.Warn("background work still running at shutdown", "err", err)
+	}
 }
