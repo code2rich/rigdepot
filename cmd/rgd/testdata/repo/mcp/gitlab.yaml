@@ -1,0 +1,17 @@
+meta:
+  name: GitLab
+  summary: 查询仓库、合并请求和流水线
+  stages: [develop, scm]
+
+server:
+  type: stdio
+  command: npx
+  args: ["-y", "@example/gitlab-mcp@1.4.2"]
+  env:
+    GITLAB_TOKEN: "${secret:GITLAB_TOKEN}"
+    GITLAB_URL: https://gitlab.example.com
+
+delivery: on-demand
+
+tools:
+  - { name: list_merge_requests, summary: 列出合并请求 }

@@ -3,6 +3,10 @@
 package msg
 
 const (
+	// AdapterDetectLookpathFailed (cli.json): Looking for its program on PATH failed.
+	AdapterDetectLookpathFailed = "adapter.detect.lookpath_failed"
+	// AdapterDetectUnreadable (cli.json): A file or directory it needs is there but cannot be read.
+	AdapterDetectUnreadable = "adapter.detect.unreadable"
 	// CompletionLong (cli.json): Load it in the current shell:
 	CompletionLong = "completion.long"
 	// CompletionShort (cli.json): Print the completion script for bash, zsh, fish or powershell
@@ -57,6 +61,154 @@ const (
 	ConfigWarnNotInFile = "config.warn.not_in_file"
 	// ConfigWarnUnknownKey (cli.json): Ignoring "{{key}}" in {{origin}}: this version does not know it.
 	ConfigWarnUnknownKey = "config.warn.unknown_key"
+	// DoctorConfigEnvInvalid (cli.json): The environment variable {{name}} has the value "{{value}}", which is …
+	DoctorConfigEnvInvalid = "doctor.config.env_invalid"
+	// DoctorConfigEnvInvalidHint (cli.json): Change or unset {{name}}.
+	DoctorConfigEnvInvalidHint = "doctor.config.env_invalid_hint"
+	// DoctorConfigIgnored (cli.json): {{path}} has settings this version ignores: {{keys}}
+	DoctorConfigIgnored = "doctor.config.ignored"
+	// DoctorConfigIgnoredHint (cli.json): Run "{{cli}} config list" to see the settings in effect.
+	DoctorConfigIgnoredHint = "doctor.config.ignored_hint"
+	// DoctorConfigMissing (cli.json): There is no {{path}}; the defaults apply.
+	DoctorConfigMissing = "doctor.config.missing"
+	// DoctorConfigOk (cli.json): {{path}} can be read.
+	DoctorConfigOk = "doctor.config.ok"
+	// DoctorConfigTitle (cli.json): Local configuration
+	DoctorConfigTitle = "doctor.config.title"
+	// DoctorConfigUnreadable (cli.json): {{path}} cannot be used: {{detail}}
+	DoctorConfigUnreadable = "doctor.config.unreadable"
+	// DoctorConfigUnreadableHint (cli.json): Nothing overwrites it. Fix the file or move it away; until then, the c…
+	DoctorConfigUnreadableHint = "doctor.config.unreadable_hint"
+	// DoctorGitBroken (cli.json): {{path}} did not answer "git version": {{detail}}
+	DoctorGitBroken = "doctor.git.broken"
+	// DoctorGitBrokenHint (cli.json): Check that {{path}} is a working Git, or set {{env}} to another one.
+	DoctorGitBrokenHint = "doctor.git.broken_hint"
+	// DoctorGitMissing (cli.json): No git program was found on PATH.
+	DoctorGitMissing = "doctor.git.missing"
+	// DoctorGitMissingHint (cli.json): Syncing straight from a resource repository needs Git. Install it, or …
+	DoctorGitMissingHint = "doctor.git.missing_hint"
+	// DoctorGitNotFound (cli.json): The git program {{path}} does not exist or cannot be run.
+	DoctorGitNotFound = "doctor.git.not_found"
+	// DoctorGitOk (cli.json): {{version}} ({{path}})
+	DoctorGitOk = "doctor.git.ok"
+	// DoctorGitTitle (cli.json): Git
+	DoctorGitTitle = "doctor.git.title"
+	// DoctorHomeChmodHint (cli.json): Make it yours alone: chmod {{mode}} {{path}}
+	DoctorHomeChmodHint = "doctor.home.chmod_hint"
+	// DoctorHomeExists (cli.json): {{path}} exists.
+	DoctorHomeExists = "doctor.home.exists"
+	// DoctorHomeMissing (cli.json): {{path}} does not exist yet. The first sync creates it.
+	DoctorHomeMissing = "doctor.home.missing"
+	// DoctorHomeNotDir (cli.json): {{path}} is not a directory.
+	DoctorHomeNotDir = "doctor.home.not_dir"
+	// DoctorHomeNotDirHint (cli.json): Move it somewhere else: {{cli}} keeps its records in a directory of th…
+	DoctorHomeNotDirHint = "doctor.home.not_dir_hint"
+	// DoctorHomeOk (cli.json): {{path}} exists and only you can open it.
+	DoctorHomeOk = "doctor.home.ok"
+	// DoctorHomeTitle (cli.json): Local data directory
+	DoctorHomeTitle = "doctor.home.title"
+	// DoctorHomeTooOpen (cli.json): Others can open {{path}} (permissions {{mode}}).
+	DoctorHomeTooOpen = "doctor.home.too_open"
+	// DoctorHomeUnknown (cli.json): Cannot tell where the local data directory is: {{detail}}
+	DoctorHomeUnknown = "doctor.home.unknown"
+	// DoctorHomeUnknownHint (cli.json): Set {{env}} to an absolute path, or use --home.
+	DoctorHomeUnknownHint = "doctor.home.unknown_hint"
+	// DoctorHomeUnreadable (cli.json): Cannot look at {{path}}: {{detail}}
+	DoctorHomeUnreadable = "doctor.home.unreadable"
+	// DoctorIntentsBusy (cli.json): Another {{cli}} is changing things right now, so this cannot be checke…
+	DoctorIntentsBusy = "doctor.intents.busy"
+	// DoctorIntentsBusyHint (cli.json): Run the check again when it has finished.
+	DoctorIntentsBusyHint = "doctor.intents.busy_hint"
+	// DoctorIntentsItemRemove (cli.json): Removing {{path}} for {{tool}}, started {{at}}
+	DoctorIntentsItemRemove = "doctor.intents.item_remove"
+	// DoctorIntentsItemWrite (cli.json): Writing {{path}} for {{tool}}, started {{at}}
+	DoctorIntentsItemWrite = "doctor.intents.item_write"
+	// DoctorIntentsNone (cli.json): None: every write was finished and recorded.
+	DoctorIntentsNone = "doctor.intents.none"
+	// DoctorIntentsPending (cli.json): {{count}} writes were started and not recorded in the manifest.
+	DoctorIntentsPending = "doctor.intents.pending"
+	// DoctorIntentsPendingHint (cli.json): The next sync finishes or drops each one whose target it can recognise…
+	DoctorIntentsPendingHint = "doctor.intents.pending_hint"
+	// DoctorIntentsTitle (cli.json): Unfinished writes
+	DoctorIntentsTitle = "doctor.intents.title"
+	// DoctorIntentsUnreadable (cli.json): The intent log {{path}} cannot be read: {{detail}}
+	DoctorIntentsUnreadable = "doctor.intents.unreadable"
+	// DoctorIntentsUnreadableHint (cli.json): Until this is fixed, sync and uninstall change nothing. Do not delete …
+	DoctorIntentsUnreadableHint = "doctor.intents.unreadable_hint"
+	// DoctorLeftoversFound (cli.json): {{count}} temporary files or directories were left behind by runs that…
+	DoctorLeftoversFound = "doctor.leftovers.found"
+	// DoctorLeftoversFoundHint (cli.json): Nothing uses them. Delete them while no {{cli}} is running.
+	DoctorLeftoversFoundHint = "doctor.leftovers.found_hint"
+	// DoctorLeftoversItem (cli.json): {{path}}
+	DoctorLeftoversItem = "doctor.leftovers.item"
+	// DoctorLeftoversNone (cli.json): Nothing left behind.
+	DoctorLeftoversNone = "doctor.leftovers.none"
+	// DoctorLeftoversTitle (cli.json): Temporary files
+	DoctorLeftoversTitle = "doctor.leftovers.title"
+	// DoctorLeftoversUnreadable (cli.json): Cannot look into {{path}}: {{detail}}
+	DoctorLeftoversUnreadable = "doctor.leftovers.unreadable"
+	// DoctorManifestInvalid (cli.json): {{path}} does not hold what a manifest should: {{detail}}
+	DoctorManifestInvalid = "doctor.manifest.invalid"
+	// DoctorManifestMalformed (cli.json): {{path}} is damaged: {{detail}}
+	DoctorManifestMalformed = "doctor.manifest.malformed"
+	// DoctorManifestMissing (cli.json): Nothing has been written yet ({{path}} does not exist).
+	DoctorManifestMissing = "doctor.manifest.missing"
+	// DoctorManifestNewer (cli.json): {{path}} was written by a newer version of {{cli}}.
+	DoctorManifestNewer = "doctor.manifest.newer"
+	// DoctorManifestNewerHint (cli.json): Use that newer version, or a later one. This one changes nothing until…
+	DoctorManifestNewerHint = "doctor.manifest.newer_hint"
+	// DoctorManifestOk (cli.json): {{path}} records {{count}} places written by {{cli}}.
+	DoctorManifestOk = "doctor.manifest.ok"
+	// DoctorManifestPreviousHint (cli.json): Until this is fixed, sync and uninstall change nothing. Do not delete …
+	DoctorManifestPreviousHint = "doctor.manifest.previous_hint"
+	// DoctorManifestTitle (cli.json): Manifest
+	DoctorManifestTitle = "doctor.manifest.title"
+	// DoctorManifestUnknownHint (cli.json): Until this is fixed, sync and uninstall change nothing. Do not delete …
+	DoctorManifestUnknownHint = "doctor.manifest.unknown_hint"
+	// DoctorManifestUnreadable (cli.json): {{path}} exists but cannot be read: {{detail}}
+	DoctorManifestUnreadable = "doctor.manifest.unreadable"
+	// DoctorShort (cli.json): Check this computer: local data directory, manifest, Git and the AI to…
+	DoctorShort = "doctor.short"
+	// DoctorSkippedNoHome (cli.json): Not checked: where the local data directory is is not known.
+	DoctorSkippedNoHome = "doctor.skipped_no_home"
+	// DoctorSummary (cli.json): {{ok}} passed · {{warn}} to look at · {{fail}} failed · {{unknown}} co…
+	DoctorSummary = "doctor.summary"
+	// DoctorToolRootsNone (cli.json): No installed tool to look at.
+	DoctorToolRootsNone = "doctor.tool_roots.none"
+	// DoctorToolRootsOk (cli.json): The directories of {{tool}} can be written to.
+	DoctorToolRootsOk = "doctor.tool_roots.ok"
+	// DoctorToolRootsOutside (cli.json): {{path}} is a symbolic link to {{target}}, outside your home directory…
+	DoctorToolRootsOutside = "doctor.tool_roots.outside"
+	// DoctorToolRootsOutsideHint (cli.json): {{cli}} only writes inside your home directory, so writing to {{tool}}…
+	DoctorToolRootsOutsideHint = "doctor.tool_roots.outside_hint"
+	// DoctorToolRootsTitle (cli.json): Tool directories
+	DoctorToolRootsTitle = "doctor.tool_roots.title"
+	// DoctorToolRootsUnreadable (cli.json): Cannot look at {{path}}: {{detail}}
+	DoctorToolRootsUnreadable = "doctor.tool_roots.unreadable"
+	// DoctorToolsDisabled (cli.json): {{tool}} is switched off in the local configuration ({{key}}).
+	DoctorToolsDisabled = "doctor.tools.disabled"
+	// DoctorToolsFailed (cli.json): Detecting {{tool}} failed: {{detail}}
+	DoctorToolsFailed = "doctor.tools.failed"
+	// DoctorToolsInstalled (cli.json): {{tool}} {{version}} is installed.
+	DoctorToolsInstalled = "doctor.tools.installed"
+	// DoctorToolsInstalledNoVersion (cli.json): {{tool}} is installed; its version could not be read.
+	DoctorToolsInstalledNoVersion = "doctor.tools.installed_no_version"
+	// DoctorToolsNewer (cli.json): {{tool}} {{version}} is newer than {{verified}}, the version its suppo…
+	DoctorToolsNewer = "doctor.tools.newer"
+	// DoctorToolsNewerHint (cli.json): Syncing still works. If something ends up in the wrong place, please r…
+	DoctorToolsNewerHint = "doctor.tools.newer_hint"
+	// DoctorToolsNone (cli.json): This build of {{cli}} supports no AI tool.
+	DoctorToolsNone = "doctor.tools.none"
+	// DoctorToolsNotInstalled (cli.json): {{tool}} is not installed.
+	DoctorToolsNotInstalled = "doctor.tools.not_installed"
+	// DoctorToolsTitle (cli.json): AI tools
+	DoctorToolsTitle = "doctor.tools.title"
+	// DoctorToolsUnknown (cli.json): Cannot tell whether {{tool}} is installed.
+	DoctorToolsUnknown = "doctor.tools.unknown"
+	// DoctorToolsUnknownHint (cli.json): {{cli}} leaves {{tool}} alone until this can be read.
+	DoctorToolsUnknownHint = "doctor.tools.unknown_hint"
+	// DoctorToolsUnverified (cli.json): {{tool}} is installed, but its support has not been checked against th…
+	DoctorToolsUnverified = "doctor.tools.unverified"
 	// ErrorArgCount (cli.json): "{{command}}" takes exactly {{count}} arguments, but got {{got}}.
 	ErrorArgCount = "error.arg_count"
 	// ErrorBadFlag (cli.json): Invalid option: {{detail}}
@@ -117,6 +269,8 @@ const (
 	HelpShort = "help.short"
 	// HelpUsage (cli.json): Usage:
 	HelpUsage = "help.usage"
+	// MCPAsSkill (catalog.json): This tool cannot connect to the MCP server directly, so it gets a skil…
+	MCPAsSkill = "mcp.as_skill"
 	// RootShort (cli.json): Sync your team's AI coding resources into the AI tools on this compute…
 	RootShort = "root.short"
 	// VersionShort (cli.json): Show the version, commit, build time and platform
