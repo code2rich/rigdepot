@@ -55,9 +55,24 @@ func buildReport(st *desired.State, p *sync.Plan, res *sync.Result, failed, pend
 	for _, res := range st.Resources {
 		versions[res.Ref.Code] = res.Ref.Version
 	}
+	// The single entry is where the MCP servers behind it are: what happens to it happens to
+	// each of them.
+	behind := map[string][]string{}
+	for _, t := range p.Tools {
+		for _, ref := range t.BehindEntry {
+			behind[t.ID] = append(behind[t.ID], ref.Code)
+		}
+	}
 	type key struct{ tool, code string }
 	got := map[key]apiclient.InstallReport{}
-	put := func(tool, code string, version int, status apiclient.InstallStatus, reason, degraded string) {
+	var put func(tool, code string, version int, status apiclient.InstallStatus, reason, degraded string)
+	put = func(tool, code string, version int, status apiclient.InstallStatus, reason, degraded string) {
+		if _, real := versions[code]; !real && code == sync.SingleEntry.Code {
+			for _, c := range behind[tool] {
+				put(tool, c, 0, status, reason, degraded)
+			}
+			return
+		}
 		if v, ok := versions[code]; ok && version == 0 {
 			version = v
 		}

@@ -112,32 +112,35 @@ func checkArtifacts(ref resource.Ref, arts []adapter.Artifact) error {
 //     "<launcher> mcp serve", the proxy of them all; without any server, there is no entry.
 //
 // The single entry is recorded under a resource of its own, the kind mcp with the entry's name
-// as code, since it belongs to no resource of the repository. A tool that does not take stdio
-// servers keeps the servers as they are: there is nothing to start for it.
-func launch(arts []adapter.Artifact, caps adapter.Capabilities, opt Options) []adapter.Artifact {
+// as code, since it belongs to no resource of the repository; behind lists the resources whose
+// servers it stands for. A tool that does not take stdio servers keeps the servers as they are:
+// there is nothing to start for it.
+func launch(arts []adapter.Artifact, caps adapter.Capabilities, opt Options) (out []adapter.Artifact, behind []resource.Ref) {
 	if (opt.MCPMode != adapter.MCPLauncher && opt.MCPMode != adapter.MCPSingleEntry) || !caps.MCP.Stdio {
-		return arts
+		return arts, nil
 	}
 	cmd := cmp.Or(opt.Launcher, brand.CLI)
-	out := make([]adapter.Artifact, 0, len(arts))
-	found := false
+	out = make([]adapter.Artifact, 0, len(arts))
 	for _, a := range arts {
 		s, ok := a.(adapter.MCPServer)
 		if !ok {
 			out = append(out, a)
 			continue
 		}
-		found = true
+		behind = append(behind, s.Resource)
 		if opt.MCPMode == adapter.MCPLauncher {
 			out = append(out, adapter.MCPServer{Resource: s.Resource, EntryName: s.EntryName, Transport: adapter.Stdio,
 				Command: cmd, Args: []string{"mcp", "run", s.Resource.Code}})
 		}
 	}
-	if opt.MCPMode == adapter.MCPSingleEntry && found {
+	if opt.MCPMode != adapter.MCPSingleEntry {
+		return out, nil
+	}
+	if len(behind) > 0 {
 		out = append(out, adapter.MCPServer{Resource: SingleEntry, EntryName: brand.MCPEntry, Transport: adapter.Stdio,
 			Command: cmd, Args: []string{"mcp", "serve"}})
 	}
-	return out
+	return out, behind
 }
 
 // SingleEntry is the resource the single entry of MCPSingleEntry is recorded under.
