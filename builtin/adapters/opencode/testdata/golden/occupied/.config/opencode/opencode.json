@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "rgd-contract-stdio": {
+        "type": "local",
+        "command": ["my-own-server"]
+      },
+      "rgd-contract-http": {
+        "headers": {
+          "X-Contract": "yes"
+        },
+        "type": "remote",
+        "url": "https://mcp.example.com/contract"
+      },
+      "rgd-contract-secret": {
+        "headers": {
+          "Authorization": "Bearer {env:CONTRACT_TOKEN}"
+        },
+        "type": "remote",
+        "url": "https://secret.example.com/mcp"
+      }
+    }
+  }
+}

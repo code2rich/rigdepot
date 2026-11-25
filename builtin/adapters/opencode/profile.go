@@ -5,9 +5,7 @@ package opencode
 
 import _ "embed"
 
-// profileYAML is the declarative part of the adapter. The adapter itself (New, and the code for
-// what the profile cannot say) is not written yet; until it is, the profile is only checked by
-// this package's tests.
+// profileYAML is the declarative part of the adapter; New adds the code for what it cannot say.
 //
 //go:embed profile.yaml
 var profileYAML []byte

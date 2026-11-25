@@ -8,10 +8,12 @@
 # plural (the singular ones are still found, never written). A skill's name is taken from its
 # directory, not from its front matter.
 #
-# What the profile cannot say, and the adapter's code does: version 2 lists MCP servers under
-# mcp.servers (the path below), version 1 directly under mcp; a local server's command and its
-# arguments are one array; and when both opencode.jsonc and opencode.json exist it is not
-# verified which one wins, so MCP servers are skipped rather than guessed.
+# What the profile cannot say, and the adapter's code does (adapter.go): version 2 lists MCP
+# servers under mcp.servers (the path below), versions 1 and 0 directly under mcp; a local
+# server's command and its arguments are one array; a secret is written "{env:NAME}"; and when
+# both opencode.jsonc and opencode.json exist (OpenCode reads and merges both) MCP servers are
+# skipped rather than guessed. When neither exists, opencode.json is created, as
+# `opencode mcp add --global` does.
 id: opencode
 name: OpenCode
 detect:
@@ -21,13 +23,18 @@ detect:
 roots:
   config: { env: XDG_CONFIG_HOME, join: opencode, default: "~/.config/opencode" }
 verified:
-  version: "2.2.7"
+  version: "2.4.1"
   os: [darwin]
-  at: "2026-11-24"
+  at: "2026-11-25"
   how: >-
-    ran opencode mcp add --global in a temporary home directory and read the opencode.json it
-    wrote; reading our entry back with opencode mcp list was not done (its server could not
-    start); skills, commands and agents from the official documentation
+    in a temporary home directory (HOME and every XDG_* variable pointing into it): ran
+    opencode mcp add --global and read the opencode.json it wrote; put servers under mcp.servers
+    and directly under mcp, headers and environment written "{env:NAME}", started
+    opencode serve on the loopback interface and read them back with opencode mcp list (all
+    four listed; the variables were replaced, seen by a loopback HTTP listener and a script);
+    put skills into ~/.claude/skills, ~/.agents/skills and {config}/skills and read them back
+    from the server's skill list; opencode debug paths for XDG_CONFIG_HOME; version 1's MCP shape
+    from the type definitions of @opencode-ai/sdk 1.18.8
 skills:   { dir: "{config}/skills", layout: dir }
 commands: { dir: "{config}/commands", ext: .md }
 agents:   { dir: "{config}/agents", ext: .md }
@@ -35,7 +42,10 @@ mcp:
   files: ["{config}/opencode.jsonc", "{config}/opencode.json"]
   format: jsonc
   path: [mcp, servers]
-# OpenCode reads these skill directories of other tools as well, lowest priority first.
+# OpenCode reads these skill directories of other tools as well, lowest priority first; its own
+# {config}/skills wins over both. They are always under the home directory: CLAUDE_CONFIG_DIR does
+# not move the first one. OPENCODE_DISABLE_CLAUDE_CODE or OPENCODE_DISABLE_CLAUDE_CODE_SKILLS
+# ("1" or "true") turns the first one off.
 alsoReads:
   - { kind: skill, dir: "~/.claude/skills" }
   - { kind: skill, dir: "~/.agents/skills" }

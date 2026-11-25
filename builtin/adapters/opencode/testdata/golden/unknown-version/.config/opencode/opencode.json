@@ -1,0 +1,30 @@
+{
+  "mcp": {
+    "rgd-contract-stdio": {
+      "command": [
+        "contract-mcp",
+        "--stdio",
+        "--log-level",
+        "info"
+      ],
+      "environment": {
+        "CONTRACT_MODE": "read-only"
+      },
+      "type": "local"
+    },
+    "rgd-contract-http": {
+      "headers": {
+        "X-Contract": "yes"
+      },
+      "type": "remote",
+      "url": "https://mcp.example.com/contract"
+    },
+    "rgd-contract-secret": {
+      "headers": {
+        "Authorization": "Bearer {env:CONTRACT_TOKEN}"
+      },
+      "type": "remote",
+      "url": "https://secret.example.com/mcp"
+    }
+  }
+}

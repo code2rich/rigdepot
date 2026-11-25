@@ -1,0 +1,56 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Default model for every project.
+  "model": "example/large-model",
+  "autoupdate": false,
+  "share": "disabled",
+  "instructions": ["~/notes/opencode-rules.md"],
+  "permission": {
+    "bash": "ask",
+    "edit": "allow",
+  },
+  "mcp": {
+    "servers": {
+      /* Issue tracker of the team. */
+      "tracker": {
+        "type": "remote",
+        "url": "https://tracker.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer {env:TRACKER_TOKEN}",
+        },
+      },
+      "scratch": {
+        "type": "local",
+        "command": ["npx", "-y", "example-scratch-mcp"],
+        "environment": {},
+        "disabled": true,
+      },
+      "rgd-contract-stdio": {
+        "command": [
+          "contract-mcp",
+          "--stdio",
+          "--log-level",
+          "info"
+        ],
+        "environment": {
+          "CONTRACT_MODE": "read-only"
+        },
+        "type": "local"
+      },
+      "rgd-contract-http": {
+        "headers": {
+          "X-Contract": "yes"
+        },
+        "type": "remote",
+        "url": "https://mcp.example.com/contract"
+      },
+      "rgd-contract-secret": {
+        "headers": {
+          "Authorization": "Bearer {env:CONTRACT_TOKEN}"
+        },
+        "type": "remote",
+        "url": "https://secret.example.com/mcp"
+      },
+    },
+  },
+}
