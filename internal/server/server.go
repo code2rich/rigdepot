@@ -39,7 +39,11 @@ const (
 func Main(args []string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return run(ctx, args, &env{stdout: os.Stdout, stderr: os.Stderr, lookupEnv: os.LookupEnv})
+	// SIGHUP reloads the TLS certificate files instead of ending the process.
+	hangup := make(chan os.Signal, 1)
+	signal.Notify(hangup, syscall.SIGHUP)
+	defer signal.Stop(hangup)
+	return run(ctx, args, &env{stdout: os.Stdout, stderr: os.Stderr, lookupEnv: os.LookupEnv, hangup: hangup})
 }
 
 // env is what a command gets from the process. Tests make their own.
@@ -53,6 +57,10 @@ type env struct {
 	metricsListening chan<- string
 	// mounts are the handlers serve mounts; see apiHandler.
 	mounts func(*App) Mounts
+	// hangup receives SIGHUP: reload the TLS certificate files.
+	hangup <-chan os.Signal
+	// certCheckEvery overrides how often the certificate files are checked for a change.
+	certCheckEvery time.Duration
 }
 
 type command struct {
@@ -234,6 +242,7 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 	}
 
 	app := NewApp(cfg, log, db, Mounts{})
+	app.hangup, app.certCheckEvery = e.hangup, e.certCheckEvery
 	// The event bus and the scheduler come first: the domain services
 	// publish and schedule on them.
 	app.bg = newBackground(app)
