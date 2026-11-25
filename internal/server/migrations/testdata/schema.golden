@@ -332,6 +332,11 @@ sources
   last_success_at bigint
   created_at bigint not null
   updated_at bigint not null
+  revision bigint not null
+  pull_requested_at bigint
+  pull_started_at bigint
+  last_imported integer not null
+  last_failed integer not null
 
 stages
   id text not null pk

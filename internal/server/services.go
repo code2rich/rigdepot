@@ -77,9 +77,11 @@ func (a *App) openServices(ctx context.Context) error {
 		a.hooks.firstAdmin = a.authnOps
 	}
 	co := a.catalogOptions
-	co.Auditor, co.Version = log, buildinfo.Version
+	co.Auditor, co.Version, co.Keys = log, buildinfo.Version, keys
 	if a.bg != nil {
 		co.Events = a.bg.Events
+		jobs := a.bg.Jobs
+		co.PullNow = func() { jobs.Trigger(catalog.SourceSyncJob) }
 	}
 	if a.catalog, err = catalog.New(a.db, a.access, co); err != nil {
 		return err
@@ -130,10 +132,10 @@ func loadKeys(ctx context.Context, cfg *config.Config, db *dbx.DB, generate bool
 
 // rewrappers are the tables with sealed values, for "keys rotate". Every
 // domain package that stores sealed values adds its masterkey.Rewrapper
-// here: TODO(M1-28) secrets (secret_values), TODO(M1-25) catalog (sources'
-// credentials), TODO(M1-21) identity providers' client secrets.
+// here: TODO(M1-28) secrets (secret_values), TODO(M1-21) identity
+// providers' client secrets.
 func rewrappers() []masterkey.Rewrapper {
-	return []masterkey.Rewrapper{settings.Rewrapper}
+	return []masterkey.Rewrapper{settings.Rewrapper, catalog.SourcesRewrapper}
 }
 
 // keyRotationObject is what the rotation's audit entry is about.

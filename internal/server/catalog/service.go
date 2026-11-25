@@ -16,6 +16,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/events"
+	"github.com/code2rich/rigdepot/internal/server/masterkey"
 )
 
 // Auditor writes the audit log. *audit.Log implements it: Append inside the transaction of the
@@ -43,6 +44,14 @@ type Options struct {
 	// Version is the server's version, checked against a repository's requires.rgd.
 	Version string
 	Now     func() time.Time // nil is time.Now
+	// Keys seal the sources' credentials; nil refuses a source with a credential.
+	Keys *masterkey.Keyring
+	// PullNow asks for a run of the source-sync job (SourceSyncJob) right away, after a source
+	// was added, changed or asked to be pulled; nil leaves it to the job's next run.
+	PullNow func()
+	// AllowLocalSources accepts local paths and file:// addresses as sources. Only tests set
+	// it: otherwise an administrator could make the server read its own disk.
+	AllowLocalSources bool
 }
 
 // Service is the catalog: resources, drafts, versions, publishing, rollback, disabling,
@@ -58,6 +67,10 @@ type Service struct {
 	rules     extcheck.Ruleset
 	ver       string
 	now       func() time.Time
+
+	keys        *masterkey.Keyring
+	pullTrigger func()
+	allowLocal  bool
 }
 
 // New returns the catalog on db. It fails without an Auditor: no write may happen without its
@@ -72,7 +85,8 @@ func New(db *dbx.DB, acc *access.Service, o Options) (*Service, error) {
 	if o.Now == nil {
 		o.Now = time.Now
 	}
-	s := &Service{db: db, access: acc, audit: o.Auditor, events: o.Events, kinds: o.Kinds, rules: o.Rules, ver: o.Version, now: o.Now}
+	s := &Service{db: db, access: acc, audit: o.Auditor, events: o.Events, kinds: o.Kinds, rules: o.Rules, ver: o.Version, now: o.Now,
+		keys: o.Keys, pullTrigger: o.PullNow, allowLocal: o.AllowLocalSources}
 	// A program without a rule set (built without builtin/all) still serves what is
 	// published; it cannot take new content, because nothing could be checked.
 	s.engine, s.engineErr = check.New(o.Rules)
