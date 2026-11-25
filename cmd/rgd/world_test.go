@@ -93,6 +93,8 @@ type world struct {
 	terminal bool
 	stdin    string
 	lang     string
+	// realTools runs with the tool adapters the program links instead of the two made-up ones.
+	realTools bool
 }
 
 func newWorld(t *testing.T) *world {
@@ -148,6 +150,10 @@ type result struct {
 func (w *world) run(args ...string) result {
 	w.t.Helper()
 	var stdout, stderr bytes.Buffer
+	adapters := []adapter.Adapter{fakeCode(), otherAI()}
+	if w.realTools {
+		adapters = nil
+	}
 	code := cli.Run(append([]string{"--lang", w.lang}, args...), cli.Env{
 		Stdin:           strings.NewReader(w.stdin),
 		Stdout:          &stdout,
@@ -157,7 +163,7 @@ func (w *world) run(args ...string) result {
 		SystemLanguages: func() []string { return nil },
 		IsTerminal:      func(any) bool { return w.terminal },
 		GOOS:            runtime.GOOS,
-		Adapters:        []adapter.Adapter{fakeCode(), otherAI()},
+		Adapters:        adapters,
 	})
 	return result{code, stdout.String(), stderr.String()}
 }
