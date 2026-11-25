@@ -627,7 +627,7 @@ const (
 	LoginUnreachable = "login.unreachable"
 	// LoginWaiting (cli.json): Waiting for the confirmation (the code is valid for {{count}} minutes)…
 	LoginWaiting = "login.waiting"
-	// LogoutDone (cli.json): Signed out of {{address}}. The device token and key are deleted from t…
+	// LogoutDone (cli.json): Signed out of {{address}}. The device token and key, and the local cop…
 	LogoutDone = "logout.done"
 	// LogoutNotSignedIn (cli.json): This computer is not signed in.
 	LogoutNotSignedIn = "logout.not_signed_in"
@@ -823,6 +823,60 @@ const (
 	PlanUntouched = "plan.untouched"
 	// RootShort (cli.json): Sync your team's AI coding resources into the AI tools on this compute…
 	RootShort = "root.short"
+	// SecretBadExpires (cli.json): "{{value}}" is not a date such as 2027-05-01.
+	SecretBadExpires = "secret.bad_expires"
+	// SecretBadName (cli.json): "{{name}}" is not a secret name: an upper-case letter, then 1 to 63 up…
+	SecretBadName = "secret.bad_name"
+	// SecretCopyFailed (cli.json): The value is set on the server, but this computer could not fetch its …
+	SecretCopyFailed = "secret.copy_failed"
+	// SecretEmpty (cli.json): No value was entered; nothing was changed.
+	SecretEmpty = "secret.empty"
+	// SecretExpires (cli.json): until {{date}}
+	SecretExpires = "secret.expires"
+	// SecretFlagExpires (cli.json): When the value stops working, such as 2027-05-01, if you know it
+	SecretFlagExpires = "secret.flag.expires"
+	// SecretHowto (cli.json): Where to get one: {{howto}}
+	SecretHowto = "secret.howto"
+	// SecretListEmpty (cli.json): None of the resources you can use needs a personal secret.
+	SecretListEmpty = "secret.list.empty"
+	// SecretListShort (cli.json): List the personal secrets your resources need, and which you have set
+	SecretListShort = "secret.list.short"
+	// SecretNotSignedIn (cli.json): This computer is not signed in, and personal secrets are kept on the s…
+	SecretNotSignedIn = "secret.not_signed_in"
+	// SecretNotSignedInHint (cli.json): Run "{{cli}} login" first.
+	SecretNotSignedInHint = "secret.not_signed_in_hint"
+	// SecretNotUsed (cli.json): No resource you can use needs {{name}}, so the server does not keep it…
+	SecretNotUsed = "secret.not_used"
+	// SecretPrompt (cli.json): Value of {{name}} (not shown):
+	SecretPrompt = "secret.prompt"
+	// SecretPullDone (cli.json): This computer has sealed copies of {{count}} secrets.
+	SecretPullDone = "secret.pull.done"
+	// SecretPullShort (cli.json): Fetch your secrets, sealed for this computer, from the server
+	SecretPullShort = "secret.pull.short"
+	// SecretRmDone (cli.json): {{name}} is deleted. Your other computers drop their copies at their n…
+	SecretRmDone = "secret.rm.done"
+	// SecretRmNotSet (cli.json): {{name}} was not set on the server; the copy on this computer, if any,…
+	SecretRmNotSet = "secret.rm.not_set"
+	// SecretRmShort (cli.json): Delete one of your personal secrets, here and on the server
+	SecretRmShort = "secret.rm.short"
+	// SecretSetLong (cli.json): Reads the value without showing it, or as one line from standard input…
+	SecretSetLong = "secret.set.long"
+	// SecretSetShort (cli.json): Set or replace one of your personal secrets (it is never shown)
+	SecretSetShort = "secret.set.short"
+	// SecretSetDone (cli.json): {{name}} is set. This computer has its copy; your other computers get …
+	SecretSetDone = "secret.set_done"
+	// SecretShort (cli.json): Set, list and delete your personal secrets
+	SecretShort = "secret.short"
+	// SecretStateMissing (cli.json): not set
+	SecretStateMissing = "secret.state.missing"
+	// SecretStateNoCopy (cli.json): set, no copy on this computer yet
+	SecretStateNoCopy = "secret.state.no_copy"
+	// SecretStateSet (cli.json): set
+	SecretStateSet = "secret.state.set"
+	// SecretUsedBy (cli.json): for {{resources}}
+	SecretUsedBy = "secret.used_by"
+	// SecretVaultUnreadable (cli.json): The local copies of your secrets ({{path}}) cannot be read: {{detail}}…
+	SecretVaultUnreadable = "secret.vault_unreadable"
 	// SelectionNoSuchResource (cli.json): There is no resource {{resource}} in {{url}}.
 	SelectionNoSuchResource = "selection.no_such_resource"
 	// SelectionReasonAudience (cli.json): it is for another audience
