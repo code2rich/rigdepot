@@ -27,6 +27,7 @@ audit_log
   reason text not null
   prev_hash text not null
   hash text not null
+  method text not null
 
 blobs
   digest text not null pk

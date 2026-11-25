@@ -186,8 +186,8 @@ func TestHelpListsEveryCommand(t *testing.T) {
 // TestOperationsCommandsSayTheyAreNotThereYet: the commands of task M1-42
 // exist so that they fail clearly instead of as unknown commands.
 func TestOperationsCommandsSayTheyAreNotThereYet(t *testing.T) {
-	for _, args := range [][]string{{"backup"}, {"restore", "--check", "x"}, {"reset-admin"}, {"keys", "rotate"},
-		{"audit", "verify"}, {"setup", "--from", "x"}, {"config", "check"}, {"doctor"}} {
+	for _, args := range [][]string{{"backup"}, {"restore", "--check", "x"}, {"reset-admin"},
+		{"setup", "--from", "x"}, {"config", "check"}, {"doctor"}} {
 		e, _, stderr := testEnv(t, nil)
 		if code := run(context.Background(), args, e); code != exitFailure || !strings.Contains(stderr.String(), "not implemented") {
 			t.Errorf("%v: exit code %d, stderr %q", args, code, stderr)
@@ -214,11 +214,12 @@ func TestServe(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &ready); err != nil {
 		t.Fatal(err)
 	}
-	if resp.StatusCode != http.StatusOK || ready.Status != "ok" || ready.Checks["database"] != "ok" || ready.Checks["migrations"] != "ok" {
+	if resp.StatusCode != http.StatusOK || ready.Status != "ok" || ready.Checks["database"] != "ok" || ready.Checks["migrations"] != "ok" ||
+		ready.Checks["master_key"] != "ok" {
 		t.Errorf("readyz: %s %s", resp.Status, body)
 	}
 
-	resp, body = get(t, "http://"+srv.addr+"/api/v1/meta?token=abc")
+	resp, body = get(t, "http://"+srv.addr+"/api/v0/nothing?token=abc")
 	var p problem
 	if err := json.Unmarshal([]byte(body), &p); err != nil {
 		t.Fatal(err)
@@ -228,16 +229,20 @@ func TestServe(t *testing.T) {
 		t.Errorf("api: %s %v %s", resp.Status, resp.Header, body)
 	}
 
+	if resp, _ := get(t, "http://"+srv.addr+"/api/v1/meta"); resp.StatusCode != http.StatusNotImplemented {
+		t.Errorf("an operation nobody implements yet: %s", resp.Status)
+	}
+
 	if code := srv.wait(t); code != exitOK {
 		t.Errorf("exit code %d after a graceful shutdown\n%s", code, srv.stdout)
 	}
 	logs := srv.stdout.String()
-	for _, want := range []string{`"msg":"request"`, `"route":"GET /healthz"`, `"status":404`, `"request_id":"` + p.RequestID + `"`, `"msg":"stopped"`} {
+	for _, want := range []string{`"msg":"request"`, `"route":"GET /healthz"`, `"route":"GET /api/v1/meta"`, `"status":404`, `"request_id":"` + p.RequestID + `"`, `"msg":"stopped"`} {
 		if !strings.Contains(logs, want) {
 			t.Errorf("log is missing %s:\n%s", want, logs)
 		}
 	}
-	if strings.Contains(logs, "token=abc") || strings.Contains(logs, "/api/v1/meta") {
+	if strings.Contains(logs, "token=abc") || strings.Contains(logs, "/api/v0/nothing") {
 		t.Errorf("the log has the real path or query:\n%s", logs)
 	}
 	if _, err := os.Stat(filepath.Join(e.lookupEnvValue(config.EnvName("DATA_DIR")), brand.CLILong+".db")); err != nil {

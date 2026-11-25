@@ -70,8 +70,8 @@ func commands() []command {
 		{"backup", "make a consistent snapshot of the database", notYet},
 		{"restore", "check a snapshot (--check)", notYet},
 		{"reset-admin", "reset the password of a local administrator", notYet},
-		{"keys rotate", "re-wrap every data key with a new master key", notYet},
-		{"audit verify", "verify the audit log's hash chain", notYet},
+		{"keys rotate", "re-wrap every data key with a new master key", runKeysRotate},
+		{"audit verify", "verify the audit log's hash chain", runAuditVerify},
 		{"setup", "complete the first setup from a file (--from)", notYet},
 		{"config check", "print the effective configuration and where each value comes from", notYet},
 		{"doctor", "check the environment", notYet},
@@ -230,6 +230,9 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 	}
 
 	app := NewApp(cfg, log, db, Mounts{})
+	if err := app.openServices(ctx); err != nil {
+		return err
+	}
 	mounts := apiMounts
 	if e.mounts != nil {
 		mounts = e.mounts

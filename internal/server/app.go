@@ -15,9 +15,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/code2rich/rigdepot/internal/server/access"
+	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
+	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/migrations"
+	"github.com/code2rich/rigdepot/internal/server/settings"
 )
 
 // Mounts are the handlers the server root does not build itself.
@@ -37,6 +41,14 @@ type App struct {
 	log    *slog.Logger
 	db     *dbx.DB
 	mounts Mounts
+
+	// The domain services (openServices) and what other packages provide
+	// to the API (hooks).
+	keys     *masterkey.Keyring
+	audit    *audit.Log
+	access   *access.Service
+	settings *settings.Service
+	hooks    hooks
 
 	checks   []ReadyCheck
 	draining atomic.Bool
@@ -67,7 +79,7 @@ func NewApp(cfg *config.Config, log *slog.Logger, db *dbx.DB, mounts Mounts) *Ap
 		}
 		return nil
 	}})
-	// TODO(M1-11): "master key loaded" joins here once masterkey exists.
+	// "master_key" joins in openServices, which loads it.
 	return a
 }
 
