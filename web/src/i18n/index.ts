@@ -8,10 +8,10 @@
 import { signal } from '@preact/signals'
 import { BRAND } from '../brand.gen'
 import type { MessageKey } from './keys.gen'
-import { FALLBACK, matchLocale, render, type Messages, type Params } from './runtime'
+import { FALLBACK, PSEUDO, matchLocale, render, type Messages, type Params } from './runtime'
 
 export type { MessageKey } from './keys.gen'
-export { FALLBACK, matchLocale } from './runtime'
+export { FALLBACK, PSEUDO, matchLocale } from './runtime'
 
 type Loader = () => Promise<unknown>
 
@@ -51,9 +51,9 @@ async function load(tag: string): Promise<Messages> {
  * whatever the language lacks) and returns the language chosen. The document's lang attribute follows.
  */
 export async function setLocale(tag: string): Promise<string> {
-  const chosen = matchLocale([tag], available)
+  const chosen = tag === PSEUDO ? PSEUDO : matchLocale([tag], available)
   const next = new Map(catalogues.value)
-  for (const t of new Set([FALLBACK, chosen])) {
+  for (const t of new Set([FALLBACK, chosen === PSEUDO ? FALLBACK : chosen])) {
     if (!next.has(t)) next.set(t, await load(t))
   }
   catalogues.value = next
@@ -62,13 +62,36 @@ export async function setLocale(tag: string): Promise<string> {
   return chosen
 }
 
+/** The key in sessionStorage that keeps a ?lang= choice for the rest of the visit in this tab. */
+const LANG_KEY = 'lang'
+
 /**
- * chooseLocale picks the console's language (docs/architecture/09-i18n.md): the signed-in person's
- * setting, then the browser's languages, then the default the server put into the page, then English.
+ * override is the language asked for in the address (?lang=zh-CN, or ?lang=en-XA for the pseudo-language),
+ * kept for this tab so that it survives navigation; ?lang=auto forgets it. It is for trying the console in
+ * another language and for the browser tests, ahead of every other preference.
+ */
+function override(): string | undefined {
+  let tag = new URLSearchParams(location.search).get('lang') ?? undefined
+  try {
+    if (tag === 'auto' || tag === '') sessionStorage.removeItem(LANG_KEY)
+    else if (tag) sessionStorage.setItem(LANG_KEY, tag)
+    else tag = sessionStorage.getItem(LANG_KEY) ?? undefined
+  } catch {
+    // Storage can be off (private windows); the choice then lasts for this page only.
+  }
+  return tag === 'auto' ? undefined : tag || undefined
+}
+
+/**
+ * chooseLocale picks the console's language (docs/architecture/09-i18n.md): a ?lang= in the address, then
+ * the signed-in person's setting, then the browser's languages, then the default the server put into the
+ * page, then English. Only ?lang= can choose the pseudo-language.
  */
 export function chooseLocale(personal?: string): string {
+  const asked = override()
+  if (asked === PSEUDO) return PSEUDO
   const serverDefault = document.documentElement.dataset.defaultLocale
-  return matchLocale([personal, ...navigator.languages, serverDefault], available)
+  return matchLocale([asked, personal, ...navigator.languages, serverDefault], available)
 }
 
 /**

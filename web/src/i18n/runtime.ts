@@ -11,6 +11,14 @@ export type Messages = Readonly<Record<string, string>>
 /** The language everything falls back to. A key missing here is a defect that tools/dev check catches. */
 export const FALLBACK = 'en'
 
+/**
+ * The pseudo-language: English with every letter swapped for an accented look-alike, about 40% longer and
+ * in brackets ("[Šîĝñ îñ ļöŕéɱ]"). It is for development and the browser tests, never offered to people:
+ * text that stays plain English under it was not translated, and a missing closing bracket shows text that
+ * was cut off (docs/architecture/09-i18n.md). Choose it with ?lang=en-XA; it is never matched automatically.
+ */
+export const PSEUDO = 'en-XA'
+
 /** Values for placeholders. `count` also picks the plural form. */
 export type Params = Readonly<Record<string, string | number>>
 
@@ -79,12 +87,52 @@ export function render(
   always: Params = {},
 ): string {
   const count = typeof params.count === 'number' ? params.count : undefined
-  const text =
-    lookup(catalogues.get(locale), locale, key, count) ??
+  let text =
+    (locale === PSEUDO ? undefined : lookup(catalogues.get(locale), locale, key, count)) ??
     lookup(catalogues.get(FALLBACK), FALLBACK, key, count) ??
     key
+  // The template is transformed before its placeholders are filled: values are data, not translations.
+  if (locale === PSEUDO && text !== key) text = pseudo(text)
   return text.replace(placeholder, (match, name: string) => {
     const value = name in params ? params[name] : always[name]
     return value === undefined ? match : String(value)
   })
+}
+
+const accented: Readonly<Record<string, string>> = Object.fromEntries(
+  [...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'].map((c, i) => [
+    c,
+    [...'åƀçðéƒĝĥîĵķļɱñöþǫŕšţûṽŵẋýžÅƁÇÐÉƑĜĤÎĴĶĻṀÑÖÞǪŔŠŢÛṼŴẊÝŽ'][i] ?? c,
+  ]),
+)
+
+/** Words that make pseudo-language text longer; they wrap like words do. */
+const padding = 'ļöŕéɱ îþšûɱ ðöļöŕ šîţ åɱéţ çöñšéçţéţûŕ åðîþîšçîñĝ éļîţ šéð ðö éîûšɱöð ţéɱþöŕ'
+
+/**
+ * pseudo turns an English message into the pseudo-language: letters accented, placeholders ({{name}})
+ * untouched, about 40% more letters as extra words, the whole in brackets. Text without letters (a
+ * separator, a number format) stays as it is.
+ */
+export function pseudo(text: string): string {
+  let letters = 0
+  const parts = text.split(/(\{\{[A-Za-z0-9_]+\}\})/)
+  const out = parts
+    .map((part, i) => {
+      if (i % 2 === 1) return part
+      return part.replace(/[A-Za-z]/g, (c) => {
+        letters++
+        return accented[c] ?? c
+      })
+    })
+    .join('')
+  if (letters === 0) return text
+  const words = padding.split(' ')
+  const kept: string[] = []
+  for (let i = 0, n = 0; n < Math.ceil(letters * 0.4); i++) {
+    const word = words[i % words.length] ?? ''
+    kept.push(word)
+    n += [...word].length
+  }
+  return `[${out} ${kept.join(' ')}]`
 }

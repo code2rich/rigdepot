@@ -39,6 +39,8 @@ The files are flat JSON objects in the i18next v4 conventions, which translation
 
 After adding or removing a key, run `go run ./tools/dev gen` (sorts the files, regenerates the constants) and `go run ./tools/dev check`. The check fails when a required language lacks a key or has one too many, when placeholders differ from English, when a key is not used by any code, and when a file is not a flat, sorted JSON object; it names the file and the key.
 
+To see the web console in another language, add `?lang=<tag>` to its address (it lasts for the tab; `?lang=auto` forgets it). `?lang=en-XA` shows the **pseudo-language**: English with accented letters, about 40% longer and in brackets (`[Šîĝñ îñ ļöŕéɱ]`). It is not a translation and never offered to people; text that stays plain English under it is not translated, and a bracket that does not close is cut off. The browser tests (`go run ./tools/dev e2e-web`) go through every page in it.
+
 ## Adding a language
 
 1. Copy `en/` to `<tag>/`, for example `ja/`.
