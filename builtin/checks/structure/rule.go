@@ -129,6 +129,14 @@ func fileOrEmpty(d fs.DirEntry, p string) string {
 	return p
 }
 
+// frontMatterProblems names the finding for each way the front matter of SKILL.md can be broken.
+// The names are spelled out so that the message check finds every key in use.
+var frontMatterProblems = map[string]string{
+	skillmd.Missing:      "front_matter_missing",
+	skillmd.Unterminated: "front_matter_unterminated",
+	skillmd.Invalid:      "front_matter_invalid",
+}
+
 func checkSkill(in check.Input, r *report) error {
 	fm, err := skillmd.Read(in.Files)
 	var bad *skillmd.Error
@@ -137,7 +145,7 @@ func checkSkill(in check.Input, r *report) error {
 		r.add("", 0, "skill_md_missing", nil)
 		return nil
 	case errors.As(err, &bad):
-		r.add(skillmd.File, bad.Line, "front_matter_"+bad.Problem, nil)
+		r.add(skillmd.File, bad.Line, frontMatterProblems[bad.Problem], nil)
 		return nil
 	case err != nil:
 		return err

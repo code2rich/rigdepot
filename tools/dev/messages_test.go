@@ -149,6 +149,22 @@ func TestMessageCheckFindsProblems(t *testing.T) {
 			[]string{`key "check.structure.missing"`, "not used"},
 		},
 		{
+			"a rule's problem name in another rule's directory",
+			func(f map[string]string) {
+				f["builtin/checks/structure/structure.go"] = "package structure\n"
+				f["builtin/checks/secrets/rule.go"] = "package secrets\n\nconst id = \"secrets\"\n\nvar problem = \"missing\"\n"
+			},
+			[]string{`key "check.structure.missing"`, "not used"},
+		},
+		{
+			"a problem name in the rules' shared code",
+			func(f map[string]string) {
+				f["builtin/checks/structure/structure.go"] = "package structure\n"
+				f["builtin/checks/internal/skillmd/skillmd.go"] = "package skillmd\n\nconst Missing = \"missing\"\n"
+			},
+			[]string{`key "check.structure.missing"`, "not used"},
+		},
+		{
 			"a literal key that does not exist",
 			func(f map[string]string) {
 				f["internal/cli/typo.go"] = "package cli\n\nimport \"example.com/acmemsg/internal/i18n\"\n\nfunc typo(p *i18n.Printer) string { return p.T(\"greting\") }\n"
@@ -227,6 +243,21 @@ func TestMessageCheckFindsProblems(t *testing.T) {
 
 // A language that is not required may be incomplete: what it lacks falls
 // back to English. Its placeholders must still agree.
+// A check rule writes "check." + id + "." + problem; the problem name alone in the rule's own
+// directory counts as using the key, with or without the leading dot.
+func TestRuleKeysWrittenAsProblemNames(t *testing.T) {
+	for _, src := range []string{
+		"package structure\n\nconst id = \"structure\"\n\nfunc key(p string) string { return \"check.\" + id + \".\" + p }\n\nvar k = key(\"missing\")\n",
+		"package structure\n\nconst id = \"structure\"\n\nvar k = \"check.\" + id + \".missing\"\n",
+	} {
+		files := messageTree()
+		files["builtin/checks/structure/structure.go"] = src
+		if _, err := runMessageCheck(t, files); err != nil {
+			t.Errorf("%s\n%v", src, err)
+		}
+	}
+}
+
 func TestOptionalLanguages(t *testing.T) {
 	files := messageTree()
 	files["locales/de/meta.json"] = `{"name": "Deutsch"}`

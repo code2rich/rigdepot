@@ -560,6 +560,7 @@ func usedKeys(module string, goFiles []goFile, l *locales) (map[string]bool, []s
 			continue
 		}
 		msgNames := f.importNames(func(p string) bool { return p == module+"/"+msgPackage })
+		rule := checkRuleOf(f.rel)
 		usesI18n := len(f.importNames(func(p string) bool { return p == module+"/internal/i18n" })) > 0
 		ast.Inspect(f.ast, func(n ast.Node) bool {
 			switch x := n.(type) {
@@ -571,9 +572,18 @@ func usedKeys(module string, goFiles []goFile, l *locales) (map[string]bool, []s
 				}
 			case *ast.BasicLit:
 				if x.Kind == token.STRING {
-					if s, err := strconv.Unquote(x.Value); err == nil && all[s] {
+					s, err := strconv.Unquote(x.Value)
+					if err != nil {
+						break
+					}
+					if all[s] {
 						base, _ := baseKey(s)
 						used[base] = true
+					}
+					// A check rule builds its keys as "check." + id + "." + problem
+					// and writes only the problem as a literal.
+					if k := "check." + rule + "." + strings.TrimPrefix(s, "."); rule != "" && s != "" && all[k] {
+						used[k] = true
 					}
 				}
 			case *ast.CallExpr:
@@ -591,6 +601,23 @@ func usedKeys(module string, goFiles []goFile, l *locales) (map[string]bool, []s
 		})
 	}
 	return used, unknown
+}
+
+// checkRulesDir holds one directory per built-in check rule, named by the rule's ID; its
+// internal/ directory is shared code, not a rule.
+const checkRulesDir = "builtin/checks"
+
+// checkRuleOf returns the ID of the built-in check rule a file belongs to, or "".
+func checkRuleOf(rel string) string {
+	rest, ok := strings.CutPrefix(rel, checkRulesDir+"/")
+	if !ok {
+		return ""
+	}
+	id, _, ok := strings.Cut(rest, "/")
+	if !ok || id == "internal" {
+		return ""
+	}
+	return id
 }
 
 // moduleOf reads the module path from go.mod.
