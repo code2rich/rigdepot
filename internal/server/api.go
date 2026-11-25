@@ -52,6 +52,8 @@ type api struct {
 	*metaAPI
 	*notificationsAPI
 	*secretsAPI
+	*sourcesAPI
+	*feedbackAPI
 	*cliAPI
 }
 
@@ -137,6 +139,8 @@ func apiMounts(app *App) Mounts {
 		catalogAPI:       &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
 		notificationsAPI: &notificationsAPI{access: app.access},
 		secretsAPI:       &secretsAPI{secrets: app.secrets, cat: app.catalog, publicKey: app.devices.DevicePublicKey},
+		sourcesAPI:       &sourcesAPI{cat: app.catalog},
+		feedbackAPI:      &feedbackAPI{fb: app.feedback, hooks: &app.hooks},
 		cliAPI:           &cliAPI{dist: app.cli, base: publicBase(app.cfg.BaseURL), downloadBase: app.cfg.CLIDownloadBase, version: app.version, log: app.log},
 	}
 	if impl.toolsAPI.version == "" {

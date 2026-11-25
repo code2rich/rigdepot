@@ -467,6 +467,30 @@ const (
 	ErrorUsageHint = "error.usage_hint"
 	// ErrorVerboseAndQuiet (cli.json): -v and -q cannot be used together.
 	ErrorVerboseAndQuiet = "error.verbose_and_quiet"
+	// FeedbackBadChoice (cli.json): {{flag}} must be one of {{choices}}, not "{{value}}".
+	FeedbackBadChoice = "feedback.bad_choice"
+	// FeedbackBadFriction (cli.json): "{{value}}" is not a friction count: write it as type=count, such as t…
+	FeedbackBadFriction = "feedback.bad_friction"
+	// FeedbackDone (cli.json): Sent as FB-{{number}}. Its handlers are told; you hear back when its s…
+	FeedbackDone = "feedback.done"
+	// FeedbackFailed (cli.json): The server could not take the feedback ({{status}}): {{detail}}
+	FeedbackFailed = "feedback.failed"
+	// FeedbackNoBody (cli.json): Say what happened with --message, or pipe it into standard input.
+	FeedbackNoBody = "feedback.no_body"
+	// FeedbackNoTitle (cli.json): Give a title with --title.
+	FeedbackNoTitle = "feedback.no_title"
+	// FeedbackNotSignedIn (cli.json): This computer is not signed in to a server. Sign in with "{{command}}"…
+	FeedbackNotSignedIn = "feedback.not_signed_in"
+	// FeedbackRejected (cli.json): The server did not accept the feedback: {{detail}}
+	FeedbackRejected = "feedback.rejected"
+	// FeedbackSentContext (cli.json): Sent along: {{fields}}. Nothing else from this computer.
+	FeedbackSentContext = "feedback.sent_context"
+	// FeedbackSentNothing (cli.json): Nothing from this computer was sent along.
+	FeedbackSentNothing = "feedback.sent_nothing"
+	// FeedbackShort (cli.json): Send feedback about a resource or the platform to its handlers, with t…
+	FeedbackShort = "feedback.short"
+	// FeedbackUnreachable (cli.json): Could not reach the server: {{detail}}. Nothing was sent.
+	FeedbackUnreachable = "feedback.unreachable"
 	// FlagBranch (cli.json): Branch, tag or commit of the resource repository (default: repo.branch…
 	FlagBranch = "flag.branch"
 	// FlagDiff (cli.json): Show how changed files differ from what the resource repository wants
@@ -475,6 +499,26 @@ const (
 	FlagDir = "flag.dir"
 	// FlagExitCode (cli.json): With --plan: exit with 5 when there is something to change
 	FlagExitCode = "flag.exit_code"
+	// FlagFeedbackAi (cli.json): An AI tool drafted it and you read and confirmed it before sending
+	FlagFeedbackAi = "flag.feedback.ai"
+	// FlagFeedbackFriction (cli.json): How often a friction happened in this session, as type=count (repeatab…
+	FlagFeedbackFriction = "flag.feedback.friction"
+	// FlagFeedbackMessage (cli.json): What happened, in your words; "-" or nothing reads it from standard in…
+	FlagFeedbackMessage = "flag.feedback.message"
+	// FlagFeedbackResource (cli.json): The resource it is about, by code
+	FlagFeedbackResource = "flag.feedback.resource"
+	// FlagFeedbackResourceVersion (cli.json): The version of the resource you used
+	FlagFeedbackResourceVersion = "flag.feedback.resource_version"
+	// FlagFeedbackSeverity (cli.json): How bad it is: low, medium or high
+	FlagFeedbackSeverity = "flag.feedback.severity"
+	// FlagFeedbackTitle (cli.json): A short title
+	FlagFeedbackTitle = "flag.feedback.title"
+	// FlagFeedbackTool (cli.json): The AI tool you were using, such as claude-code
+	FlagFeedbackTool = "flag.feedback.tool"
+	// FlagFeedbackToolVersion (cli.json): That tool's version
+	FlagFeedbackToolVersion = "flag.feedback.tool_version"
+	// FlagFeedbackType (cli.json): What it is: bug, suggestion or question
+	FlagFeedbackType = "flag.feedback.type"
 	// FlagFlowConfirmed (cli.json): The person confirmed their checks and agreed to go on, in this convers…
 	FlagFlowConfirmed = "flag.flow.confirmed"
 	// FlagFlowDir (cli.json): The project's directory: where the run belongs and the checks that are…

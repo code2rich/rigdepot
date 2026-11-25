@@ -20,7 +20,11 @@ import (
 	"time"
 
 	"github.com/code2rich/rigdepot/internal/logging"
+	"github.com/code2rich/rigdepot/internal/repoformat"
+	"github.com/code2rich/rigdepot/internal/server/access"
+	"github.com/code2rich/rigdepot/internal/server/catalog"
 	"github.com/code2rich/rigdepot/internal/server/catalog/catalogtest"
+	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/httpapi"
 	"github.com/code2rich/rigdepot/internal/server/secrets"
 )
@@ -204,4 +208,29 @@ func waitFor(t *testing.T, ok func() bool) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("timed out")
+}
+
+// A repository imported through a source defines its secrets in the secrets domain: the label
+// and where to get one from rigdepot.yaml reach the person's list of secrets.
+func TestImportedRepositoryDefinesSecrets(t *testing.T) {
+	f, _ := newSecretsAPI(t)
+	ctx := context.Background()
+	source := dbx.NewID()
+	if _, err := f.app.db.ExecContext(ctx, `INSERT INTO sources (id, name, url, created_at, updated_at) VALUES (?, 'resources', 'https://git.example.com/r.git', 1, 1)`, source); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "rigdepot.yaml"), []byte("schema: 1\nsecrets:\n  JIRA_API_TOKEN: {label: Jira API token, howto: \"Jira, Account settings, Security\"}\n"), 0o644)
+	repo, err := repoformat.Read(os.DirFS(dir), repoformat.Options{Kinds: catalogtest.Kinds()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.app.catalog.ImportRepo(ctx, access.System, catalog.ImportSource{SourceID: source, Commit: "c1"}, repo); err != nil {
+		t.Fatal(err)
+	}
+	f.publishMCP(t)
+	l := decode[httpapi.MySecretList](t, f.call("GET", "/api/v1/me/secrets", testMember, nil, nil, http.StatusOK))
+	if len(l.Items) != 1 || l.Items[0].Label != "Jira API token" || l.Items[0].Howto == nil || *l.Items[0].Howto != "Jira, Account settings, Security" {
+		t.Errorf("list: %+v", l)
+	}
 }
