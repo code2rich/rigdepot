@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	toml "github.com/pelletier/go-toml/v2"
+
+	"github.com/code2rich/rigdepot/internal/brand"
 )
 
 // Setting describes one startup setting: where it can be given and whether
@@ -53,8 +55,8 @@ var settings = []Setting{
 	{Key: "git", Env: EnvName("GIT"), Flag: "git", InFile: true, Help: "git executable (default git)"},
 	{Key: "source_sync_interval", Env: EnvName("SOURCE_SYNC_INTERVAL"), Flag: "source-sync-interval", InFile: true, Help: "how often to fetch resource repositories (default 10m)"},
 	{Key: "max_bundle_mb", Env: EnvName("MAX_BUNDLE_MB"), Flag: "max-bundle-mb", InFile: true, Help: "largest resource bundle in MB (default 5)"},
-	{Key: "cli_dist_dir", Env: EnvName("CLI_DIST_DIR"), Flag: "cli-dist-dir", InFile: true, Help: "directory with the command-line program for each platform"},
-	{Key: "cli_download_base", Env: EnvName("CLI_DOWNLOAD_BASE"), Flag: "cli-download-base", InFile: true, Help: "where install scripts download from when the directory above is empty"},
+	{Key: "cli_dist_dir", Env: EnvName("CLI_DIST_DIR"), Flag: "cli-dist-dir", InFile: true, Help: "directory with the release archives of the command-line program to hand out (default: <data_dir>/cli, then /usr/share/" + brand.CLILong + "/cli)"},
+	{Key: "cli_download_base", Env: EnvName("CLI_DOWNLOAD_BASE"), Flag: "cli-download-base", InFile: true, Help: "URL of a directory with a release's checksums.txt and archives, for the install scripts when no archives are on this machine"},
 	{Key: "backup.dir", Env: EnvName("BACKUP_DIR"), Flag: "backup-dir", InFile: true, Help: "directory for daily backups (default off)"},
 	{Key: "backup.keep", Env: EnvName("BACKUP_KEEP"), Flag: "backup-keep", InFile: true, Help: "how many backups to keep (default 14)"},
 	{Key: "web_dev_proxy", Env: EnvName("WEB_DEV_PROXY"), Flag: "web-dev-proxy", Help: "development only: serve the console from this local development server (such as http://127.0.0.1:5173) instead of the embedded files"},

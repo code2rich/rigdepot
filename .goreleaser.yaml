@@ -6,7 +6,9 @@
 #
 #   go run ./tools/dev release-snapshot    build everything into dist/, publish nothing,
 #                                          build again elsewhere and compare the checksums,
-#                                          install from dist/ with scripts/install.sh
+#                                          install from dist/ with scripts/install.sh, export
+#                                          and run the server image for both architectures,
+#                                          install the deb and rpm into clean containers
 #
 # Only features of the open-source edition of goreleaser are used.
 #
@@ -17,6 +19,8 @@
 #   RELEASE_SBOM=1           write an SPDX SBOM next to every archive (needs syft on PATH)
 #   PACKAGES_GITHUB_TOKEN    a token that can push to the Homebrew tap and the Scoop bucket;
 #                            without it the cask and the manifest are only written into dist/
+#   --skip=docker            no container image (tools/dev passes it when Docker or buildx is
+#                            missing, and for the second build of the rehearsal)
 
 version: 2
 project_name: rigdepot
@@ -114,6 +118,75 @@ archives:
       group: root
       mtime: "{{ .CommitDate }}"
 
+# The server as Debian and RPM packages, one per architecture: rgd-server, the
+# systemd unit, a system user and its data directory, the startup
+# configuration, and the six rgd archives of this release for the server to
+# hand out on the internal network (docs: 08-deployment). The packages come
+# after the archives in goreleaser's pipeline, so the archives are in dist/.
+nfpms:
+  - id: rigdepot-server
+    ids: [rgd-server]
+    package_name: rigdepot-server
+    # rigdepot-server_0.4.0_amd64.deb, rigdepot-server-0.4.0-1.x86_64.rpm
+    file_name_template: "{{ .ConventionalFileName }}"
+    formats: [deb, rpm]
+    vendor: The Rigdepot Authors
+    homepage: https://github.com/code2rich/rigdepot
+    maintainer: The Rigdepot Authors <rigdepot@code2rich.com>
+    description: |-
+      Rigdepot server.
+      One depot for your team's AI coding rig: the catalogue, the web console
+      and the command line it hands out to the team's computers.
+    license: Apache-2.0
+    section: net
+    priority: optional
+    bindir: /usr/bin
+    # Fixed time stamps: a package must not depend on when it was built.
+    mtime: "{{ .CommitDate }}"
+    # git fetches the resource repositories; useradd makes the system user.
+    dependencies: [git]
+    overrides:
+      deb:
+        dependencies: [git, passwd]
+        recommends: [openssh-client, ca-certificates]
+      rpm:
+        dependencies: [git, shadow-utils]
+        recommends: [openssh-clients, ca-certificates]
+    contents:
+      - src: deploy/systemd/rigdepot-server.service
+        dst: /usr/lib/systemd/system/rigdepot-server.service
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+      - dst: /etc/rigdepot
+        type: dir
+        file_info: { mode: 0755, mtime: "{{ .CommitDate }}" }
+      - src: deploy/packaging/server.env
+        dst: /etc/rigdepot/server.env
+        type: config|noreplace
+        file_info: { mode: 0600, mtime: "{{ .CommitDate }}" }
+      - dst: /var/lib/rigdepot
+        type: dir
+        file_info: { mode: 0700, mtime: "{{ .CommitDate }}" }
+      - src: "dist/rgd_{{ .Version }}_*.tar.gz"
+        dst: /usr/share/rigdepot/cli/
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+      - src: "dist/rgd_{{ .Version }}_*.zip"
+        dst: /usr/share/rigdepot/cli/
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+      - src: LICENSE
+        dst: /usr/share/doc/rigdepot-server/LICENSE
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+      - src: NOTICE
+        dst: /usr/share/doc/rigdepot-server/NOTICE
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+      - src: .dev/release/THIRD_PARTY_NOTICES
+        dst: /usr/share/doc/rigdepot-server/THIRD_PARTY_NOTICES
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
+    scripts:
+      preinstall: deploy/packaging/preinstall.sh
+      postinstall: deploy/packaging/postinstall.sh
+      preremove: deploy/packaging/preremove.sh
+      postremove: deploy/packaging/postremove.sh
+
 checksum:
   name_template: checksums.txt
   algorithm: sha256
@@ -131,6 +204,41 @@ sboms:
   - id: archives
     artifacts: archive
     disable: '{{ if eq (envOrDefault "RELEASE_SBOM" "0") "1" }}false{{ else }}true{{ end }}'
+
+# The container image: linux/amd64 and linux/arm64 under one tag, made from
+# the Debian package of each architecture (deploy/docker/Dockerfile), so the
+# image holds the same files as the package. It is pushed to the GitHub
+# Container Registry by a release only.
+#
+#   - A release pushes one multi-architecture manifest. That needs a buildx
+#     builder that can (the docker-container driver: docker buildx create
+#     --use) and docker login ghcr.io with a token that has write:packages.
+#   - A snapshot builds each architecture on its own and loads it into the
+#     local Docker as <tag>-amd64 and <tag>-arm64, without pushing; tools/dev
+#     release-snapshot then exports them (docker save) into
+#     dist/rigdepot-server_<version>_linux_<arch>.docker.tar.gz, runs both,
+#     and deletes them again. Without Docker it passes --skip=docker.
+#   - A pre-release and a snapshot get only their own tag, never
+#     <major>.<minor> or latest.
+#     The snapshot version's "+" is not allowed in a tag and becomes "-".
+dockers_v2:
+  - id: rigdepot-server
+    ids: [rigdepot-server]
+    dockerfile: deploy/docker/Dockerfile
+    images: [ghcr.io/code2rich/rigdepot-server]
+    tags:
+      - '{{ replace .Version "+" "-" }}'
+      - '{{ if not (or .IsSnapshot .Prerelease) }}{{ .Major }}.{{ .Minor }}{{ end }}'
+      - '{{ if not (or .IsSnapshot .Prerelease) }}latest{{ end }}'
+    platforms: [linux/amd64, linux/arm64]
+    labels:
+      org.opencontainers.image.title: rigdepot-server
+      org.opencontainers.image.description: Rigdepot server
+      org.opencontainers.image.source: https://github.com/code2rich/rigdepot
+      org.opencontainers.image.licenses: Apache-2.0
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .CommitDate }}"
 
 # Signing: not enabled yet.
 #

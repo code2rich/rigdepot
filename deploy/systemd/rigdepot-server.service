@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Rigdepot Authors
 #
-# systemd unit for rgd-server. Install as
-# /etc/systemd/system/rigdepot-server.service; see deploy/README.md.
+# systemd unit for rgd-server. The deb and rpm packages install it as
+# /usr/lib/systemd/system/rigdepot-server.service; by hand, put it into
+# /etc/systemd/system/. See deploy/README.md.
 
 [Unit]
 Description=Rigdepot server
@@ -18,6 +19,8 @@ EnvironmentFile=/etc/rigdepot/server.env
 ExecStart=/usr/bin/rgd-server serve
 Restart=on-failure
 RestartSec=3
+# Files the server creates are its own alone.
+UMask=0077
 
 # Tightened permissions: only the data directory is writable.
 NoNewPrivileges=true

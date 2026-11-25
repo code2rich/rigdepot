@@ -163,8 +163,17 @@ func (h *RedactingHandler) WithGroup(name string) slog.Handler {
 	return &RedactingHandler{next: h.next.WithGroup(name)}
 }
 
+// Disclosed is a secret that is logged on purpose, whatever its attribute is called: the
+// server's one-time setup code, which the person installing it reads from the log (decision
+// D7). An attribute with a sensitive name and any other value is still redacted, so the code
+// stays out of every other log line.
+type Disclosed string
+
 func redactAttr(a slog.Attr) slog.Attr {
 	a.Value = a.Value.Resolve()
+	if v, ok := a.Value.Any().(Disclosed); ok && a.Value.Kind() == slog.KindAny {
+		return slog.String(a.Key, string(v))
+	}
 	if a.Value.Kind() == slog.KindGroup {
 		group := a.Value.Group()
 		clean := make([]slog.Attr, len(group))

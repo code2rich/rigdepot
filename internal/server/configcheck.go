@@ -146,7 +146,8 @@ func settingValue(cfg *config.Config, key string) string {
 	case "max_bundle_mb":
 		return strconv.Itoa(cfg.MaxBundleMB)
 	case "cli_dist_dir":
-		return cfg.CLIDistDir
+		// Unless one is configured, two directories are searched in turn.
+		return strings.Join(cfg.CLIDistDirs, ", then ")
 	case "cli_download_base":
 		return orNone(cfg.CLIDownloadBase)
 	case "backup.dir":

@@ -50,6 +50,7 @@ type api struct {
 	*catalogAPI
 	*metaAPI
 	*notificationsAPI
+	*cliAPI
 }
 
 // fallback puts notImplemented's methods one embedding level below the
@@ -129,9 +130,13 @@ func apiMounts(app *App) Mounts {
 		toolsAPI:         &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
 		catalogAPI:       &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
 		notificationsAPI: &notificationsAPI{access: app.access},
+		cliAPI:           &cliAPI{dist: app.cli, base: publicBase(app.cfg.BaseURL), downloadBase: app.cfg.CLIDownloadBase, version: app.version, log: app.log},
 	}
 	if impl.toolsAPI.version == "" {
 		impl.toolsAPI.version = buildinfo.Get().Version
+	}
+	if impl.cliAPI.version == "" {
+		impl.cliAPI.version = buildinfo.Get().Version
 	}
 	impl.metaAPI = &metaAPI{cfg: app.cfg, settings: app.settings, version: impl.toolsAPI.version}
 	if app.authnOps != nil {

@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -230,6 +231,19 @@ func TestDefaultsFollowTheDataDirectory(t *testing.T) {
 	}
 	if !strings.HasSuffix(c.DatabaseURL, "/srv/rd/"+defaultDBName) || c.MasterKeyFile != filepath.Join("/srv/rd", "master.key") {
 		t.Errorf("database %s, master key %s", c.DatabaseURL, c.MasterKeyFile)
+	}
+	// The command line is looked for in the data directory first, then where the packages
+	// and the image put it.
+	if want := []string{filepath.Join("/srv/rd", "cli"), defaultCLIDist}; !slices.Equal(c.CLIDistDirs, want) || c.CLIDistDir != defaultCLIDist {
+		t.Errorf("command-line directories %q (%s), want %q", c.CLIDistDirs, c.CLIDistDir, want)
+	}
+	// A configured directory is the only one.
+	c, err = Load(Options{LookupEnv: envOf(base, map[string]string{EnvName("CLI_DIST_DIR"): "/srv/cli"})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(c.CLIDistDirs, []string{"/srv/cli"}) {
+		t.Errorf("configured: %q", c.CLIDistDirs)
 	}
 }
 

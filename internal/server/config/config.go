@@ -53,11 +53,24 @@ type Config struct {
 	Git                string
 	SourceSyncInterval time.Duration
 	MaxBundleMB        int
-	CLIDistDir         string
-	CLIDownloadBase    string
-	BackupDir          string // "" when the built-in backup is off
-	BackupKeep         int
-	ModulesDisabled    []string
+	// CLIDistDir is the directory with the release archives of the
+	// command-line program that the server hands out (the configured value,
+	// or the default). CLIDistDirs are the directories searched, in order:
+	// only CLIDistDir when it is configured, otherwise <data_dir>/cli
+	// first (where an administrator can put the archives of a container or
+	// a single binary), then the default that the packages and the image
+	// fill.
+	CLIDistDir  string
+	CLIDistDirs []string
+	// CLIDownloadBase is the URL of a directory with a release's
+	// checksums.txt and archives (a mirror or an internal artifact store).
+	// The install scripts the server hands out download from there when
+	// none of CLIDistDirs holds the archives. "" when not set: there is no
+	// default, so that nothing points at the internet unless asked to.
+	CLIDownloadBase string
+	BackupDir       string // "" when the built-in backup is off
+	BackupKeep      int
+	ModulesDisabled []string
 	// WebDevProxy is the console's development server (Vite) on this machine:
 	// when set, the console is not served from the files built into the
 	// program but proxied from there. nil in production.
@@ -136,13 +149,16 @@ func (c *Config) ServesTLS() bool { return c.TLS.Enabled() }
 
 // The names that defaults are made from.
 var (
-	defaultDataDir  = "/var/lib/" + brand.CLILong
-	defaultDBName   = brand.CLILong + ".db"
-	defaultKeyName  = "master.key"
-	defaultCLIDist  = "/usr/share/" + brand.CLILong + "/cli"
-	defaultListen   = "127.0.0.1:8080"
-	defaultLocale   = "en"
-	defaultInterval = 10 * time.Minute
+	defaultDataDir = "/var/lib/" + brand.CLILong
+	defaultDBName  = brand.CLILong + ".db"
+	defaultKeyName = "master.key"
+	defaultCLIDist = "/usr/share/" + brand.CLILong + "/cli"
+	// defaultCLIDistInData is searched before defaultCLIDist, in the data
+	// directory.
+	defaultCLIDistInData = "cli"
+	defaultListen        = "127.0.0.1:8080"
+	defaultLocale        = "en"
+	defaultInterval      = 10 * time.Minute
 )
 
 // apply parses the raw values into c. Each value is a string; lists are
@@ -352,8 +368,10 @@ func (c *Config) apply(raw map[string]rawValue) error {
 	}
 
 	c.CLIDistDir = defaultCLIDist
+	c.CLIDistDirs = []string{filepath.Join(c.DataDir, defaultCLIDistInData), defaultCLIDist}
 	if v, ok := get("cli_dist_dir"); ok {
 		c.CLIDistDir = v
+		c.CLIDistDirs = []string{v}
 	}
 	if v, ok := get("cli_download_base"); ok {
 		u, err := url.Parse(v)

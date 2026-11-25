@@ -275,6 +275,11 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 		}
 	}
 
+	// Say once at startup which command line this server hands out (scan logs it).
+	if _, err := app.cli.scan(); err != nil {
+		log.Error("reading the command-line directories", "err", err)
+	}
+
 	if cfg.MetricsAddr != "" {
 		stopMetrics, err := serveMetrics(app, e)
 		if err != nil {
