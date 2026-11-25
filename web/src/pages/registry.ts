@@ -96,7 +96,7 @@ export const NAV: readonly NavGroup[] = [
         path: '/admin/users',
         label: 'nav.users',
         icon: 'user',
-        component: notBuilt('users'),
+        component: lazy(() => import('./users')),
       },
       { id: 'tools', path: '/admin/tools', label: 'nav.tools', icon: 'wrench', component: notBuilt('tools') },
       { id: 'audit', path: '/admin/audit', label: 'nav.audit', icon: 'shield', component: notBuilt('audit') },

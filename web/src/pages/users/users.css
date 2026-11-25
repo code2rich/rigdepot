@@ -1,0 +1,76 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* D-01 Users & sign-in: what the prototype (V.users, reqList, the dialogs) writes inline. */
+
+.us-user {
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+.us-nowrap {
+  white-space: nowrap;
+}
+.us-prods {
+  gap: 4px;
+}
+.us-req {
+  align-items: flex-start;
+}
+.us-req .desc {
+  white-space: normal;
+  line-height: 1.6;
+}
+.us-req .desc b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.us-req .row {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.us-list {
+  padding: 2px 18px;
+}
+.us-methods {
+  padding: 2px 14px;
+}
+.us-acts {
+  white-space: nowrap;
+}
+.us-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 3px 3px 3px 12px;
+  border-radius: var(--r-2);
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.us-link code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: thin;
+  font: inherit;
+}
+.us-fail {
+  margin: 14px 18px 0;
+}
+@media (max-width: 760px) {
+  .us-req {
+    flex-wrap: wrap;
+  }
+  .us-req .row {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .us-list {
+    padding: 2px 14px;
+  }
+}
