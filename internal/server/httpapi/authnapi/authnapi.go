@@ -61,6 +61,9 @@ type Options struct {
 	// Devices runs the device code flow and keeps the devices (rgd login,
 	// the confirmation page, my devices). Nil: those operations answer 501.
 	Devices *authn.Devices
+	// DeviceSyncs returns what each of the given computers said at its last sync (package
+	// delivery), by device id; my devices show it. Nil: no computer has synced.
+	DeviceSyncs func(ctx context.Context, deviceIDs []string) (map[string]DeviceSync, error)
 	// Protected are path prefixes outside the contract (the optional
 	// modules' routes, /api/v1/x/) whose requests are authenticated like an
 	// operation that accepts a session, a device token or an access token
@@ -75,6 +78,7 @@ type Ops struct {
 	protected []string
 	svc       *authn.Service
 	devices   *authn.Devices
+	syncs     func(ctx context.Context, deviceIDs []string) (map[string]DeviceSync, error)
 	base      string // the public address without a trailing slash, for verification_uri and redirects
 	log       *slog.Logger
 	ops       *operations
@@ -110,7 +114,7 @@ func New(svc *authn.Service, o Options) (*Ops, error) {
 		o.UserRate = DefaultUserRate
 	}
 	h := &Ops{
-		protected: o.Protected, devices: o.Devices,
+		protected: o.Protected, devices: o.Devices, syncs: o.DeviceSyncs,
 		svc: svc, log: o.Log, ops: ops, cop: http.NewCrossOriginProtection(), path: "/", trusted: o.TrustedProxies,
 		signIn: newLimiter(o.SignInRate, o.Now), invite: newLimiter(o.SignInRate, o.Now), deviceCode: newLimiter(o.SignInRate, o.Now), provider: newLimiter(o.SignInRate, o.Now), user: newLimiter(o.UserRate, o.Now),
 	}

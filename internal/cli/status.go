@@ -82,7 +82,7 @@ func (a *app) runStatus(ctx context.Context, f statusFlags, code string) error {
 	}
 	// The repository is only needed to say what a sync would change. Without it, status still
 	// compares the disk with the manifest.
-	st, err := a.desiredState(ctx, l, f.src)
+	st, rem, err := a.resolveSource(ctx, l, f.src)
 	var sourceErr string
 	switch {
 	case errors.Is(err, errNoSource):
@@ -95,7 +95,9 @@ func (a *app) runStatus(ctx context.Context, f statusFlags, code string) error {
 		st, sourceErr = nil, ce.Message
 		a.out.Warn(a.p.T(msg.StatusSourceFailed, i18n.V("detail", ce.Message)))
 	}
-	opt := sync.Options{Disabled: l.cfg.List(localconfig.KeyToolsDisabled), MCPMode: adapter.MCPNativeEnv}
+	opt := sync.Options{Disabled: l.cfg.List(localconfig.KeyToolsDisabled)}
+	rem.apply(&opt)
+	opt.MCPMode, opt.Launcher = a.mcpOptions(l.cfg, rem)
 	s, err := l.eng.Status(ctx, st, opt)
 	if err != nil {
 		return a.stateError(err)
@@ -361,7 +363,11 @@ func (a *app) writeStatus(w io.Writer, l *local, s *sync.Status, st *desired.Sta
 		if st.Source.Commit != "" {
 			src += " @ " + st.Source.Commit[:min(12, len(st.Source.Commit))]
 		}
-		v.head = append(v.head, a.out.Paint(cliout.Dim, a.p.T(msg.StatusSource, i18n.V("source", src))))
+		key := msg.StatusSource
+		if st.Source.Type == desired.SourceServer {
+			key = msg.StatusServer
+		}
+		v.head = append(v.head, a.out.Paint(cliout.Dim, a.p.T(key, i18n.V("source", src))))
 	case doc.SourceError == "":
 		v.head = append(v.head, a.out.Paint(cliout.Dim, a.p.T(msg.StatusNoSource)))
 	default:

@@ -643,6 +643,26 @@ func (d *Devices) MyDevices(ctx context.Context, c Caller) ([]Device, error) {
 	return out, rows.Err()
 }
 
+// LiveDevices returns every computer that is signed in right now, as device id → user id: it
+// collected its token, was not signed out and was not idle for DeviceIdle. Package delivery
+// counts installs on these.
+func (d *Devices) LiveDevices(ctx context.Context) (map[string]string, error) {
+	rows, err := d.db.QueryContext(ctx, `SELECT id, user_id FROM devices WHERE `+liveDevices, dbx.Millis(d.now().Add(-DeviceIdle)))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, user string
+		if err := rows.Scan(&id, &user); err != nil {
+			return nil, err
+		}
+		out[id] = user
+	}
+	return out, rows.Err()
+}
+
 // SignOutDevice signs one of the caller's computers out: its device token
 // is refused from its next request. Signing out a device that is already
 // signed out is not an error; someone else's is ErrNotFound.
@@ -721,6 +741,19 @@ func (d *Devices) VerifyDeviceToken(ctx context.Context, token string) (string, 
 		}
 	}
 	return userID, id, nil
+}
+
+// DevicePublicKey returns the public key a live device of the user signed in with: the key
+// personal secrets are sealed to (package secrets). ErrNotFound for a device that is not the
+// user's or not signed in.
+func (d *Devices) DevicePublicKey(ctx context.Context, userID, deviceID string) (string, error) {
+	var key string
+	err := d.db.QueryRowContext(ctx, `SELECT public_key FROM devices WHERE id = ? AND user_id = ? AND `+liveDevices,
+		deviceID, userID, dbx.Millis(d.now().Add(-DeviceIdle))).Scan(&key)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return key, err
 }
 
 // DeviceName returns the name of a device for the audit log, signed out or

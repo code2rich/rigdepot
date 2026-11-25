@@ -54,6 +54,7 @@ const (
 	ActionResourceEnable    Action = "resource.enable"
 	ActionResourceWaive     Action = "resource.waive"
 	ActionResourcePrefer    Action = "resource.prefer"
+	ActionInstallsRead      Action = "installs.read"
 	ActionSourceManage      Action = "source.manage"
 	ActionSecretDefine      Action = "secret.define"
 	ActionFeedbackCreate    Action = "feedback.create"
@@ -136,6 +137,9 @@ var rules = map[Action]rule{
 	// about a suspected secret, and the author is the last person to judge their own.
 	ActionResourceWaive:  {admin: adminShared, write: true},
 	ActionResourcePrefer: {inScope: true, write: true},
+	// How far people have connected (the install reports, counted): the whole organisation for
+	// platform administrators, their products for owners (contract: getInstallsSummary).
+	ActionInstallsRead:   {admin: adminAll, owner: true, token: TokenRead},
 	ActionSourceManage:   {admin: adminAll, write: true},
 	ActionSecretDefine:   {admin: adminAll, write: true},
 	ActionFeedbackCreate: {anyone: true, write: true},

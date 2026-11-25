@@ -216,14 +216,26 @@ func cliVersions(server string) (latest, floor string) {
 	return v.String(), settings.Version{Major: v.Major, Minor: minor}.String()
 }
 
-func (t *toolsAPI) policy(ctx context.Context, set string) (httpapi.CLIPolicy, error) {
+// cliRange returns the newest command line this server hands out and the oldest it accepts:
+// the minimum an administrator set, or the floor when that is lower or unset. The desired
+// state tells every computer both.
+func (t *toolsAPI) cliRange(ctx context.Context) (latest, minimum string, err error) {
+	set, err := t.settings.CLIMinVersion(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	p, err := t.policy(ctx, set, false)
+	return p.LatestVersion, p.MinVersion, err
+}
+
+func (t *toolsAPI) policy(ctx context.Context, set string, usage bool) (httpapi.CLIPolicy, error) {
 	latest, floor := cliVersions(t.version)
 	p := httpapi.CLIPolicy{LatestVersion: latest, MinVersionFloor: floor, MinVersion: floor, Distribution: []httpapi.VersionCount{}}
 	// A minimum set under an older server can be below what this one supports.
 	if set != "" && settings.CompareVersions(set, floor) > 0 {
 		p.MinVersion = set
 	}
-	if t.hooks.toolUsage != nil {
+	if usage && t.hooks.toolUsage != nil {
 		d, err := t.hooks.toolUsage.CLIVersions(ctx)
 		if err != nil {
 			return httpapi.CLIPolicy{}, err
@@ -244,7 +256,7 @@ func (t *toolsAPI) GetCLIPolicy(ctx context.Context, _ httpapi.GetCLIPolicyReque
 	if err != nil {
 		return nil, settingsProblem(err)
 	}
-	p, err := t.policy(ctx, tools.CLIMinVersion)
+	p, err := t.policy(ctx, tools.CLIMinVersion, true)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +286,7 @@ func (t *toolsAPI) UpdateCLIPolicy(ctx context.Context, req httpapi.UpdateCLIPol
 	if err != nil {
 		return nil, err
 	}
-	p, err := t.policy(ctx, set)
+	p, err := t.policy(ctx, set, true)
 	if err != nil {
 		return nil, err
 	}

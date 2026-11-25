@@ -193,3 +193,17 @@ func TestBadEntryName(t *testing.T) {
 		t.Fatal("Plan accepted an entry name with a dot")
 	}
 }
+
+// The single entry (MCPSingleEntry): one [mcp_servers.<entry>] table with the command line's
+// proxy as its command, in the shape of any stdio server without secrets.
+func TestSingleEntry(t *testing.T) {
+	single := adapter.MCPServer{Resource: resource.Ref{Kind: resource.KindMCP, Code: "jira"}, EntryName: entryName,
+		Transport: adapter.Stdio, Command: "/opt/example/bin/tool", Args: []string{"mcp", "serve"}}
+	if got := outcome(t, planWith(t, nil, nil, adapter.MCPSingleEntry, single)); got != `{"args":["mcp","serve"],"command":"/opt/example/bin/tool"}` {
+		t.Errorf("entry: %s", got)
+	}
+	secret := stdio(map[string]adapter.Value{"JIRA_TOKEN": {Secret: "JIRA_TOKEN"}})
+	if got := outcome(t, planWith(t, nil, nil, adapter.MCPSingleEntry, secret)); !strings.HasPrefix(got, string(adapter.NeedsSecretSupport)) {
+		t.Errorf("secret: %s", got)
+	}
+}

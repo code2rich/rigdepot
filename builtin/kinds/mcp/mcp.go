@@ -91,6 +91,26 @@ func (s spec) Secrets() []string { return slices.Clone(s.secrets) }
 
 var _ kind.SecretUser = spec{}
 
+// Connection implements kind.Connector: how the command line reaches the server (rgd mcp run,
+// serve and call), with the secrets still references.
+func (s spec) Connection() kind.Connection {
+	c := kind.Connection{
+		Transport: s.transport,
+		Command:   s.command,
+		Args:      slices.Clone(s.args),
+		Env:       maps.Clone(s.env),
+		URL:       s.url,
+		Headers:   maps.Clone(s.headers),
+		OnDemand:  s.onDemand,
+	}
+	for _, t := range s.tools {
+		c.Tools = append(c.Tools, kind.ConnectionTool{Name: t.Name, Summary: t.Summary, Writes: t.Writes})
+	}
+	return c
+}
+
+var _ kind.Connector = spec{}
+
 // file is mcp/<code>.yaml as written.
 type file struct {
 	Meta struct {
@@ -371,6 +391,7 @@ func asSkill(s spec, opt kind.RenderOptions, degraded string) ([]adapter.Artifac
 	}
 	b.WriteString(" Call one of its tools by running this command in a shell, with the tool's arguments as a JSON object:\n\n")
 	b.WriteString("```sh\n" + call + " <tool> '<arguments as JSON>'\n```\n\n")
+	b.WriteString("Run `" + call + "` without a tool to see every tool with the arguments it takes. ")
 	b.WriteString("The command prints what the tool returns. It connects to the server and supplies any personal secrets the server needs; never put a secret on the command line.\n\n")
 	b.WriteString("## Tools\n\n")
 	for _, t := range s.tools {

@@ -35,6 +35,22 @@
 // whatever the catalog had for it, and one that left the repository is not touched: a failed
 // or partial read is unknown, not a deletion. Each resource is saved in its own transaction.
 //
+// # Sources
+//
+// A source is a Git repository the catalog imports from (CreateSource, UpdateSource,
+// OrderSources, DeleteSource; platform administrators only). The background job source-sync
+// (PullSources, every SourcePullEvery, or at once after RequestPull) takes a snapshot of each
+// due source with internal/gitrepo, reads it with internal/repoformat and imports it with
+// ImportRepo, in the sources' order, so that an earlier repository gets a code first. A pull
+// that fails, at the fetch or because rigdepot.yaml cannot be read, is recorded on the source
+// (last error, time) and changes nothing else: the commit, counts and time of the last good
+// pull stay, and no resource is touched.
+//
+// A source's read-only token is sealed with the master key (bound to the source's id), never
+// returned, and handed to git through its environment for https addresses only;
+// SourcesRewrapper moves it to a new master key. Deleting a source keeps the resources it
+// brought (their source becomes empty); the next source that has them takes them over.
+//
 // # Platform overrides
 //
 // The repository's metadata suggests who gets a resource and how. A field changed on the

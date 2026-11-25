@@ -223,10 +223,16 @@ const (
 	ConfigWarnUnknownKey = "config.warn.unknown_key"
 	// DisableAlready (cli.json): {{resource}} is already off on this computer.
 	DisableAlready = "disable.already"
+	// DisableAlreadyServer (cli.json): {{resource}} is already off for you.
+	DisableAlreadyServer = "disable.already_server"
 	// DisableDone (cli.json): Turned off {{resource}} on this computer.
 	DisableDone = "disable.done"
+	// DisableDoneServer (cli.json): Turned off {{resource}} for you, on all your computers from their next…
+	DisableDoneServer = "disable.done_server"
 	// DisableRequired (cli.json): {{resource}} is required by your team and cannot be turned off. Only t…
 	DisableRequired = "disable.required"
+	// DisableRequiredServer (cli.json): {{resource}} is required in your scope and cannot be turned off. Its o…
+	DisableRequiredServer = "disable.required_server"
 	// DisableShort (cli.json): Turn off a recommended resource on this computer; the next sync remove…
 	DisableShort = "disable.short"
 	// DisableSyncHint (cli.json): Run "{{command}}" to remove it from your AI tools.
@@ -403,8 +409,12 @@ const (
 	DoctorToolsUnverified = "doctor.tools.unverified"
 	// EnableAlready (cli.json): {{resource}} is already on.
 	EnableAlready = "enable.already"
+	// EnableAlreadyServer (cli.json): {{resource}} is already on for you.
+	EnableAlreadyServer = "enable.already_server"
 	// EnableDone (cli.json): Turned on {{resource}} on this computer.
 	EnableDone = "enable.done"
+	// EnableDoneServer (cli.json): Turned on {{resource}} for you, on all your computers from their next …
+	EnableDoneServer = "enable.done_server"
 	// EnableNotDelivered (cli.json): {{resource}} is still not installed here: {{reason}}.
 	EnableNotDelivered = "enable.not_delivered"
 	// EnableRequired (cli.json): {{resource}} is required: it is always installed.
@@ -457,6 +467,30 @@ const (
 	ErrorUsageHint = "error.usage_hint"
 	// ErrorVerboseAndQuiet (cli.json): -v and -q cannot be used together.
 	ErrorVerboseAndQuiet = "error.verbose_and_quiet"
+	// FeedbackBadChoice (cli.json): {{flag}} must be one of {{choices}}, not "{{value}}".
+	FeedbackBadChoice = "feedback.bad_choice"
+	// FeedbackBadFriction (cli.json): "{{value}}" is not a friction count: write it as type=count, such as t…
+	FeedbackBadFriction = "feedback.bad_friction"
+	// FeedbackDone (cli.json): Sent as FB-{{number}}. Its handlers are told; you hear back when its s…
+	FeedbackDone = "feedback.done"
+	// FeedbackFailed (cli.json): The server could not take the feedback ({{status}}): {{detail}}
+	FeedbackFailed = "feedback.failed"
+	// FeedbackNoBody (cli.json): Say what happened with --message, or pipe it into standard input.
+	FeedbackNoBody = "feedback.no_body"
+	// FeedbackNoTitle (cli.json): Give a title with --title.
+	FeedbackNoTitle = "feedback.no_title"
+	// FeedbackNotSignedIn (cli.json): This computer is not signed in to a server. Sign in with "{{command}}"…
+	FeedbackNotSignedIn = "feedback.not_signed_in"
+	// FeedbackRejected (cli.json): The server did not accept the feedback: {{detail}}
+	FeedbackRejected = "feedback.rejected"
+	// FeedbackSentContext (cli.json): Sent along: {{fields}}. Nothing else from this computer.
+	FeedbackSentContext = "feedback.sent_context"
+	// FeedbackSentNothing (cli.json): Nothing from this computer was sent along.
+	FeedbackSentNothing = "feedback.sent_nothing"
+	// FeedbackShort (cli.json): Send feedback about a resource or the platform to its handlers, with t…
+	FeedbackShort = "feedback.short"
+	// FeedbackUnreachable (cli.json): Could not reach the server: {{detail}}. Nothing was sent.
+	FeedbackUnreachable = "feedback.unreachable"
 	// FlagBranch (cli.json): Branch, tag or commit of the resource repository (default: repo.branch…
 	FlagBranch = "flag.branch"
 	// FlagDiff (cli.json): Show how changed files differ from what the resource repository wants
@@ -465,6 +499,26 @@ const (
 	FlagDir = "flag.dir"
 	// FlagExitCode (cli.json): With --plan: exit with 5 when there is something to change
 	FlagExitCode = "flag.exit_code"
+	// FlagFeedbackAi (cli.json): An AI tool drafted it and you read and confirmed it before sending
+	FlagFeedbackAi = "flag.feedback.ai"
+	// FlagFeedbackFriction (cli.json): How often a friction happened in this session, as type=count (repeatab…
+	FlagFeedbackFriction = "flag.feedback.friction"
+	// FlagFeedbackMessage (cli.json): What happened, in your words; "-" or nothing reads it from standard in…
+	FlagFeedbackMessage = "flag.feedback.message"
+	// FlagFeedbackResource (cli.json): The resource it is about, by code
+	FlagFeedbackResource = "flag.feedback.resource"
+	// FlagFeedbackResourceVersion (cli.json): The version of the resource you used
+	FlagFeedbackResourceVersion = "flag.feedback.resource_version"
+	// FlagFeedbackSeverity (cli.json): How bad it is: low, medium or high
+	FlagFeedbackSeverity = "flag.feedback.severity"
+	// FlagFeedbackTitle (cli.json): A short title
+	FlagFeedbackTitle = "flag.feedback.title"
+	// FlagFeedbackTool (cli.json): The AI tool you were using, such as claude-code
+	FlagFeedbackTool = "flag.feedback.tool"
+	// FlagFeedbackToolVersion (cli.json): That tool's version
+	FlagFeedbackToolVersion = "flag.feedback.tool_version"
+	// FlagFeedbackType (cli.json): What it is: bug, suggestion or question
+	FlagFeedbackType = "flag.feedback.type"
 	// FlagFlowConfirmed (cli.json): The person confirmed their checks and agreed to go on, in this convers…
 	FlagFlowConfirmed = "flag.flow.confirmed"
 	// FlagFlowDir (cli.json): The project's directory: where the run belongs and the checks that are…
@@ -627,7 +681,7 @@ const (
 	LoginUnreachable = "login.unreachable"
 	// LoginWaiting (cli.json): Waiting for the confirmation (the code is valid for {{count}} minutes)…
 	LoginWaiting = "login.waiting"
-	// LogoutDone (cli.json): Signed out of {{address}}. The device token and key are deleted from t…
+	// LogoutDone (cli.json): Signed out of {{address}}. The device token and key, and the local cop…
 	LogoutDone = "logout.done"
 	// LogoutNotSignedIn (cli.json): This computer is not signed in.
 	LogoutNotSignedIn = "logout.not_signed_in"
@@ -649,6 +703,36 @@ const (
 	MailTestSubject = "mail.test.subject"
 	// MCPAsSkill (catalog.json): This tool cannot connect to the MCP server directly, so it gets a skil…
 	MCPAsSkill = "mcp.as_skill"
+	// MCPCallFailed (cli.json): Calling the MCP server {{resource}} failed: {{detail}}
+	MCPCallFailed = "mcp.call.failed"
+	// MCPCallNotJSON (cli.json): The arguments must be a JSON object, such as '{"query": "…"}'.
+	MCPCallNotJSON = "mcp.call.not_json"
+	// MCPCallShort (cli.json): Call one tool of an MCP server; without a tool, list its tools and the…
+	MCPCallShort = "mcp.call.short"
+	// MCPCallToolError (cli.json): The tool {{tool}} reported an error; its answer is above.
+	MCPCallToolError = "mcp.call.tool_error"
+	// MCPCopiesUnreadable (cli.json): The local copies of the personal secrets cannot be read ({{detail}}). …
+	MCPCopiesUnreadable = "mcp.copies_unreadable"
+	// MCPCopiesUnusable (cli.json): The local copies of the personal secrets do not belong to this sign-in…
+	MCPCopiesUnusable = "mcp.copies_unusable"
+	// MCPKeyringUnknown (cli.json): The device key in the keychain cannot be read ({{detail}}), so the per…
+	MCPKeyringUnknown = "mcp.keyring_unknown"
+	// MCPMissingNotSignedIn (cli.json): The MCP server {{server}} needs the personal secrets {{names}}, and th…
+	MCPMissingNotSignedIn = "mcp.missing_not_signed_in"
+	// MCPMissingSecrets (cli.json): The MCP server {{server}} needs the personal secrets {{names}}, which …
+	MCPMissingSecrets = "mcp.missing_secrets"
+	// MCPRunShort (cli.json): Start one MCP server for an AI tool (what the tool's configuration run…
+	MCPRunShort = "mcp.run.short"
+	// MCPServeShort (cli.json): The single entry: one MCP server with the tools of every MCP server sy…
+	MCPServeShort = "mcp.serve.short"
+	// MCPShort (cli.json): Start the MCP servers synced to this computer, with your personal secr…
+	MCPShort = "mcp.short"
+	// MCPUnknown (cli.json): There is no MCP server {{resource}} on this computer.
+	MCPUnknown = "mcp.unknown"
+	// MCPUnknownHint (cli.json): Run "{{cli}} sync" to get the MCP servers you can use.
+	MCPUnknownHint = "mcp.unknown_hint"
+	// MCPUnreadable (cli.json): The MCP servers synced to this computer cannot be read: {{detail}}
+	MCPUnreadable = "mcp.unreadable"
 	// NotifyAdminGrantedBody (server.json): You can manage users and sign-in, tool adapters, the audit log and the…
 	NotifyAdminGrantedBody = "notify.admin_granted.body"
 	// NotifyAdminGrantedTitle (server.json): You are now a platform administrator
@@ -821,8 +905,84 @@ const (
 	PlanTotal = "plan.total"
 	// PlanUntouched (cli.json): Not changed: your own skills, your own MCP servers, hooks (not install…
 	PlanUntouched = "plan.untouched"
+	// RemoteCached (cli.json): {{address}} cannot be reached ({{detail}}), so what it said at {{time}…
+	RemoteCached = "remote.cached"
+	// RemoteFailed (cli.json): {{address}} answered with an error: {{detail}}. Nothing was changed.
+	RemoteFailed = "remote.failed"
+	// RemoteKeepFailed (cli.json): Cannot keep what {{address}} said for when it cannot be reached: {{det…
+	RemoteKeepFailed = "remote.keep_failed"
+	// RemoteNewer (cli.json): {{cli}} {{latest}} is available; this is {{version}}.
+	RemoteNewer = "remote.newer"
+	// RemoteNotLoggedIn (cli.json): This computer is not signed in to {{address}}. Run "{{cli}} login" fir…
+	RemoteNotLoggedIn = "remote.not_logged_in"
+	// RemoteReportFailed (cli.json): What was installed could not be reported to {{address}}: {{detail}}
+	RemoteReportFailed = "remote.report_failed"
+	// RemoteSignedOut (cli.json): {{address}} no longer accepts this computer's sign-in: {{detail}}
+	RemoteSignedOut = "remote.signed_out"
+	// RemoteSignedOutHint (cli.json): Run "{{cli}} logout" and then "{{cli}} login". Nothing was changed.
+	RemoteSignedOutHint = "remote.signed_out_hint"
+	// RemoteTooOld (cli.json): {{address}} needs {{cli}} {{min}} or newer; this is {{version}}. Upgra…
+	RemoteTooOld = "remote.too_old"
+	// RemoteUnavailable (cli.json): {{resource}} could not be had from the server ({{detail}}); what was w…
+	RemoteUnavailable = "remote.unavailable"
+	// RemoteUnreachable (cli.json): {{address}} cannot be reached, and no earlier answer of it is kept her…
+	RemoteUnreachable = "remote.unreachable"
 	// RootShort (cli.json): Sync your team's AI coding resources into the AI tools on this compute…
 	RootShort = "root.short"
+	// SecretBadExpires (cli.json): "{{value}}" is not a date such as 2027-05-01.
+	SecretBadExpires = "secret.bad_expires"
+	// SecretBadName (cli.json): "{{name}}" is not a secret name: an upper-case letter, then 1 to 63 up…
+	SecretBadName = "secret.bad_name"
+	// SecretCopyFailed (cli.json): The value is set on the server, but this computer could not fetch its …
+	SecretCopyFailed = "secret.copy_failed"
+	// SecretEmpty (cli.json): No value was entered; nothing was changed.
+	SecretEmpty = "secret.empty"
+	// SecretExpires (cli.json): until {{date}}
+	SecretExpires = "secret.expires"
+	// SecretFlagExpires (cli.json): When the value stops working, such as 2027-05-01, if you know it
+	SecretFlagExpires = "secret.flag.expires"
+	// SecretHowto (cli.json): Where to get one: {{howto}}
+	SecretHowto = "secret.howto"
+	// SecretListEmpty (cli.json): None of the resources you can use needs a personal secret.
+	SecretListEmpty = "secret.list.empty"
+	// SecretListShort (cli.json): List the personal secrets your resources need, and which you have set
+	SecretListShort = "secret.list.short"
+	// SecretNotSignedIn (cli.json): This computer is not signed in, and personal secrets are kept on the s…
+	SecretNotSignedIn = "secret.not_signed_in"
+	// SecretNotSignedInHint (cli.json): Run "{{cli}} login" first.
+	SecretNotSignedInHint = "secret.not_signed_in_hint"
+	// SecretNotUsed (cli.json): No resource you can use needs {{name}}, so the server does not keep it…
+	SecretNotUsed = "secret.not_used"
+	// SecretPrompt (cli.json): Value of {{name}} (not shown):
+	SecretPrompt = "secret.prompt"
+	// SecretPullDone (cli.json): This computer has sealed copies of {{count}} secrets.
+	SecretPullDone = "secret.pull.done"
+	// SecretPullShort (cli.json): Fetch your secrets, sealed for this computer, from the server
+	SecretPullShort = "secret.pull.short"
+	// SecretRmDone (cli.json): {{name}} is deleted. Your other computers drop their copies at their n…
+	SecretRmDone = "secret.rm.done"
+	// SecretRmNotSet (cli.json): {{name}} was not set on the server; the copy on this computer, if any,…
+	SecretRmNotSet = "secret.rm.not_set"
+	// SecretRmShort (cli.json): Delete one of your personal secrets, here and on the server
+	SecretRmShort = "secret.rm.short"
+	// SecretSetLong (cli.json): Reads the value without showing it, or as one line from standard input…
+	SecretSetLong = "secret.set.long"
+	// SecretSetShort (cli.json): Set or replace one of your personal secrets (it is never shown)
+	SecretSetShort = "secret.set.short"
+	// SecretSetDone (cli.json): {{name}} is set. This computer has its copy; your other computers get …
+	SecretSetDone = "secret.set_done"
+	// SecretShort (cli.json): Set, list and delete your personal secrets
+	SecretShort = "secret.short"
+	// SecretStateMissing (cli.json): not set
+	SecretStateMissing = "secret.state.missing"
+	// SecretStateNoCopy (cli.json): set, no copy on this computer yet
+	SecretStateNoCopy = "secret.state.no_copy"
+	// SecretStateSet (cli.json): set
+	SecretStateSet = "secret.state.set"
+	// SecretUsedBy (cli.json): for {{resources}}
+	SecretUsedBy = "secret.used_by"
+	// SecretVaultUnreadable (cli.json): The local copies of your secrets ({{path}}) cannot be read: {{detail}}…
+	SecretVaultUnreadable = "secret.vault_unreadable"
 	// SelectionNoSuchResource (cli.json): There is no resource {{resource}} in {{url}}.
 	SelectionNoSuchResource = "selection.no_such_resource"
 	// SelectionReasonAudience (cli.json): it is for another audience
@@ -847,7 +1007,7 @@ const (
 	SourceNoGit = "source.no_git"
 	// SourceNoRef (cli.json): The resource repository {{url}} has no such branch, tag, commit or dir…
 	SourceNoRef = "source.no_ref"
-	// SourceNone (cli.json): There is nothing to sync from: give --repo <address>, or set it once w…
+	// SourceNone (cli.json): There is nothing to sync from: sign in with "{{cli}} login <server>", …
 	SourceNone = "source.none"
 	// SourceNotARepo (cli.json): {{url}} is not a resource repository: it has no {{file}}.
 	SourceNotARepo = "source.not_a_repo"
@@ -897,6 +1057,8 @@ const (
 	StatusNoSource = "status.no_source"
 	// StatusNoSuchResource (cli.json): Nothing is known about {{resource}}: it is neither installed nor in th…
 	StatusNoSuchResource = "status.no_such_resource"
+	// StatusServer (cli.json): Server: {{source}}
+	StatusServer = "status.server"
 	// StatusShort (cli.json): Show what is installed, where, and whether it was changed since
 	StatusShort = "status.short"
 	// StatusSource (cli.json): Resource repository: {{source}}
@@ -943,6 +1105,8 @@ const (
 	SyncPreviewFailed = "sync.preview_failed"
 	// SyncRetryHint (cli.json): Run "{{command}}" again to write them.
 	SyncRetryHint = "sync.retry_hint"
+	// SyncSecretsFailed (cli.json): Your personal secrets could not be fetched for this computer ({{detail…
+	SyncSecretsFailed = "sync.secrets_failed"
 	// SyncShort (cli.json): Write your team's resources into the AI tools on this computer (--plan…
 	SyncShort = "sync.short"
 	// SyncSkipAndYes (cli.json): --skip-global and --yes-global contradict each other; give one of them…

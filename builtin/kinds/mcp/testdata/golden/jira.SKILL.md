@@ -13,7 +13,7 @@ This tool cannot connect to this MCP server directly. Call one of its tools by r
 acme mcp call jira <tool> '<arguments as JSON>'
 ```
 
-The command prints what the tool returns. It connects to the server and supplies any personal secrets the server needs; never put a secret on the command line.
+Run `acme mcp call jira` without a tool to see every tool with the arguments it takes. The command prints what the tool returns. It connects to the server and supplies any personal secrets the server needs; never put a secret on the command line.
 
 ## Tools
 

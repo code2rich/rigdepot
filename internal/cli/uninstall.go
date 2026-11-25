@@ -194,7 +194,7 @@ type homeDoc struct {
 var dataNames = []string{
 	home.ConfigFile, home.ManifestFile, home.ManifestPrevious, home.JournalFile, home.LockFile,
 	home.StateDir, home.CacheDir, home.BackupDir, home.TmpDir, home.SecretsDir, home.LogsDir,
-	home.FlowsDir, "skills", home.KnowledgeDir,
+	home.FlowsDir, "skills", home.KnowledgeDir, home.MCPDir,
 }
 
 // removeData deletes the local data directory: every name of dataNames, then the directory when

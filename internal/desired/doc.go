@@ -29,8 +29,18 @@
 // is undone. A resource the repository holds but that could not be read is Failed: its state is
 // unknown, not absent, and what was written for it is left as it is.
 //
-// # From the server
+// # From the server (rgd sync when signed in)
 //
-// Not yet (M1). The server computes the same filtering and hands over bundles; the result is the
-// same State.
+//	FromServer: GET /sync/desired → each resource's bundle (cache/bundles/, else GET
+//	            /sync/bundles/{digest}, checked against its address) → bundle.Unpack →
+//	            the kind's Parse
+//
+// The server does the filtering (scopes, policies, the person's choices, dependencies) and
+// sends only what is delivered, with the metadata in force; the result is the same State. What
+// it says is kept in state/desired.json. When the server cannot be reached, that kept state is
+// used instead (ServerState.Cached) and the caller removes nothing: what the server would say
+// now is unknown. A resource whose bundle cannot be had, unpacked or parsed is Failed.
+//
+// The server also says which tools nobody writes to and which command-line versions it accepts
+// (Org): a program older than the minimum gets ErrTooOld, even from a kept state.
 package desired

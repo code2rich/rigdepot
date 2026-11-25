@@ -25,11 +25,13 @@ import (
 	"github.com/code2rich/rigdepot/internal/flow"
 	"github.com/code2rich/rigdepot/internal/gitrepo"
 	"github.com/code2rich/rigdepot/internal/home"
+	"github.com/code2rich/rigdepot/internal/mcprun"
 )
 
 // This file is what a sync keeps in the local data directory, besides the manifest, for the
-// command line to use later: the steps of every workflow (rgd flow next) and the content of every
-// knowledge base, fetched from Git with the person's own access. Nothing of it is written into a
+// command line to use later: the steps of every workflow (rgd flow next), how to reach every MCP
+// server (rgd mcp run, serve and call) and the content of every knowledge base, fetched from Git
+// with the person's own access. Nothing of it is written into a
 // tool, so it needs no plan, no preview and no consent; nothing of it passes through a server.
 
 // Fetcher takes a snapshot of a directory of a Git repository: what a knowledge base needs of a
@@ -42,6 +44,8 @@ type Fetcher interface {
 type Local struct {
 	// Flows are the workflows written to and removed from flows/.
 	Flows flow.Kept
+	// MCP are the MCP servers written to and removed from mcp/.
+	MCP mcprun.Kept
 	// Knowledge has one entry per knowledge base the desired state delivers, by code.
 	Knowledge []Pull
 	// KnowledgeRemoved are the knowledge bases removed because they are no longer delivered.
@@ -73,8 +77,8 @@ type Pull struct {
 // content came from.
 const knowledgeMarker = bundle.MarkerFile
 
-// KeepLocal writes the workflows of st to flows/ and fetches every knowledge base st delivers
-// into knowledge/<code>/, replacing what an earlier sync fetched. What st no longer delivers is
+// KeepLocal writes the workflows of st to flows/, its MCP servers to mcp/, and fetches every
+// knowledge base st delivers into knowledge/<code>/, replacing what an earlier sync fetched. What st no longer delivers is
 // removed; what st could not read (st.Failed) stays as it was, since its state is unknown. A
 // knowledge base that cannot be fetched keeps its earlier copy and is reported in its Pull.
 //
@@ -85,6 +89,9 @@ func (s *Session) KeepLocal(ctx context.Context, st *desired.State, fetch Fetche
 	var err error
 	if out.Flows, err = flow.Keep(e.data, st); err != nil {
 		return out, fmt.Errorf("keeping the workflows: %w", err)
+	}
+	if out.MCP, err = mcprun.Keep(e.data, st); err != nil {
+		return out, fmt.Errorf("keeping the MCP servers: %w", err)
 	}
 
 	keep := map[string]bool{}

@@ -1034,7 +1034,7 @@
   "resources.new.kind_title": "新建 {{kind}}",
   "resources.new.lead": "先选类型。每类资源进来的方式和要填的内容不同",
   "resources.new.other_kind": "换一个类型",
-  "resources.new.repo_first": "Skill、工作流、Agent 推荐提交到资源仓库，平台会自动导入为草稿：{{cli}} skill new <标识> 生成骨架，{{cli}} check 在本机先做入库检查。",
+  "resources.new.repo_first": "Skill、工作流、Agent 推荐提交到资源仓库，平台会自动导入为草稿；提交之前用 {{cli}} check 在本机先做一遍入库检查。",
   "resources.new.title": "新建资源",
   "resources.new.upload_hint": "名称、环节等从压缩包里的文件读，上传后还可以改。",
   "resources.new.upload_submit": "上传为草稿",

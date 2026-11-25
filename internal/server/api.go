@@ -48,8 +48,12 @@ type api struct {
 	*modulesAPI
 	*toolsAPI
 	*catalogAPI
+	*deliveryAPI
 	*metaAPI
 	*notificationsAPI
+	*secretsAPI
+	*sourcesAPI
+	*feedbackAPI
 	*cliAPI
 }
 
@@ -94,6 +98,10 @@ type hooks struct {
 	// secretsConfigured returns, by secret name, which secrets a person has set (secrets,
 	// M1-28). Nil: none.
 	secretsConfigured func(ctx context.Context, userID string) (map[string]bool, error)
+	// secretVersions returns, by secret name, the version of each secret a person has set
+	// (secrets, M1-28), for the desired state: a new version makes the command line fetch it.
+	// Nil: no versions.
+	secretVersions func(ctx context.Context, userID string) (map[string]int, error)
 }
 
 // apiMounts builds the handlers that serve mounts: the API under /api/ and
@@ -130,6 +138,9 @@ func apiMounts(app *App) Mounts {
 		toolsAPI:         &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
 		catalogAPI:       &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
 		notificationsAPI: &notificationsAPI{access: app.access},
+		secretsAPI:       &secretsAPI{secrets: app.secrets, cat: app.catalog, publicKey: app.devices.DevicePublicKey},
+		sourcesAPI:       &sourcesAPI{cat: app.catalog},
+		feedbackAPI:      &feedbackAPI{fb: app.feedback, hooks: &app.hooks},
 		cliAPI:           &cliAPI{dist: app.cli, base: publicBase(app.cfg.BaseURL), downloadBase: app.cfg.CLIDownloadBase, version: app.version, log: app.log},
 	}
 	if impl.toolsAPI.version == "" {
@@ -142,6 +153,7 @@ func apiMounts(app *App) Mounts {
 	if app.authnOps != nil {
 		impl.metaAPI.methods = app.authnOps.LoginMethods
 	}
+	impl.deliveryAPI = &deliveryAPI{svc: app.delivery, settings: app.settings, tools: impl.toolsAPI, hooks: &app.hooks}
 	// The routes of the optional modules that are on, under /api/v1/x/<id>/;
 	// they log their own route templates.
 	var modules http.Handler

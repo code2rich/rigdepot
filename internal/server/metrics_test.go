@@ -361,7 +361,8 @@ func TestMetricsEndpoint(t *testing.T) {
 		t.Error("the public port serves the metrics")
 	}
 
-	// The jobs run once at start; wait for the first outcome.
+	// The jobs run once at start; wait for the audit check's outcome (other jobs, such as
+	// source-sync, may finish first).
 	var fams map[string]*promFamily
 	deadline := time.Now().Add(15 * time.Second)
 	for {
@@ -377,7 +378,9 @@ func TestMetricsEndpoint(t *testing.T) {
 		if fams, err = parseProm(string(body)); err != nil {
 			t.Fatalf("not the Prometheus text format: %v\n%s", err, body)
 		}
-		if fams[metricPrefix+"job_runs_total"] != nil || time.Now().After(deadline) {
+		if f := fams[metricPrefix+"job_runs_total"]; f != nil && slices.ContainsFunc(f.samples, func(s promSample) bool {
+			return s.labels["job"] == auditCheckJob
+		}) || time.Now().After(deadline) {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
