@@ -141,6 +141,14 @@ func (l locator) under(dir, rel string) bool {
 	return strings.HasPrefix(rel, dir+"/")
 }
 
+// same reports whether two paths relative to the same root name the same place.
+func (l locator) same(a, b string) bool {
+	if l.goos == "windows" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
+}
+
 // display returns how a target is written in the manifest: "~/…" inside the home directory and
 // absolute otherwise.
 func (l locator) display(root int, rel string) string {

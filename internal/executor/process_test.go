@@ -17,16 +17,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/internal/brand"
 )
 
 var (
 	helperVar = brand.EnvPrefix + "TEST_EXECUTOR_HELPER"
 	homeVar   = brand.EnvPrefix + "TEST_EXECUTOR_HOME"
+	opVar     = brand.EnvPrefix + "TEST_EXECUTOR_OP" // "key": set a key instead
 )
 
-// TestHelperProcess is not a test: it is what the helper runs. It replaces skill v1 with v2 and
-// stops dead at the step named by the variable.
+// TestHelperProcess is not a test: it is what the helper runs. It replaces skill v1 with v2, or
+// sets a key in ~/.claude.json, and stops dead at the step named by the variable.
 func TestHelperProcess(t *testing.T) {
 	stopAt := os.Getenv(helperVar)
 	if stopAt == "" {
@@ -40,18 +42,22 @@ func TestHelperProcess(t *testing.T) {
 		}
 		return nil
 	}
-	op := skill("v2")
-	if _, err := e.ex.Apply(ctx, claude, op, e.ex.Observe(TargetOf(op)), Options{}); err != nil {
+	var op adapter.Op = skill("v2")
+	tool := claude
+	if os.Getenv(opVar) == "key" {
+		op, tool = claudeOp(jiraServer()), claudeKeys
+	}
+	if _, err := e.ex.Apply(ctx, tool, op, e.ex.Observe(TargetOf(op)), Options{}); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	os.Exit(3) // the step was never reached
 }
 
-func killAt(t *testing.T, h, step string) {
+func killAt(t *testing.T, h, step string, env ...string) {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], "-test.run=^TestHelperProcess$", "-test.count=1")
-	cmd.Env = append(os.Environ(), helperVar+"="+step, homeVar+"="+h)
+	cmd.Env = append(append(os.Environ(), helperVar+"="+step, homeVar+"="+h), env...)
 	cmd.Stderr = os.Stderr
 	out, err := cmd.StdoutPipe()
 	if err != nil {
@@ -149,6 +155,56 @@ func TestAReplacementKilledHalfwayIsSettledOnTheNextRun(t *testing.T) {
 				t.Fatalf("the directory does not match the manifest: %+v", o)
 			}
 			e.assertNoIntents(t)
+		})
+	}
+}
+
+func TestAKeyEditKilledHalfwayIsSettledOnTheNextRun(t *testing.T) {
+	cases := []struct {
+		step      string
+		committed bool
+	}{
+		{stepStaged, false},      // the temporary file written, the file untouched
+		{stepFileChecked, false}, // about to rename
+		{stepMovedNew, true},     // renamed, not yet recorded
+	}
+	for _, c := range cases {
+		t.Run(c.step, func(t *testing.T) {
+			e := keyEnv(t, claudeJSON, 0o644)
+			before := snapshot(t, e.home)
+			h := e.home
+			e.close()
+
+			killAt(t, h, c.step, opVar+"=key")
+
+			e = openEnv(t, h)
+			r, err := e.locked.Recover(e.ex.Settle)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(r.Unresolved) != 0 || (len(r.Committed) == 1) != c.committed {
+				t.Fatalf("Recover = %+v; want committed=%v", r, c.committed)
+			}
+			if l := leftoversIn(t, h); len(l) != 0 {
+				t.Fatalf("left behind: %v", l)
+			}
+			e.assertNoIntents(t)
+			entries := e.entries(t)
+			if !c.committed {
+				assertSame(t, before, snapshot(t, h), "after recovery the file should be as it was")
+				if len(entries) != 0 {
+					t.Fatalf("manifest %+v", entries)
+				}
+				return
+			}
+			if len(entries) != 1 || entries[0].Edit == nil {
+				t.Fatalf("manifest %+v", entries)
+			}
+			// What recovery recorded undoes the edit exactly.
+			if _, err := e.ex.Revert(ctx, entries[0]); err != nil {
+				t.Fatal(err)
+			}
+			assertSame(t, before, snapshot(t, h), "undoing what recovery recorded")
 		})
 	}
 }

@@ -43,8 +43,22 @@
 // is copied to kept/<time>/ in the local data directory first; one that is gone already only
 // loses its entry. Nothing outside the manifest is ever removed.
 //
+// # Keys in a tool's configuration file
+//
+// SetKey edits a file that belongs to the tool and the person, through package configedit: one
+// run of bytes changes and every other byte stays as it was. keys.go lists the steps (lock,
+// read and compare, parse, edit and check, back up to backup/<time>/, temporary file, compare
+// the file again, rename). The prefix rule applies to the last element of the key, and the file
+// may be exactly a place the tool's profile names (~/.claude.json) as well as lie inside one of
+// its roots. A file that does not parse, or is a symbolic link, is unknown and is not written.
+//
+// The entry records how to take the key out again byte for byte (manifest.KeyEdit). Revert does
+// that while those bytes are still in place, and otherwise removes the key by its meaning, with
+// the parents the edit created if they are empty; a file the edit created goes when nothing else
+// is in it. Its digest is KeyDigest of the value.
+//
 // # Not yet
 //
-// SetKey (editing a tool's configuration file) is task M0-20 and Exec (running the tool's own
-// command) comes later. Both have their place in the dispatch and return ErrNotImplemented.
+// Exec (running the tool's own command) comes later. It has its place in the dispatch and
+// returns ErrNotImplemented.
 package executor

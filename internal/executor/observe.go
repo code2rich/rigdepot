@@ -91,6 +91,8 @@ func TargetOfEntry(en manifest.Entry) Target {
 func (e *Executor) Observe(t Target) Observed {
 	switch t.Op {
 	case manifest.OpTree, manifest.OpFile:
+	case manifest.OpKey:
+		return e.observeKey(t)
 	default:
 		return Observed{Err: fmt.Errorf("observing a %q target: %w", t.Op, ErrNotImplemented)}
 	}
