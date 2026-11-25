@@ -1,0 +1,28 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* D-04 平台设置. The arrows that move a resource repository up or down its priority order. */
+
+.st-up,
+.st-down {
+  display: inline-flex;
+}
+.st-up svg {
+  transform: rotate(-90deg);
+}
+.st-down svg {
+  transform: rotate(90deg);
+}
+.st-acts {
+  flex-wrap: nowrap;
+}
+@media (max-width: 760px) {
+  .st-src {
+    flex-wrap: wrap;
+  }
+  .st-src .st-acts {
+    width: 100%;
+    justify-content: flex-end;
+    padding-left: 19px;
+  }
+}

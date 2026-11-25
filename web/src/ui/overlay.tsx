@@ -4,10 +4,15 @@
 // Drawers and dialogs, as in the prototype (抽屉与对话框): a scrim, the box, Esc and a click outside close
 // it. Keyboard behaviour is built in so pages do not each redo it: when one opens, focus moves to its first
 // field (or the box itself, so a screen reader reads the title); Tab stays inside; when it closes, focus
-// returns to whatever opened it.
+// returns to whatever opened it. Only the topmost one answers Esc when a dialog is open over a drawer.
+//
+// Both are rendered at the end of <body>: the page's entrance animation transforms the page, and a
+// transformed ancestor would pin a fixed overlay to the page instead of the window (the drawer would stop
+// short of the bottom, the feedback button would cover its foot).
 
 import type { ComponentChildren, RefObject } from 'preact'
-import { useEffect, useRef } from 'preact/hooks'
+import { createPortal } from 'preact/compat'
+import { useEffect, useId, useRef } from 'preact/hooks'
 import { t } from '../i18n'
 import { Icon } from './icons'
 
@@ -22,7 +27,7 @@ function useOverlay(box: RefObject<HTMLDivElement>, onClose: () => void, firstFi
     const opener = document.activeElement as HTMLElement | null
     const el = box.current
     if (el) {
-      const field = el.querySelector<HTMLElement>(firstField)
+      const field = el.querySelector<HTMLElement>('[autofocus]') ?? el.querySelector<HTMLElement>(firstField)
       ;(field ?? el).focus({ preventScroll: true })
     }
     const onKey = (e: KeyboardEvent) => {
@@ -74,20 +79,21 @@ export function CloseButton(props: { onClick: () => void }) {
 }
 
 /**
- * Drawer slides in from the right. `head` is the content of the header next to the close button; the body
- * scrolls; `foot` (optional) is the row of buttons at the bottom.
+ * Drawer slides in from the right. `head` is the content of the header next to the close button; `tabs`
+ * (optional) sit under it; the body scrolls; `foot` (optional) is the row of buttons at the bottom.
  */
 export function Drawer(props: {
   label: string
   onClose: () => void
   head: ComponentChildren
+  tabs?: ComponentChildren
   children: ComponentChildren
   foot?: ComponentChildren
   wide?: boolean
 }) {
   const box = useRef<HTMLDivElement>(null)
   useOverlay(box, props.onClose, '.d-body input:not([type=checkbox]), .d-body textarea')
-  return (
+  return createPortal(
     <div
       class="scrim enter"
       onClick={(e) => {
@@ -106,10 +112,12 @@ export function Drawer(props: {
           {props.head}
           <CloseButton onClick={props.onClose} />
         </div>
+        {props.tabs && <div class="d-tabs">{props.tabs}</div>}
         <div class="d-body">{props.children}</div>
         {props.foot && <div class="d-foot">{props.foot}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -123,8 +131,9 @@ export function Modal(props: {
   titleClass?: string
 }) {
   const box = useRef<HTMLDivElement>(null)
+  const titleId = useId()
   useOverlay(box, props.onClose, '.m-body input:not([type=checkbox]):not([tabindex="-1"]), .m-body textarea')
-  return (
+  return createPortal(
     <div
       class="modal-wrap enter"
       onClick={(e) => {
@@ -135,12 +144,12 @@ export function Modal(props: {
         class={props.wide ? 'modal wide' : 'modal'}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="m-title"
+        aria-labelledby={titleId}
         tabIndex={-1}
         ref={box}
       >
         <div class="m-head">
-          <h2 id="m-title" class={props.titleClass}>
+          <h2 id={titleId} class={props.titleClass}>
             {props.title}
           </h2>
           <CloseButton onClick={props.onClose} />
@@ -148,6 +157,7 @@ export function Modal(props: {
         <div class="m-body">{props.children}</div>
         {props.foot && <div class="m-foot">{props.foot}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

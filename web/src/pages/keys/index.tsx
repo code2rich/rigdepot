@@ -16,7 +16,8 @@ import { countMissing, missingSecrets } from '../../shell/counts'
 import { me, meta } from '../../shell/session'
 import { Empty } from '../../ui/empty'
 import { Icon } from '../../ui/icons'
-import { LoadError, Loading, errorText, useLoad } from '../../ui/load'
+import { LoadError, Loading, useLoad } from '../../ui/load'
+import { failText } from '../../ui/fail'
 import { Modal } from '../../ui/overlay'
 import { PageHeader } from '../../ui/page-header'
 import { Cmd, SelfTip } from '../../ui/say'
@@ -78,7 +79,7 @@ function Confirm(props: {
       await props.run()
       props.onClose()
     } catch (err) {
-      setError(errorText(err))
+      setError(failText(err))
       setBusy(false)
     }
   }
@@ -296,7 +297,7 @@ function SecretDialog(props: { secret: Secret; onClose: () => void; onSaved: () 
       props.onSaved()
       props.onClose()
     } catch (err) {
-      setError(errorText(err))
+      setError(failText(err))
       setBusy(false)
     }
   }
@@ -617,7 +618,7 @@ function TokenDialog(props: { onClose: () => void; onIssued: () => void }) {
       props.onIssued()
       setPlain(made.token)
     } catch (err) {
-      setError(errorText(err))
+      setError(failText(err))
     } finally {
       setBusy(false)
     }

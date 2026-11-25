@@ -13,7 +13,7 @@ import { useLocation } from 'preact-iso'
 import { ApiError, api, unwrap, type Schemas } from '../api/client'
 import { t } from '../i18n'
 import { href, stripBase } from '../router/paths'
-import { errorText } from '../ui/load'
+import { failText } from '../ui/fail'
 import { Modal } from '../ui/overlay'
 
 type Draft = { type: 'bug' | 'suggestion' | 'question'; resource: string; title: string; body: string }
@@ -104,9 +104,7 @@ function Form() {
       draft.value = empty()
       open.value = 'done'
     } catch (err) {
-      setMessage(
-        err instanceof ApiError && err.status === 429 ? t('feedback.form.too_often') : errorText(err),
-      )
+      setMessage(err instanceof ApiError && err.status === 429 ? t('feedback.form.too_often') : failText(err))
     } finally {
       setSending(false)
     }

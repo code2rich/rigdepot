@@ -10,7 +10,8 @@ import { api, unwrap } from '../../api/client'
 import { t } from '../../i18n'
 import { me } from '../../shell/session'
 import { Empty } from '../../ui/empty'
-import { LoadError, Loading, errorText, useLoad } from '../../ui/load'
+import { LoadError, Loading, useLoad } from '../../ui/load'
+import { failText } from '../../ui/fail'
 import { Modal } from '../../ui/overlay'
 import { useStages } from '../../ui/resource'
 import { toast } from '../../ui/toast'
@@ -31,7 +32,7 @@ export function ProfileDialog(props: { onClose: () => void }) {
       toast(t('ui.saved'))
       props.onClose()
     } catch (err) {
-      setError(errorText(err))
+      setError(failText(err))
     } finally {
       setSaving(false)
     }
@@ -113,7 +114,7 @@ export function JoinDialog(props: { pending: string[]; onClose: () => void; onDo
       props.onDone()
       props.onClose()
     } catch (err) {
-      setError(errorText(err))
+      setError(failText(err))
     } finally {
       setSending(false)
     }

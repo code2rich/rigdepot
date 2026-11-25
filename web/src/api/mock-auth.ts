@@ -200,44 +200,6 @@ function startUsers(): Schemas['User'][] {
   ]
 }
 
-function startRequests(): Schemas['JoinRequest'][] {
-  const wyan = { id: id(12), username: 'wyan', display_name: 'Wen Yan' }
-  return [
-    {
-      id: id(501),
-      user: wyan,
-      job: 'Developer',
-      focus_stages: ['design', 'develop'],
-      identity: 'GitLab',
-      product: shop,
-      note: 'Joining the shop back-end team',
-      status: 'pending',
-      created_at: ago(26),
-    },
-    {
-      id: id(502),
-      user: wyan,
-      job: 'Developer',
-      focus_stages: ['design', 'develop'],
-      identity: 'GitLab',
-      product: pay,
-      note: 'Also helping the payments team',
-      status: 'pending',
-      created_at: ago(26),
-    },
-    {
-      id: id(503),
-      user: { id: id(19), username: 'qshao', display_name: 'Quinn Shao' },
-      job: 'Tester',
-      focus_stages: ['test'],
-      identity: 'Company SSO',
-      product: pay,
-      status: 'pending',
-      created_at: ago(60 * 20),
-    },
-  ]
-}
-
 function startMethods(): Schemas['IdentityProvider'][] {
   return [
     {
@@ -291,37 +253,6 @@ const KINDS: Schemas['IdentityProviderKind'][] = [
   },
 ]
 
-function startModules(): Schemas['Module'][] {
-  return [
-    {
-      id: 'insights',
-      name: 'Usage insights',
-      description:
-        'Counts, outcomes and durations of resource use. Never prompts, code, arguments or results.',
-      enabled: false,
-      notice:
-        'Computers start reporting usage metadata at their next sync. Each person can still turn it off on their own computer.',
-      locked: false,
-    },
-    {
-      id: 'review',
-      name: 'AI review',
-      description: 'Scores skills for quality with a model you configure; without one only the rules run.',
-      enabled: false,
-      notice: 'Resource content is sent to the model endpoint you configure.',
-      locked: false,
-    },
-    {
-      id: 'env',
-      name: 'Environment resources',
-      description:
-        'Hands connection details of databases, servers and test environments to the people granted them.',
-      enabled: false,
-      locked: true,
-    },
-  ]
-}
-
 const flag = (name: string, values: readonly string[]): string => {
   const v = new URLSearchParams(location.search).get(name)
   if (v !== null) {
@@ -358,7 +289,6 @@ export function authMock(session: Session): AuthMock {
 
   let products = empty ? [] : startProducts()
   let users = startUsers()
-  let requests = empty ? [] : startRequests()
   let invites: Schemas['Invite'][] = empty
     ? []
     : [
@@ -372,8 +302,6 @@ export function authMock(session: Session): AuthMock {
         },
       ]
   let methods = startMethods()
-  let sources: Schemas['Source'][] = []
-  let modules = empty ? [] : startModules()
   const myRequests: Schemas['JoinRequest'][] = []
   const devices: Record<string, Schemas['DeviceRequest']> = {
     'KQ7M-2XHP': {
@@ -526,29 +454,17 @@ export function authMock(session: Session): AuthMock {
 
     // ---- shared lists
     if (route === 'GET /api/v1/stages') return json(200, { items: stages(request) })
-    if (route === 'GET /api/v1/products') return json(200, { items: products })
-    if (route === 'POST /api/v1/products') {
-      const b = await body<Schemas['CreateProductRequest']>(request)
-      if (['org', 'me', 'sync', 'status'].includes(b.code))
-        return problem(409, 'product.code_reserved', 'Reserved.')
-      if (products.some((p) => p.code === b.code)) return problem(409, 'product.code_taken', 'Taken.')
-      const made: Schemas['Product'] = {
-        code: b.code,
-        name: b.name,
-        line: b.line,
-        owners: users.filter((u) => b.owners?.includes(u.id)).map(ref),
-        member_count: 0,
-        resource_count: 0,
-      }
-      products = [...products, made]
-      return json(201, made)
-    }
 
     // ---- users
     if (route === 'GET /api/v1/users') {
       if (session.get() === 'member' || session.get() === 'pending')
         return problem(403, 'access.denied', 'Not allowed.')
-      return json(200, { items: users })
+      // ?q= matches the account, the name and the e-mail address (products: adding people, choosing owners).
+      const q = (new URL(request.url).searchParams.get('q') ?? '').toLowerCase()
+      const hits = users.filter(
+        (u) => !q || `${u.username} ${u.display_name} ${u.email ?? ''}`.toLowerCase().includes(q),
+      )
+      return json(200, { items: hits })
     }
     if ((hit = m(/^PATCH \/api\/v1\/users\/([^/]+)$/))) {
       const b = await body<Schemas['UpdateUserRequest']>(request)
@@ -561,23 +477,6 @@ export function authMock(session: Session): AuthMock {
       const saved = { ...u, ...b }
       users = users.map((x) => (x.id === u.id ? saved : x))
       return json(200, saved)
-    }
-    if (route === 'GET /api/v1/join-requests') {
-      if (session.get() === 'member') return problem(403, 'access.denied', 'Not allowed.')
-      return json(200, { items: requests })
-    }
-    if ((hit = m(/^POST \/api\/v1\/join-requests\/([^/]+)\/(approve|reject)$/))) {
-      const r = requests.find((x) => x.id === hit?.[1])
-      if (!r) return problem(409, 'join_request.decided', 'Decided already.')
-      const reason = hit[2] === 'reject' ? (await body<Schemas['ReasonRequest']>(request)).reason : undefined
-      requests = requests.filter((x) => x.id !== r.id)
-      return json(200, {
-        ...r,
-        status: hit[2] === 'approve' ? 'approved' : 'rejected',
-        reason,
-        decided_by: owners.admin,
-        decided_at: new Date().toISOString(),
-      })
     }
     if (route === 'GET /api/v1/invites') {
       if (session.get() !== 'admin') return problem(403, 'access.denied', 'Not allowed.')
@@ -644,34 +543,6 @@ export function authMock(session: Session): AuthMock {
         etag: `"p-${p.id}-${n}"`,
       }
       methods = methods.map((x) => (x.id === p.id ? saved : x))
-      return json(200, saved)
-    }
-
-    // ---- sources and modules (the wizard)
-    if (route === 'GET /api/v1/sources') return json(200, { items: sources })
-    if (route === 'POST /api/v1/sources') {
-      const b = await body<Schemas['CreateSourceRequest']>(request)
-      const made: Schemas['Source'] = {
-        id: id(701 + sources.length),
-        name: b.name,
-        url: b.url,
-        branch: b.branch,
-        dir: b.dir ?? '',
-        order: sources.length + 1,
-        has_credential: !!b.credential,
-        resource_count: 0,
-        etag: '"s-1"',
-      }
-      sources = [...sources, made]
-      return json(201, made)
-    }
-    if (route === 'GET /api/v1/modules') return json(200, { items: modules })
-    if ((hit = m(/^PATCH \/api\/v1\/modules\/([^/]+)$/))) {
-      const mod = modules.find((x) => x.id === hit?.[1])
-      if (!mod) return problem(404, 'object.not_found')
-      if (mod.locked) return problem(409, 'module.locked', 'Locked.')
-      const saved = { ...mod, enabled: (await body<Schemas['UpdateModuleRequest']>(request)).enabled }
-      modules = modules.map((x) => (x.id === mod.id ? saved : x))
       return json(200, saved)
     }
 

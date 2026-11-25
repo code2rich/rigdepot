@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { api, unwrap, type Schemas } from '../../api/client'
 import { t } from '../../i18n'
 import { href } from '../../router/paths'
-import { Dialog } from '../../ui/dialog'
+import { Modal } from '../../ui/overlay'
 import { Fail } from '../../ui/fail'
 import { Field, FieldShell } from '../../ui/field'
 import { Icon } from '../../ui/icons'
@@ -31,7 +31,7 @@ export function InviteDialog(props: {
 
   if (links) {
     return (
-      <Dialog
+      <Modal
         title={t('users.invite.links.title')}
         onClose={props.onClose}
         foot={
@@ -62,7 +62,7 @@ export function InviteDialog(props: {
           </div>
         ))}
         <p class="hint">{t('users.invite.links.hint')}</p>
-      </Dialog>
+      </Modal>
     )
   }
 
@@ -96,7 +96,7 @@ export function InviteDialog(props: {
   }
 
   return (
-    <Dialog
+    <Modal
       title={t('users.invite.title')}
       onClose={props.onClose}
       foot={
@@ -156,7 +156,7 @@ export function InviteDialog(props: {
       {error !== null && (
         <Fail error={error} known={{ 'invite.account_exists': t('users.invite.error.exists') }} />
       )}
-    </Dialog>
+    </Modal>
   )
 }
 
@@ -229,7 +229,7 @@ export function MethodsDialog(props: {
   }
 
   return (
-    <Dialog
+    <Modal
       title={t('users.methods.title')}
       onClose={props.onClose}
       foot={
@@ -306,7 +306,7 @@ export function MethodsDialog(props: {
           }}
         />
       )}
-    </Dialog>
+    </Modal>
   )
 }
 
@@ -346,7 +346,7 @@ export function RejectDialog(props: {
     }
   }
   return (
-    <Dialog
+    <Modal
       title={t('users.reject.title')}
       onClose={props.onClose}
       foot={
@@ -387,6 +387,6 @@ export function RejectDialog(props: {
       {error !== null && (
         <Fail error={error} known={{ 'join_request.decided': t('users.requests.error.decided') }} />
       )}
-    </Dialog>
+    </Modal>
   )
 }

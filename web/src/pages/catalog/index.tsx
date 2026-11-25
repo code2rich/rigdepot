@@ -18,7 +18,8 @@ import { loadMissingSecrets } from '../../shell/counts'
 import { Empty } from '../../ui/empty'
 import { Icon, type IconName } from '../../ui/icons'
 import { KindShape } from '../../ui/kind-shape'
-import { LoadError, Loading, errorText, useLoad } from '../../ui/load'
+import { LoadError, Loading, useLoad } from '../../ui/load'
+import { failText } from '../../ui/fail'
 import { PageHeader } from '../../ui/page-header'
 import {
   KINDS,
@@ -133,7 +134,7 @@ export default function Catalog() {
       loadMissingSecrets()
     } catch (err) {
       update(!next)
-      toast(errorText(err))
+      toast(failText(err))
     } finally {
       setBusy(null)
     }

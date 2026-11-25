@@ -1,0 +1,16 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* C-02 资源管理. On a narrow screen the list scrolls sideways (inside .tbl-wrap) rather than stacking each
+   stage badge on its own line. */
+
+.rs-tbl {
+  min-width: 920px;
+}
+.rs-tbl td .row {
+  flex-wrap: nowrap;
+}
+/* A note with a button beside it keeps room for its text on a narrow screen; the button goes below. */
+.rs-note > span.grow {
+  flex: 1 1 220px;
+}

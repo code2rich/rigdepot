@@ -886,11 +886,7 @@ export function memberMock(): (request: Request, path: string, who: Who) => Prom
     scene === 'empty' ? [] : R.filter((r) => r.scope === 'org' || MY_PRODUCTS[who].includes(r.scope))
 
   return async (request, path, who) => {
-    if (
-      !/^\/api\/v1\/(stages|me\/|catalog|installs|feedback|cli\/downloads|products$|adapters$|users$)/.test(
-        path,
-      )
-    ) {
+    if (!/^\/api\/v1\/(stages|me\/|catalog|installs|feedback|cli\/downloads)/.test(path)) {
       return undefined
     }
     if (request.method === 'GET' && path === '/api/v1/me') return undefined
@@ -962,19 +958,6 @@ export function memberMock(): (request: Request, path: string, who: Who) => Prom
       case 'GET /api/v1/stages':
         return json(200, {
           items: STAGES.map(([id, name, d]) => ({ id, name: tr(name), description: tr(d), hidden: false })),
-        })
-      case 'GET /api/v1/products':
-        return json(200, {
-          items: PRODUCTS.map((p) => ({
-            ...p,
-            line: p.code === 'data' ? 'Data' : 'Commerce',
-            owners: [people.gyuan],
-            member_count: 30,
-            resource_count: 5,
-            ...(MY_PRODUCTS[who].includes(p.code)
-              ? { my_role: who === 'owner' && p.code === 'pay' ? 'owner' : 'member' }
-              : {}),
-          })),
         })
       case 'GET /api/v1/me/join-requests':
         return json(200, { items: joins })
@@ -1056,50 +1039,6 @@ export function memberMock(): (request: Request, path: string, who: Who) => Prom
             { version: '0.5.0', people: 171 },
             { version: '0.4.2', people: 8 },
           ],
-        })
-      case 'GET /api/v1/adapters':
-        if (who !== 'admin') return problem(403, 'access.denied')
-        return json(200, {
-          items: [
-            {
-              id: 'claude-code',
-              name: 'Claude Code',
-              enabled: true,
-              people: 164,
-              targets: {},
-              verified: { version: '2.1.330', at: '2026-11-20' },
-            },
-            {
-              id: 'codex',
-              name: 'Codex',
-              enabled: true,
-              people: 71,
-              targets: {},
-              verified: { version: '0.172.0', at: '2026-11-25' },
-            },
-            {
-              id: 'opencode',
-              name: 'OpenCode',
-              enabled: true,
-              people: 23,
-              targets: {},
-              verified: { version: '2.4.1', at: '2026-11-25' },
-            },
-          ],
-        })
-      case 'GET /api/v1/users':
-        if (who !== 'admin') return problem(403, 'access.denied')
-        return json(200, {
-          items: Object.values(people).map((p) => ({
-            ...p,
-            status: 'active',
-            platform_admin: p === people.admin,
-            focus_stages: [],
-            memberships: [],
-            identities: [],
-            created_at: ago(90_000),
-            email_verified: true,
-          })),
         })
       case 'GET /api/v1/cli/downloads':
         return json(200, {
