@@ -43,11 +43,12 @@ func Main(args []string) int {
 	hangup := make(chan os.Signal, 1)
 	signal.Notify(hangup, syscall.SIGHUP)
 	defer signal.Stop(hangup)
-	return run(ctx, args, &env{stdout: os.Stdout, stderr: os.Stderr, lookupEnv: os.LookupEnv, hangup: hangup})
+	return run(ctx, args, &env{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr, lookupEnv: os.LookupEnv, hangup: hangup})
 }
 
 // env is what a command gets from the process. Tests make their own.
 type env struct {
+	stdin          io.Reader // nil reads nothing
 	stdout, stderr io.Writer
 	lookupEnv      func(string) (string, bool)
 	// listening, when set, receives the address serve listens on once it
@@ -61,6 +62,10 @@ type env struct {
 	hangup <-chan os.Signal
 	// certCheckEvery overrides how often the certificate files are checked for a change.
 	certCheckEvery time.Duration
+	// doctorDial replaces how doctor connects to the mail server.
+	doctorDial func(ctx context.Context, network, addr string) (net.Conn, error)
+	// doctorNow replaces the time doctor judges certificates and backups by.
+	doctorNow time.Time
 }
 
 type command struct {
@@ -70,9 +75,9 @@ type command struct {
 }
 
 // commands is the subcommand table of docs/architecture/08-deployment.md#管理子命令.
-// The ones that run "notYet" are task M1-42 (and setup --from, which comes
-// after the setup wizard); they are listed so that the command line is
-// complete and says so instead of failing as unknown.
+// setup --from, which comes after the setup wizard, runs "notYet": it is
+// listed so that the command line is complete and says so instead of
+// failing as unknown.
 func commands() []command {
 	return []command{
 		{"serve", "start the server (the default)", runServe},
@@ -81,12 +86,12 @@ func commands() []command {
 		{"version", "print the version", runVersion},
 		{"backup", "make a consistent snapshot of the database", runBackup},
 		{"restore", "check a snapshot (--check)", runRestore},
-		{"reset-admin", "reset the password of a local administrator", notYet},
+		{"reset-admin", "reset the password of a local administrator", runResetAdmin},
 		{"keys rotate", "re-wrap every data key with a new master key", runKeysRotate},
 		{"audit verify", "verify the audit log's hash chain", runAuditVerify},
 		{"setup", "complete the first setup from a file (--from)", notYet},
-		{"config check", "print the effective configuration and where each value comes from", notYet},
-		{"doctor", "check the environment", notYet},
+		{"config check", "print the effective configuration and where each value comes from", runConfigCheck},
+		{"doctor", "check the environment", runDoctor},
 	}
 }
 

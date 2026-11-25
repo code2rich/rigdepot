@@ -20,8 +20,13 @@ import (
 )
 
 // openForCommand opens the database for an operations command, which works
-// on a database that serve has set up: the migrations must have run.
+// on a database that serve has set up: the migrations must have run. A
+// SQLite file that is not there is reported, not created.
 func openForCommand(ctx context.Context, e *env, name string, cfg *config.Config) (*dbx.DB, int) {
+	if path, missing := sqliteFileMissing(cfg); missing {
+		fmt.Fprintf(e.stderr, "%s %s: there is no database at %s; start the server first\n", brand.Server, name, path)
+		return nil, exitFailure
+	}
 	db, err := openDatabase(ctx, cfg)
 	if err != nil {
 		fmt.Fprintf(e.stderr, "%s %s: %v\n", brand.Server, name, err)
