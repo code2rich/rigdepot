@@ -96,10 +96,12 @@ func loadCases(dir string) ([]fixtureCase, []string) {
 	return cases, problems
 }
 
-// toolEnv is the computer an adapter sees for one home: Env plus a record of the commands it ran.
+// toolEnv is the computer an adapter sees for one home: Env plus a record of the commands it ran
+// and the files it read.
 type toolEnv struct {
 	env      adapter.Env
 	commands *[]string
+	reads    *[]string // paths inside the home given to ReadFile, as the adapter wrote them
 }
 
 // newToolEnv makes the Env for a home on disk. ReadFile and Stat only reach inside the home.
@@ -120,6 +122,7 @@ func newToolEnv(home string, spec caseSpec, p adapter.Profile) toolEnv {
 		version = *spec.VersionOutput
 	}
 	commands := &[]string{}
+	reads := &[]string{}
 	resolve := func(p string) (string, error) {
 		var rel string
 		switch {
@@ -143,6 +146,7 @@ func newToolEnv(home string, spec caseSpec, p adapter.Profile) toolEnv {
 	}
 	return toolEnv{
 		commands: commands,
+		reads:    reads,
 		env: adapter.Env{
 			GOOS: goos,
 			Home: home,
@@ -158,6 +162,7 @@ func newToolEnv(home string, spec caseSpec, p adapter.Profile) toolEnv {
 				if err != nil {
 					return nil, err
 				}
+				*reads = append(*reads, p)
 				return os.ReadFile(full)
 			},
 			Stat: func(p string) (fs.FileInfo, error) {

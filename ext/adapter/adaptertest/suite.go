@@ -6,6 +6,7 @@ package adaptertest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -15,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/internal/brand"
 )
 
 // suite runs the contract for one adapter.
@@ -269,12 +271,18 @@ func (s *suite) runCase(r reporter, c fixtureCase) {
 	}
 	s.checkTargets(r, first)
 
-	// Preview: the same operations, run in a temporary copy.
+	// Preview: the adapter plans again in a temporary copy, and the same core runs that plan
+	// there. The copy holds what the operations touch and what the adapter read to plan them: a
+	// configuration file it skipped because it does not parse is not a target, and without it
+	// the plan in the copy would differ.
 	var targets []target
 	for _, op := range first.plan.Ops {
 		targets = append(targets, targetOf(op))
 	}
-	preview, err := newSandbox(r.tempDir).Prepare(work, targets)
+	for _, p := range slices.Compact(slices.Sorted(slices.Values(*first.env.reads))) {
+		targets = append(targets, target{kind: "read", path: p})
+	}
+	preview, err := newSandbox(r.tempDir, s.a.Profile().Credentials).Prepare(work, targets)
 	if err != nil {
 		r.fatal(checkCore, "the sandbox failed: %v", err)
 	}
@@ -283,11 +291,14 @@ func (s *suite) runCase(r reporter, c fixtureCase) {
 	if !ok {
 		return
 	}
-	s.apply(r, newExecutor(preview, r.tempDir(), declaredPlaces(s.a.Profile(), pp.detection.Roots)), pp, &manifest{})
+	previewEx := s.openExecutor(r, preview, r.tempDir(), pp.detection)
+	defer previewEx.Close()
+	s.apply(r, previewEx, pp, &manifest{})
 	previewChanges := diff(previewBefore, mustSnapshot(r, preview))
 
 	// The real sync.
-	ex := newExecutor(work, stateDir, declaredPlaces(s.a.Profile(), first.detection.Roots))
+	ex := s.openExecutor(r, work, stateDir, first.detection)
+	defer ex.Close()
 	m := &manifest{}
 	res := s.apply(r, ex, first, m)
 	synced := mustSnapshot(r, work)
@@ -329,6 +340,50 @@ func (s *suite) runCase(r reporter, c fixtureCase) {
 	if cs := diff(initial, mustSnapshot(r, work)); len(cs) > 0 {
 		r.fail(checkUninstall, "after uninstalling, the home is not as it was before the first sync:\n%s", describeChanges(cs))
 	}
+}
+
+// openExecutor makes the core's executor for a home, as the tool was detected there.
+func (s *suite) openExecutor(r reporter, home, state string, d adapter.Detection) executor {
+	r.Helper()
+	ex, err := newExecutor(home, state, coreTool{id: s.a.ID(), roots: d.Roots, places: declaredPlaces(s.a.Profile(), d.Roots)})
+	if err != nil {
+		r.fatal(checkCore, "cannot make the executor: %v", err)
+	}
+	return ex
+}
+
+// errAdapterDefect marks an operation no adapter may return.
+var errAdapterDefect = errors.New("adapter defect")
+
+// checkOwned is the ownership rule the executor applies: what we write carries the prefix. The
+// suite checks it itself too, so that an adapter that breaks it fails [targets] and not only
+// the executor's refusal.
+func checkOwned(op adapter.Op) error {
+	last := ""
+	switch o := op.(type) {
+	case adapter.WriteTree:
+		last = path.Base(o.Dir)
+	case adapter.WriteFile:
+		last = path.Base(o.Path)
+	case adapter.SetKey:
+		if len(o.Path) == 0 {
+			return fmt.Errorf("%w: a key without a path", errAdapterDefect)
+		}
+		if last = o.Path[len(o.Path)-1]; last == brand.MCPEntry {
+			return nil
+		}
+		if !o.Format.Valid() {
+			return fmt.Errorf("%w: unknown format %q", errAdapterDefect, o.Format)
+		}
+	case adapter.Exec:
+		return nil
+	default:
+		return fmt.Errorf("%w: unknown operation %T", errAdapterDefect, op)
+	}
+	if !strings.HasPrefix(last, brand.Prefix) || len(last) == len(brand.Prefix) {
+		return fmt.Errorf("%w: %q does not carry the prefix", errAdapterDefect, last)
+	}
+	return nil
 }
 
 // declaredPlaces returns the directories and files an adapter may write into: its roots, and the
@@ -533,7 +588,8 @@ func (s *suite) checkDrift(r reporter, c fixtureCase, ex executor, m *manifest, 
 			return
 		}
 		for _, e := range entries {
-			if !e.IsDir() {
+			// The marker is not part of what we wrote: changing it is no drift.
+			if !e.IsDir() && e.Name() != execMarkerFile {
 				file = filepath.Join(file, e.Name())
 				break
 			}

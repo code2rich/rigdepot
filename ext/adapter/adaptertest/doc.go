@@ -72,8 +72,11 @@
 // reverts operations with the executor and prepares previews with the sandbox, so it checks the
 // core along with the adapter. It is only ever imported from test files.
 //
-// Status: internal/executor and internal/sandbox do not exist yet. Until they do, small
-// stand-ins inside this package take their place (standin.go): they make the same safety checks
-// and edit configuration files as text, so that every assertion above means something, but they
-// handle only what the fixtures need. TOML is appended and removed as text and not parsed.
+// The preview is prepared by internal/sandbox: it copies what the operations touch and what the
+// adapter read while planning (every path it gave Env.ReadFile), the adapter plans again in that
+// copy, and the executor carries the plan out there.
+//
+// Status: internal/executor does not set keys in configuration files yet (task M0-20). Until it
+// does, the suite sets JSON and JSONC keys itself as text, reversibly (interimkeys.go), and an
+// adapter that sets TOML keys cannot pass the contract.
 package adaptertest

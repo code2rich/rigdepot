@@ -3,26 +3,239 @@
 
 package adaptertest
 
-// This file edits configuration files as text, for the stand-in executor (standin.go): a key is
-// added by inserting text and removed by taking exactly that text out again, so that every other
-// byte stays as it was. It is deliberately small. The real editor is internal/configedit, which
-// handles far more (files rewritten by the tool in between, keys inside inline TOML tables, …).
+// TODO(M0-20): delete this file, and its test, once internal/executor sets keys.
+//
+// internal/executor does not set keys in a tool's configuration file yet (it returns
+// ErrNotImplemented); internal/configedit is being written as task M0-20. Until then the suite
+// sets keys itself, with the least that lets every assertion mean something for a key: the
+// checks the executor makes (prefix, a place the tool declared, unchanged since the plan, the
+// file parses), an edit that inserts text and leaves every other byte alone, and an undo that
+// takes exactly that text out again. Only JSON and JSONC, with the standard library; a TOML key
+// is refused. It is not the product's editor and must not grow into one.
+//
+// coreExecutor (core.go) sends keys here only while the executor answers ErrNotImplemented.
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path"
+	"path/filepath"
 	"reflect"
-	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
 )
 
-// errUnparsable: the file does not parse, so nothing may be written to it.
-var errUnparsable = errors.New("the file does not parse")
+// interimKeys sets keys in configuration files inside one home directory.
+type interimKeys struct {
+	home   string
+	places []string
+}
+
+// interimUndo is what interimKeys records to undo an entry.
+type interimUndo struct {
+	createdDirs []string // directories it created, outermost first
+	insertion   insertion
+}
+
+func hashString(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
+}
+
+// resolve turns a path in the package form into a path on disk inside the home directory.
+func (k *interimKeys) resolve(p string) (string, error) {
+	var rel string
+	switch {
+	case strings.HasPrefix(p, "~/"):
+		rel = p[2:]
+	default:
+		home := filepath.ToSlash(k.home)
+		r, ok := strings.CutPrefix(path.Clean(p), strings.TrimSuffix(home, "/")+"/")
+		if !ok {
+			return "", fmt.Errorf("%w: %s is outside the home directory", errAdapterDefect, p)
+		}
+		rel = r
+	}
+	rel = path.Clean(rel)
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, "../") || path.IsAbs(rel) {
+		return "", fmt.Errorf("%w: %s leaves the home directory", errAdapterDefect, p)
+	}
+	return filepath.Join(k.home, filepath.FromSlash(rel)), nil
+}
+
+func checkJSONFormat(f adapter.Format) error {
+	if f != adapter.JSON && f != adapter.JSONC {
+		return fmt.Errorf("the suite sets %s keys only once internal/executor does (TODO(M0-20)); until then only JSON and JSONC", f)
+	}
+	return nil
+}
+
+func (k *interimKeys) expect(op adapter.SetKey) (string, error) {
+	if err := checkJSONFormat(op.Format); err != nil {
+		return "", err
+	}
+	c, err := canonical(op.Value)
+	return hashString(c), err
+}
+
+func (k *interimKeys) observe(t target) observed {
+	if err := checkJSONFormat(t.format); err != nil {
+		return observed{state: unreadable, reason: err.Error()}
+	}
+	full, err := k.resolve(t.path)
+	if err != nil {
+		return observed{state: unreadable, reason: err.Error()}
+	}
+	data, err := os.ReadFile(full)
+	if errors.Is(err, fs.ErrNotExist) {
+		return observed{state: absent}
+	}
+	if err != nil {
+		return observed{state: unreadable, reason: err.Error()}
+	}
+	doc, err := decodeJSON(data, t.format)
+	if err != nil {
+		return observed{state: unreadable, reason: t.path + " does not parse"}
+	}
+	v, ok := lookup(doc, t.key)
+	if !ok {
+		return observed{state: absent}
+	}
+	c, _ := canonical(v)
+	return observed{state: present, digest: hashString(c)}
+}
+
+// mkdirs creates dir and its missing parents and returns those it created, outermost first.
+func mkdirs(dir string) ([]string, error) {
+	var missing []string
+	for d := dir; ; d = filepath.Dir(d) {
+		if _, err := os.Stat(d); err == nil {
+			break
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
+		}
+		missing = append([]string{d}, missing...)
+		if filepath.Dir(d) == d {
+			break
+		}
+	}
+	for _, d := range missing {
+		if err := os.Mkdir(d, 0o755); err != nil {
+			return nil, err
+		}
+	}
+	return missing, nil
+}
+
+func (k *interimKeys) apply(op adapter.SetKey, pre observed) (entry, error) {
+	t := targetOf(op)
+	if err := checkOwned(op); err != nil {
+		return entry{}, err
+	}
+	if err := checkJSONFormat(op.Format); err != nil {
+		return entry{}, err
+	}
+	full, err := k.resolve(t.path)
+	if err != nil {
+		return entry{}, err
+	}
+	declared := false
+	for _, p := range k.places {
+		declared = declared || inside(path.Clean(t.path), p)
+	}
+	if !declared {
+		return entry{}, fmt.Errorf("%w: %s lies outside the places the adapter declared", errAdapterDefect, t.path)
+	}
+	if now := k.observe(t); now != pre {
+		return entry{}, errors.New("the target changed after the plan was made")
+	}
+	if pre.state == unreadable {
+		return entry{}, fmt.Errorf("%s cannot be read, so it is not written: %s", t.path, pre.reason)
+	}
+	var undo interimUndo
+	data, err := os.ReadFile(full)
+	mode := fs.FileMode(0o644)
+	switch {
+	case err == nil:
+		if info, err := os.Stat(full); err == nil {
+			mode = info.Mode().Perm()
+		}
+	case errors.Is(err, fs.ErrNotExist):
+		data = nil
+	default:
+		return entry{}, err
+	}
+	out, ins, err := insertJSON(data, op.Format, op.Path, op.Value)
+	if err != nil {
+		return entry{}, fmt.Errorf("%s: %w", t.path, err)
+	}
+	undo.insertion = ins
+	if data == nil {
+		if undo.createdDirs, err = mkdirs(filepath.Dir(full)); err != nil {
+			return entry{}, err
+		}
+	}
+	if err := os.WriteFile(full, out, mode); err != nil {
+		return entry{}, err
+	}
+	after := k.observe(t)
+	want, err := k.expect(op)
+	if err != nil {
+		return entry{}, err
+	}
+	if after.state != present || after.digest != want {
+		return entry{}, fmt.Errorf("%s: what was written does not read back as planned", t)
+	}
+	return entry{target: t, ref: op.Ref(), digest: after.digest, undo: undo}, nil
+}
+
+func (k *interimKeys) revert(en entry, undo interimUndo) (bool, error) {
+	full, err := k.resolve(en.target.path)
+	if err != nil {
+		return false, err
+	}
+	now := k.observe(en.target)
+	data, err := os.ReadFile(full)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+	case err != nil:
+		return false, err
+	case now.state == unreadable:
+		return false, fmt.Errorf("%s cannot be read: %s", en.target, now.reason)
+	case now.state == present && now.digest != en.digest:
+		return false, errors.New("the suite cannot remove a key whose value was changed by hand (TODO(M0-20))")
+	case now.state == present:
+		out, remove, err := undoInsertion(data, undo.insertion)
+		if err != nil {
+			return false, fmt.Errorf("%s: %w (the real executor falls back to removing the key by its meaning)", en.target, err)
+		}
+		if remove {
+			err = os.Remove(full)
+		} else {
+			err = os.WriteFile(full, out, 0o644)
+		}
+		if err != nil {
+			return false, err
+		}
+	}
+	for i := len(undo.createdDirs) - 1; i >= 0; i-- {
+		entries, err := os.ReadDir(undo.createdDirs[i])
+		if err != nil || len(entries) > 0 {
+			break
+		}
+		if err := os.Remove(undo.createdDirs[i]); err != nil {
+			return false, err
+		}
+	}
+	return false, nil
+}
 
 // insertion is how to undo a key we added: the text inserted at an offset, or the whole file
 // when we created it.
@@ -30,67 +243,6 @@ type insertion struct {
 	Offset  int
 	Text    string
 	Created bool // the file did not exist; Text is its whole content
-}
-
-// canonical returns a JSON value in one spelling: maps sorted, no spaces, numbers as JSON has
-// them. The value an operation sets and the value read back from a file compare equal this way.
-func canonical(v any) (string, error) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return "", err
-	}
-	var back any
-	if err := json.Unmarshal(b, &back); err != nil {
-		return "", err
-	}
-	b, err = json.Marshal(back)
-	return string(b), err
-}
-
-// decodeJSON parses a JSON or JSONC file into generic values.
-func decodeJSON(data []byte, format adapter.Format) (any, error) {
-	var doc any
-	dec := json.NewDecoder(bytes.NewReader(adapter.StandardJSON(data, format == adapter.JSONC)))
-	if err := dec.Decode(&doc); err != nil {
-		return nil, errUnparsable
-	}
-	if _, err := dec.Token(); err == nil {
-		return nil, errUnparsable
-	}
-	return doc, nil
-}
-
-// lookup returns the value at path, and whether it exists.
-func lookup(doc any, path []string) (any, bool) {
-	cur := doc
-	for _, k := range path {
-		m, ok := cur.(map[string]any)
-		if !ok {
-			return nil, false
-		}
-		if cur, ok = m[k]; !ok {
-			return nil, false
-		}
-	}
-	return cur, true
-}
-
-// without returns a copy of doc with the key at path removed.
-func without(doc any, path []string) any {
-	m, ok := doc.(map[string]any)
-	if !ok || len(path) == 0 {
-		return doc
-	}
-	out := make(map[string]any, len(m))
-	for k, v := range m {
-		out[k] = v
-	}
-	if len(path) == 1 {
-		delete(out, path[0])
-	} else if child, ok := m[path[0]]; ok {
-		out[path[0]] = without(child, path[1:])
-	}
-	return out
 }
 
 // jsonObject is an object in the text of a JSON file: where its braces are and where its members
@@ -339,131 +491,4 @@ func undoInsertion(data []byte, ins insertion) ([]byte, bool, error) {
 	}
 	out := make([]byte, 0, len(data)-len(ins.Text))
 	return append(append(out, data[:ins.Offset]...), data[end:]...), false, nil
-}
-
-var bareKey = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
-
-func tomlKey(path []string) string {
-	parts := make([]string, len(path))
-	for i, k := range path {
-		if bareKey.MatchString(k) {
-			parts[i] = k
-		} else {
-			q, _ := json.Marshal(k)
-			parts[i] = string(q)
-		}
-	}
-	return strings.Join(parts, ".")
-}
-
-// tomlBlock writes value as a TOML table at path: scalars and lists first, then one sub-table
-// for each map. Lines end in "\n".
-func tomlBlock(path []string, value any) (string, error) {
-	m, ok := value.(map[string]any)
-	if !ok {
-		return "", fmt.Errorf("a TOML table needs a map, not %T", value)
-	}
-	var b strings.Builder
-	b.WriteString("[" + tomlKey(path) + "]\n")
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var tables []string
-	for _, k := range keys {
-		if _, isMap := m[k].(map[string]any); isMap {
-			tables = append(tables, k)
-			continue
-		}
-		v, err := tomlValue(m[k])
-		if err != nil {
-			return "", fmt.Errorf("%s: %w", k, err)
-		}
-		b.WriteString(tomlKey([]string{k}) + " = " + v + "\n")
-	}
-	for _, k := range tables {
-		sub, err := tomlBlock(append(append([]string{}, path...), k), m[k])
-		if err != nil {
-			return "", err
-		}
-		b.WriteString(sub)
-	}
-	return b.String(), nil
-}
-
-func tomlValue(v any) (string, error) {
-	switch v := v.(type) {
-	case string:
-		q, err := marshal(v)
-		return string(q), err
-	case bool, int, int64, float64:
-		return fmt.Sprint(v), nil
-	case []any:
-		parts := make([]string, len(v))
-		for i, item := range v {
-			s, err := tomlValue(item)
-			if err != nil {
-				return "", err
-			}
-			parts[i] = s
-		}
-		return "[" + strings.Join(parts, ", ") + "]", nil
-	}
-	return "", fmt.Errorf("cannot write %T in TOML", v)
-}
-
-// appendTOML adds a table at the end of a TOML file (nil data: the file does not exist). The
-// stand-in cannot parse TOML; the real executor checks the result with a parser.
-func appendTOML(data []byte, path []string, value any) ([]byte, insertion, error) {
-	block, err := tomlBlock(path, value)
-	if err != nil {
-		return nil, insertion{}, err
-	}
-	if data == nil {
-		return []byte(block), insertion{Text: block, Created: true}, nil
-	}
-	if _, found := findTOMLBlock(data, path); found {
-		return nil, insertion{}, fmt.Errorf("the table %s exists already", tomlKey(path))
-	}
-	nl := "\n"
-	if bytes.Contains(data, []byte("\r\n")) {
-		nl = "\r\n"
-	}
-	text := nl + strings.ReplaceAll(block, "\n", nl)
-	if len(data) > 0 && !bytes.HasSuffix(data, []byte("\n")) {
-		text = nl + text
-	}
-	return append(bytes.Clone(data), text...), insertion{Offset: len(data), Text: text}, nil
-}
-
-// findTOMLBlock returns the text of the table at path and its sub-tables, with "\n" line ends
-// and without trailing blank lines.
-func findTOMLBlock(data []byte, path []string) (string, bool) {
-	header := "[" + tomlKey(path) + "]"
-	subPrefix := "[" + tomlKey(path) + "."
-	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
-	start := -1
-	for i, l := range lines {
-		if strings.TrimSpace(l) == header {
-			start = i
-			break
-		}
-	}
-	if start < 0 {
-		return "", false
-	}
-	end := len(lines)
-	for i := start + 1; i < len(lines); i++ {
-		l := strings.TrimSpace(lines[i])
-		if strings.HasPrefix(l, "[") && !strings.HasPrefix(l, subPrefix) {
-			end = i
-			break
-		}
-	}
-	block := lines[start:end]
-	for len(block) > 0 && strings.TrimSpace(block[len(block)-1]) == "" {
-		block = block[:len(block)-1]
-	}
-	return strings.Join(block, "\n") + "\n", true
 }
