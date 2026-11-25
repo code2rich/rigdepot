@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://rigdepot.code2rich.com/brand/logo-dark.svg">
+    <img alt="Rigdepot" src="https://rigdepot.code2rich.com/brand/logo-light.svg" height="56">
+  </picture>
+</p>
+
 # Rigdepot
 
 **团队 AI 编码资源的中台：把好用的 Skill、MCP、工作流和环境资源统一登记，按研发环节下发到每个人手里的任何 AI 编码工具，再把用得好不好带回来。**
