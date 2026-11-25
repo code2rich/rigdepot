@@ -1,0 +1,5 @@
+name: 发版说明
+stages: [develop]
+scope: shop
+policy: optional
+audiance: mgmt

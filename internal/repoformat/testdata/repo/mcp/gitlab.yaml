@@ -1,0 +1,13 @@
+meta:
+  name: GitLab
+  stages: [develop]
+  secrets: [GITLAB_TOKEN]
+  scope: payments
+
+server:
+  type: stdio
+  command: npx
+  args: ["-y", "@example/gitlab-mcp@1.4.2"]
+  env:
+    GITLAB_TOKEN: "${secret:GITLAB_TOKEN}"
+    GITLAB_URL: https://gitlab.example.com
