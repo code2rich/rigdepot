@@ -131,15 +131,18 @@ var rules = map[Action]rule{
 	ActionResourceRollback:  {admin: adminShared, owner: true, self: true, write: true, token: TokenPublish},
 	ActionResourceDisable:   {admin: adminAll, owner: true, self: true, write: true},
 	ActionResourceEnable:    {admin: adminAll, owner: true, self: true, write: true},
-	ActionResourceWaive:     {admin: adminShared, owner: true, maintainer: true, self: true, write: true, token: TokenPublish},
-	ActionResourcePrefer:    {inScope: true, write: true},
-	ActionSourceManage:      {admin: adminAll, write: true},
-	ActionSecretDefine:      {admin: adminAll, write: true},
-	ActionFeedbackCreate:    {anyone: true, write: true},
-	ActionFeedbackManage:    {admin: adminShared, owner: true, maintainer: true, write: true},
-	ActionAuditRead:         {admin: adminAll, token: TokenRead},
-	ActionSettingsManage:    {admin: adminAll, write: true},
-	ActionAdapterManage:     {admin: adminAll, write: true},
+	// Marking a finding as a false positive is the platform administrators' call
+	// (docs/subsystems/skill-quality.md#第一层入库检查确定性规则不用-ai): the finding is
+	// about a suspected secret, and the author is the last person to judge their own.
+	ActionResourceWaive:  {admin: adminShared, write: true},
+	ActionResourcePrefer: {inScope: true, write: true},
+	ActionSourceManage:   {admin: adminAll, write: true},
+	ActionSecretDefine:   {admin: adminAll, write: true},
+	ActionFeedbackCreate: {anyone: true, write: true},
+	ActionFeedbackManage: {admin: adminShared, owner: true, maintainer: true, write: true},
+	ActionAuditRead:      {admin: adminAll, token: TokenRead},
+	ActionSettingsManage: {admin: adminAll, write: true},
+	ActionAdapterManage:  {admin: adminAll, write: true},
 }
 
 // Actions returns every action, sorted.

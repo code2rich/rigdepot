@@ -109,6 +109,8 @@ type fixtureOptions struct {
 	// server's version.
 	adapters []adapter.Adapter
 	version  string
+	// setup runs on the app before its services are opened.
+	setup func(*App)
 }
 
 func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
@@ -157,6 +159,9 @@ func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
 	cfg.ModulesDisabled = o.locked
 	if o.background {
 		app.bg = newBackground(app)
+	}
+	if o.setup != nil {
+		o.setup(app)
 	}
 	if err := app.openServices(ctx); err != nil {
 		t.Fatal(err)
