@@ -1,0 +1,2 @@
+meta: {name: Plain probe, stages: [test]}
+prompt: "Check the build before you push."
