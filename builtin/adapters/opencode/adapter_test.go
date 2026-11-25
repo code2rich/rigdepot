@@ -5,9 +5,11 @@ package opencode
 
 import (
 	"context"
+	"encoding/json"
 	"io/fs"
 	"maps"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
@@ -148,5 +150,24 @@ func TestKeyTakenByNonObject(t *testing.T) {
 		if len(plan.Ops) != 0 || len(plan.Skips) != 1 || plan.Skips[0].Reason != adapter.ConfigUnwritable {
 			t.Errorf("%s %s: ops %v, skips %v", c.version, c.config, plan.Ops, plan.Skips)
 		}
+	}
+}
+
+// The single entry (MCPSingleEntry): one local server whose command is the command line's
+// proxy, in the shape of any stdio server without secrets.
+func TestSingleEntry(t *testing.T) {
+	single := adapter.MCPServer{Resource: resource.Ref{Kind: resource.KindMCP, Code: "docs"}, EntryName: entry,
+		Transport: adapter.Stdio, Command: "/opt/example/bin/tool", Args: []string{"mcp", "serve"}}
+	p := planMCP(t, "2.4.1", "", adapter.MCPSingleEntry, single)
+	if len(p.Skips) != 0 || len(p.Ops) != 1 {
+		t.Fatalf("plan: %+v", p)
+	}
+	k := p.Ops[0].(adapter.SetKey)
+	got, _ := json.Marshal(k.Value)
+	if strings.Join(k.Path, ".") != "mcp.servers."+entry || !strings.Contains(string(got), `"command":["/opt/example/bin/tool","mcp","serve"]`) {
+		t.Errorf("entry: %v %s", k.Path, got)
+	}
+	if p := planMCP(t, "2.4.1", "", adapter.MCPSingleEntry, stdioServer); len(p.Ops) != 0 || len(p.Skips) != 1 || p.Skips[0].Reason != adapter.NeedsSecretSupport {
+		t.Errorf("secret: %+v", p)
 	}
 }

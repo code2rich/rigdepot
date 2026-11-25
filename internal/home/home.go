@@ -46,6 +46,9 @@ const (
 	FlowsDir = "flows"
 	// KnowledgeDir holds the knowledge bases fetched onto this computer, one directory each.
 	KnowledgeDir = "knowledge"
+	// MCPDir holds how to reach the MCP servers synced to this computer, one file each
+	// (rgd mcp run, serve and call). Personal secrets in it are references, never values.
+	MCPDir = "mcp"
 )
 
 // Dir is the local data directory. The zero value is not usable; get one from Locate or At.

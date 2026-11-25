@@ -62,6 +62,9 @@ type Env struct {
 	NewExecutor func(executor.Roots, executor.State) (sync.Executor, error)
 	// Knowledge fetches the knowledge bases a sync delivers; nil means the person's own git.
 	Knowledge sync.Fetcher
+	// Executable returns this program's path, written into the tools' configuration to start
+	// it (mcp.command = path); nil is os.Executable.
+	Executable func() (string, error)
 }
 
 // Main runs the command-line program with the given arguments (without the

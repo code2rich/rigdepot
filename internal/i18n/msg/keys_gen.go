@@ -649,6 +649,36 @@ const (
 	MailTestSubject = "mail.test.subject"
 	// MCPAsSkill (catalog.json): This tool cannot connect to the MCP server directly, so it gets a skil…
 	MCPAsSkill = "mcp.as_skill"
+	// MCPCallFailed (cli.json): Calling the MCP server {{resource}} failed: {{detail}}
+	MCPCallFailed = "mcp.call.failed"
+	// MCPCallNotJSON (cli.json): The arguments must be a JSON object, such as '{"query": "…"}'.
+	MCPCallNotJSON = "mcp.call.not_json"
+	// MCPCallShort (cli.json): Call one tool of an MCP server; without a tool, list its tools and the…
+	MCPCallShort = "mcp.call.short"
+	// MCPCallToolError (cli.json): The tool {{tool}} reported an error; its answer is above.
+	MCPCallToolError = "mcp.call.tool_error"
+	// MCPCopiesUnreadable (cli.json): The local copies of the personal secrets cannot be read ({{detail}}). …
+	MCPCopiesUnreadable = "mcp.copies_unreadable"
+	// MCPCopiesUnusable (cli.json): The local copies of the personal secrets do not belong to this sign-in…
+	MCPCopiesUnusable = "mcp.copies_unusable"
+	// MCPKeyringUnknown (cli.json): The device key in the keychain cannot be read ({{detail}}), so the per…
+	MCPKeyringUnknown = "mcp.keyring_unknown"
+	// MCPMissingNotSignedIn (cli.json): The MCP server {{server}} needs the personal secrets {{names}}, and th…
+	MCPMissingNotSignedIn = "mcp.missing_not_signed_in"
+	// MCPMissingSecrets (cli.json): The MCP server {{server}} needs the personal secrets {{names}}, which …
+	MCPMissingSecrets = "mcp.missing_secrets"
+	// MCPRunShort (cli.json): Start one MCP server for an AI tool (what the tool's configuration run…
+	MCPRunShort = "mcp.run.short"
+	// MCPServeShort (cli.json): The single entry: one MCP server with the tools of every MCP server sy…
+	MCPServeShort = "mcp.serve.short"
+	// MCPShort (cli.json): Start the MCP servers synced to this computer, with your personal secr…
+	MCPShort = "mcp.short"
+	// MCPUnknown (cli.json): There is no MCP server {{resource}} on this computer.
+	MCPUnknown = "mcp.unknown"
+	// MCPUnknownHint (cli.json): Run "{{cli}} sync" to get the MCP servers you can use.
+	MCPUnknownHint = "mcp.unknown_hint"
+	// MCPUnreadable (cli.json): The MCP servers synced to this computer cannot be read: {{detail}}
+	MCPUnreadable = "mcp.unreadable"
 	// NotifyAdminGrantedBody (server.json): You can manage users and sign-in, tool adapters, the audit log and the…
 	NotifyAdminGrantedBody = "notify.admin_granted.body"
 	// NotifyAdminGrantedTitle (server.json): You are now a platform administrator

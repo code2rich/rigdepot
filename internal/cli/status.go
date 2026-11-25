@@ -95,7 +95,8 @@ func (a *app) runStatus(ctx context.Context, f statusFlags, code string) error {
 		st, sourceErr = nil, ce.Message
 		a.out.Warn(a.p.T(msg.StatusSourceFailed, i18n.V("detail", ce.Message)))
 	}
-	opt := sync.Options{Disabled: l.cfg.List(localconfig.KeyToolsDisabled), MCPMode: adapter.MCPNativeEnv}
+	opt := sync.Options{Disabled: l.cfg.List(localconfig.KeyToolsDisabled)}
+	opt.MCPMode, opt.Launcher = a.mcpOptions(l.cfg)
 	s, err := l.eng.Status(ctx, st, opt)
 	if err != nil {
 		return a.stateError(err)

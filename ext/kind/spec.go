@@ -3,6 +3,8 @@
 
 package kind
 
+import "github.com/code2rich/rigdepot/ext/adapter"
+
 // This file has the optional interfaces a Spec implements to tell the core more than how to
 // render it, in the manner of SecretUser: the core asks for each with a type assertion and never
 // looks inside a Spec otherwise.
@@ -95,4 +97,41 @@ type GitSource struct {
 	Ref string
 	// Dir is the directory inside the repository, with forward slashes; empty means all of it.
 	Dir string
+}
+
+// Connector is implemented by a Spec that is an MCP server the command line connects to on the
+// AI tool's behalf: rgd mcp run (one server, started by the tool), rgd mcp serve (the single
+// entry that proxies every server) and rgd mcp call (one call, for on-demand delivery). The core
+// keeps the connection on the person's computer when it syncs the resource; personal secrets
+// stay references, which the command line fills in from its sealed copies at the moment it
+// connects.
+type Connector interface {
+	Connection() Connection
+}
+
+// Connection is how to reach an MCP server.
+type Connection struct {
+	// Transport is "stdio", "http" (streamable HTTP) or "sse" (the older HTTP with
+	// server-sent events).
+	Transport string
+	// Command, Args and Env describe the process to start, for stdio.
+	Command string
+	Args    []string
+	Env     map[string]adapter.Value
+	// URL and Headers describe the endpoint, for http and sse.
+	URL     string
+	Headers map[string]adapter.Value
+	// OnDemand: the server is not connected to the AI tools; the AI calls it through the
+	// command line when it needs it.
+	OnDemand bool
+	// Tools are the tools the repository lists for it, possibly none.
+	Tools []ConnectionTool
+}
+
+// ConnectionTool is a tool a repository lists for an MCP server.
+type ConnectionTool struct {
+	Name    string
+	Summary string
+	// Writes: calling it changes data.
+	Writes bool
 }

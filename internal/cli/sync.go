@@ -15,7 +15,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/ext/kind"
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/cliout"
@@ -103,10 +102,8 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 		Tools:     f.tools,
 		Disabled:  l.cfg.List(localconfig.KeyToolsDisabled),
 		Overwrite: f.overwrite,
-		// Without a server, the only way to hand a tool an MCP server's secrets is the tool's
-		// own environment variable reference (decision D5); mcp.mode applies once there is one.
-		MCPMode: adapter.MCPNativeEnv,
 	}
+	opt.MCPMode, opt.Launcher = a.mcpOptions(l.cfg)
 	if f.plan {
 		return a.syncPlan(ctx, l, st, opt, f)
 	}
