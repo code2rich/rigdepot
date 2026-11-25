@@ -10,22 +10,27 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sync"
+	stdsync "sync"
 
 	"github.com/spf13/pflag"
 	"golang.org/x/term"
 
+	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/cliout"
+	"github.com/code2rich/rigdepot/internal/executor"
 	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/i18n/msg"
 	"github.com/code2rich/rigdepot/internal/localconfig"
+	"github.com/code2rich/rigdepot/internal/repoformat"
+	"github.com/code2rich/rigdepot/internal/sync"
 	"github.com/code2rich/rigdepot/locales"
 )
 
-// Env is everything the program takes from the process. Main uses the real
-// one; tests pass their own, so that nothing depends on the machine running
-// them (its terminal, its language, its home directory).
+// Env is everything the program takes from the process, and the few parts of
+// the program that tests replace. Main uses the real one; tests pass their
+// own, so that nothing depends on the machine running them (its terminal, its
+// language, its home directory, the tools installed on it).
 type Env struct {
 	Stdin          io.Reader
 	Stdout, Stderr io.Writer
@@ -38,6 +43,14 @@ type Env struct {
 	IsTerminal func(any) bool
 	// GOOS decides how paths are shown (~/… or %USERPROFILE%\…).
 	GOOS string
+
+	// Adapters are the AI tools sync, status and uninstall work with; nil means every
+	// registered adapter (builtin/all).
+	Adapters []adapter.Adapter
+	// Kinds are the resource kinds a repository is read with; nil means the registered ones.
+	Kinds repoformat.Kinds
+	// NewExecutor makes the executors of the sync engine; nil means the real one.
+	NewExecutor func(executor.Roots, executor.State) (sync.Executor, error)
 }
 
 // Main runs the command-line program with the given arguments (without the
@@ -130,7 +143,7 @@ func (a *app) showPath(p string) string {
 }
 
 var (
-	catalogOnce sync.Once
+	catalogOnce stdsync.Once
 	catalog     *i18n.Catalog
 	catalogErr  error
 )
