@@ -4,6 +4,7 @@
 package all
 
 import (
+	"github.com/code2rich/rigdepot/builtin/checks/dangerous"
 	"github.com/code2rich/rigdepot/builtin/checks/secrets"
 	"github.com/code2rich/rigdepot/builtin/checks/structure"
 	"github.com/code2rich/rigdepot/ext/check"
@@ -20,6 +21,7 @@ func init() {
 	check.SetVersion(rulesetVersion)
 
 	// One line per check rule under builtin/checks, in alphabetical order.
+	check.Register(dangerous.New())
 	check.Register(secrets.New())
 	check.Register(structure.New())
 }
