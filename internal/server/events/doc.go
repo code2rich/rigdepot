@@ -22,10 +22,15 @@
 // subscriber must not be the only record of anything: the change itself is in the database, and
 // what must survive a restart (a mail to send) is written to the database by the subscriber.
 //
-// # Kinds and payloads
+// A domain package that collects its events and hands them over after its own commit (access
+// does, through access.Publisher) gets the bus through the adapter Publisher.
 //
-// Every kind of event is one Go type in this package that implements Payload, so that the
-// packages that subscribe (notify, the module host) can read it without importing the package
-// that published it. Payloads hold identifiers and short labels, never content or secrets, and
-// must encode to JSON: optional modules receive them as JSON.
+// # Names and payloads
+//
+// Every kind of event is one Go type with an EventName method, such as
+// access.MembershipChanged ("access.membership_changed"). The type lives with the package that
+// publishes it when every subscriber may import that package (notify may import access, by rule
+// R6); otherwise it lives here, so that subscribers can read it without importing the publisher.
+// Payloads hold identifiers and short labels, never content or secrets, and must encode to
+// JSON: optional modules receive them as JSON.
 package events

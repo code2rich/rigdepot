@@ -153,10 +153,11 @@ func New(o Options) (*Service, error) {
 // the change was committed.
 type Rule func(ctx context.Context, ev events.Event) ([]Mail, error)
 
-// On queues the mails rule returns for each event of the given kinds, all in one transaction.
+// On queues the mails rule returns for each event with one of the given names, all in one
+// transaction.
 // A rule that fails is logged by the bus; the change that caused the event stands.
-func (s *Service) On(bus *events.Bus, kinds []string, rule Rule) (unsubscribe func()) {
-	return bus.Subscribe("notify", kinds, func(ctx context.Context, ev events.Event) error {
+func (s *Service) On(bus *events.Bus, names []string, rule Rule) (unsubscribe func()) {
+	return bus.Subscribe("notify", names, func(ctx context.Context, ev events.Event) error {
 		mails, err := rule(ctx, ev)
 		if err != nil || len(mails) == 0 {
 			return err

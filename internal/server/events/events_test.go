@@ -24,11 +24,11 @@ func TestMain(m *testing.M) { testenv.Main(m) }
 
 type thingDone struct{ Name string }
 
-func (thingDone) EventKind() string { return "thing.done" }
+func (thingDone) EventName() string { return "thing.done" }
 
 type otherHappened struct{}
 
-func (otherHappened) EventKind() string { return "other.happened" }
+func (otherHappened) EventName() string { return "other.happened" }
 
 // recorder collects the events a subscriber got.
 type recorder struct {
@@ -39,7 +39,7 @@ type recorder struct {
 func (r *recorder) handler(ctx context.Context, ev events.Event) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	name := ev.Kind
+	name := ev.Name
 	if p, ok := ev.Payload.(thingDone); ok {
 		name += ":" + p.Name
 	}
@@ -228,4 +228,26 @@ func (b *syncBuffer) String() string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.buf.String()
+}
+
+// domainEvent and domainPublisher have the shape of access.Event and access.Publisher: a domain
+// package that publishes after its own commit.
+type domainEvent interface{ EventName() string }
+
+type domainPublisher interface {
+	Publish(ctx context.Context, e domainEvent)
+}
+
+// TestPublisherAdapter: the adapter satisfies such an interface and delivers right away.
+func TestPublisherAdapter(t *testing.T) {
+	bus := events.New(nil)
+	defer bus.Close(context.Background())
+	var r recorder
+	bus.Subscribe("r", []string{"thing.done"}, r.handler)
+	var p domainPublisher = events.Publisher[domainEvent]{Bus: bus}
+	p.Publish(context.Background(), thingDone{"from-a-domain"})
+	drain(t, bus)
+	if got := r.list(); !slices.Equal(got, []string{"thing.done:from-a-domain"}) {
+		t.Errorf("got %v", got)
+	}
 }

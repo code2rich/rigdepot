@@ -117,20 +117,20 @@ type Scheduler interface {
 	Trigger(name string) bool
 }
 
-// Event is a domain event, such as "resource.published", delivered after the change that caused
-// it was committed.
+// Event is a domain event, such as "access.membership_changed", delivered after the change that
+// caused it was committed.
 type Event struct {
 	ID      string
-	Kind    string
+	Name    string
 	At      time.Time
 	Payload json.RawMessage // identifiers and short labels, never content or secrets
 }
 
 // Subscriber subscribes to domain events.
 type Subscriber interface {
-	// Subscribe calls h for each event of the given kinds (every kind when empty), in order, on
+	// Subscribe calls h for each event with one of the given names (every event when empty), in order, on
 	// a goroutine of its own. An error from h is logged; the event is not delivered again.
-	Subscribe(kinds []string, h func(ctx context.Context, ev Event) error)
+	Subscribe(names []string, h func(ctx context.Context, ev Event) error)
 }
 
 // Actor is who does something: the person, and through what.

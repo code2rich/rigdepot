@@ -17,16 +17,18 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 )
 
-// Payload is what an event carries. EventKind names the kind, such as "resource.published": a
-// noun and a verb in the past tense, lower case, separated by a dot.
+// Payload is what an event carries. EventName names the kind of event: the publishing domain
+// and what happened, lower case, such as "access.membership_changed" or "catalog.published".
+// Domain packages that publish after their own commit (access.Publisher) use the same method,
+// so their event types are payloads as they are.
 type Payload interface {
-	EventKind() string
+	EventName() string
 }
 
 // Event is one published event.
 type Event struct {
 	ID      string    // a UUIDv7, unique per event
-	Kind    string    // Payload.EventKind()
+	Name    string    // Payload.EventName()
 	At      time.Time // when it was published, UTC
 	Payload Payload
 }
@@ -80,25 +82,37 @@ func (b *Bus) SetHandlerTimeout(d time.Duration) {
 // Publish delivers p to the subscribers once tx has committed. When tx rolls back, nothing is
 // delivered.
 func (b *Bus) Publish(tx Tx, p Payload) {
-	ev := Event{ID: dbx.NewID(), Kind: p.EventKind(), At: time.Now().UTC(), Payload: p}
+	ev := Event{ID: dbx.NewID(), Name: p.EventName(), At: time.Now().UTC(), Payload: p}
 	tx.AfterCommit(func() { b.dispatch(ev) })
 }
+
+// Publisher adapts a Bus to the publisher interface of a domain package that publishes its
+// events itself once its transaction has committed. Instantiated with that package's event
+// type, its Publish has exactly the signature the package asks for:
+//
+//	access.New(db, access.Options{Events: events.Publisher[access.Event]{Bus: bus}, …})
+type Publisher[E Payload] struct {
+	Bus *Bus
+}
+
+// Publish delivers e; the caller has already committed the change.
+func (p Publisher[E]) Publish(_ context.Context, e E) { p.Bus.PublishCommitted(e) }
 
 // PublishCommitted delivers p right away. It is for changes that are not made in a transaction
 // of this database (a job that finished, a fetch that failed); everything else uses Publish.
 func (b *Bus) PublishCommitted(p Payload) {
-	b.dispatch(Event{ID: dbx.NewID(), Kind: p.EventKind(), At: time.Now().UTC(), Payload: p})
+	b.dispatch(Event{ID: dbx.NewID(), Name: p.EventName(), At: time.Now().UTC(), Payload: p})
 }
 
 func (b *Bus) dispatch(ev Event) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.closed {
-		b.log.Warn("event published after the bus closed; dropped", "event", ev.Kind, "event_id", ev.ID)
+		b.log.Warn("event published after the bus closed; dropped", "event", ev.Name, "event_id", ev.ID)
 		return
 	}
 	for _, s := range b.subs {
-		if s.wants(ev.Kind) && s.push(ev) {
+		if s.wants(ev.Name) && s.push(ev) {
 			b.addInflight(1)
 		}
 	}
@@ -122,11 +136,12 @@ func (b *Bus) done(n int) {
 	b.mu.Unlock()
 }
 
-// Subscribe calls h for every event of the given kinds, or of every kind when kinds is empty.
+// Subscribe calls h for every event with one of the given names, or for every event when names
+// is empty.
 // name identifies the subscriber in logs. The returned function ends the subscription: events
 // not yet handled are dropped, and a call in progress is left to finish.
-func (b *Bus) Subscribe(name string, kinds []string, h Handler) (unsubscribe func()) {
-	s := &subscription{bus: b, name: name, kinds: slices.Clone(kinds), h: h, wake: make(chan struct{}, 1), stop: make(chan struct{})}
+func (b *Bus) Subscribe(name string, names []string, h Handler) (unsubscribe func()) {
+	s := &subscription{bus: b, name: name, names: slices.Clone(names), h: h, wake: make(chan struct{}, 1), stop: make(chan struct{})}
 	b.mu.Lock()
 	if b.closed {
 		b.mu.Unlock()
@@ -192,7 +207,7 @@ func (b *Bus) Close(ctx context.Context) error {
 type subscription struct {
 	bus   *Bus
 	name  string
-	kinds []string
+	names []string
 	h     Handler
 	wake  chan struct{}
 	stop  chan struct{}
@@ -202,8 +217,8 @@ type subscription struct {
 	closed bool
 }
 
-func (s *subscription) wants(kind string) bool {
-	return len(s.kinds) == 0 || slices.Contains(s.kinds, kind)
+func (s *subscription) wants(name string) bool {
+	return len(s.names) == 0 || slices.Contains(s.names, name)
 }
 
 func (s *subscription) push(ev Event) bool {
@@ -282,6 +297,6 @@ func (s *subscription) handle(ev Event, timeout time.Duration) {
 		if errors.Is(err, context.Canceled) && s.bus.ctx.Err() != nil {
 			level = slog.LevelWarn
 		}
-		s.bus.log.Log(ctx, level, "event handler failed", "subscriber", s.name, "event", ev.Kind, "event_id", ev.ID, "err", err)
+		s.bus.log.Log(ctx, level, "event handler failed", "subscriber", s.name, "event", ev.Name, "event_id", ev.ID, "err", err)
 	}
 }

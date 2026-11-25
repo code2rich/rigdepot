@@ -441,7 +441,7 @@ func TestEventToMail(t *testing.T) {
 
 type thingDone struct{ Owner string }
 
-func (thingDone) EventKind() string { return "thing.done" }
+func (thingDone) EventName() string { return "thing.done" }
 
 func TestEnqueueChecks(t *testing.T) {
 	f := newFixture(t, dbxtest.Open(t, dbxtest.SQLiteURL(t)), nil)

@@ -107,7 +107,7 @@ func (m *fakeModule) received() []module.Event {
 
 type thingDone struct{ Name string }
 
-func (thingDone) EventKind() string { return "thing.done" }
+func (thingDone) EventName() string { return "thing.done" }
 
 // memSettings is a settings store in memory. failGet makes every read fail.
 type memSettings struct {
@@ -299,7 +299,7 @@ func TestFakeModule(t *testing.T) {
 		// Events, as JSON.
 		f.publish(t, "x")
 		got := m.received()
-		if len(got) != 1 || got[0].Kind != "thing.done" || string(got[0].Payload) != `{"Name":"x"}` {
+		if len(got) != 1 || got[0].Name != "thing.done" || string(got[0].Payload) != `{"Name":"x"}` {
 			t.Errorf("module events: %+v", got)
 		}
 		// Its own settings, namespaced.

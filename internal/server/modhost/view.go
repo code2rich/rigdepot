@@ -127,15 +127,15 @@ func (s scheduler) Trigger(name string) bool { return s.v.h.d.Jobs.Trigger(s.nam
 // subscriber hands events to modules as JSON.
 type subscriber struct{ v *view }
 
-func (s subscriber) Subscribe(kinds []string, fn func(context.Context, module.Event) error) {
+func (s subscriber) Subscribe(names []string, fn func(context.Context, module.Event) error) {
 	id := s.v.inst.id
 	s.v.track(func(inst *instance) {
-		unsub := s.v.h.d.Events.Subscribe("module "+id, kinds, func(ctx context.Context, ev events.Event) error {
+		unsub := s.v.h.d.Events.Subscribe("module "+id, names, func(ctx context.Context, ev events.Event) error {
 			payload, err := json.Marshal(ev.Payload)
 			if err != nil {
-				return fmt.Errorf("encode the payload of %s: %w", ev.Kind, err)
+				return fmt.Errorf("encode the payload of %s: %w", ev.Name, err)
 			}
-			return fn(ctx, module.Event{ID: ev.ID, Kind: ev.Kind, At: ev.At, Payload: payload})
+			return fn(ctx, module.Event{ID: ev.ID, Name: ev.Name, At: ev.At, Payload: payload})
 		})
 		inst.unsubs = append(inst.unsubs, unsub)
 	})
