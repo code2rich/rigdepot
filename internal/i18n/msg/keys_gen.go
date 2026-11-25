@@ -593,6 +593,48 @@ const (
 	HelpShort = "help.short"
 	// HelpUsage (cli.json): Usage:
 	HelpUsage = "help.usage"
+	// LoginAlready (cli.json): This computer is already signed in to {{address}} as {{user}}.
+	LoginAlready = "login.already"
+	// LoginAlreadyHint (cli.json): To sign in again, run "{{cli}} logout" first.
+	LoginAlreadyHint = "login.already_hint"
+	// LoginBadServer (cli.json): {{value}} is not an http or https address.
+	LoginBadServer = "login.bad_server"
+	// LoginConfigFailed (cli.json): Signed in, but the server's address could not be saved in {{path}}: {{…
+	LoginConfigFailed = "login.config_failed"
+	// LoginDenied (cli.json): The sign-in was refused in the browser.
+	LoginDenied = "login.denied"
+	// LoginDone (cli.json): Signed in to {{address}} as {{user}}. This computer is listed there as…
+	LoginDone = "login.done"
+	// LoginExpired (cli.json): The code was not confirmed in time. Run "{{cli}} login" again for a ne…
+	LoginExpired = "login.expired"
+	// LoginKeyringFallback (cli.json): There is no system keychain here, so the device key and token are kept…
+	LoginKeyringFallback = "login.keyring_fallback"
+	// LoginKeyringUnknown (cli.json): The keychain cannot be read right now, so nothing was changed and no n…
+	LoginKeyringUnknown = "login.keyring_unknown"
+	// LoginLong (cli.json): Signs this computer in with a code you confirm in a browser where you …
+	LoginLong = "login.long"
+	// LoginNoServer (cli.json): Which server? Give its address, such as: {{cli}} login https://hub.exa…
+	LoginNoServer = "login.no_server"
+	// LoginPrompt (cli.json): To sign in, open this page in a browser where you are signed in:
+	LoginPrompt = "login.prompt"
+	// LoginPromptEnter (cli.json): Press Enter to open the page in your browser.
+	LoginPromptEnter = "login.prompt_enter"
+	// LoginServerFailed (cli.json): {{address}} refused: {{detail}}
+	LoginServerFailed = "login.server_failed"
+	// LoginShort (cli.json): Sign this computer in to a {{product}} server
+	LoginShort = "login.short"
+	// LoginUnreachable (cli.json): {{address}} cannot be reached: {{detail}}
+	LoginUnreachable = "login.unreachable"
+	// LoginWaiting (cli.json): Waiting for the confirmation (the code is valid for {{count}} minutes)…
+	LoginWaiting = "login.waiting"
+	// LogoutDone (cli.json): Signed out of {{address}}. The device token and key are deleted from t…
+	LogoutDone = "logout.done"
+	// LogoutNotSignedIn (cli.json): This computer is not signed in.
+	LogoutNotSignedIn = "logout.not_signed_in"
+	// LogoutServerFailed (cli.json): {{address}} could not be told ({{detail}}). The token is deleted here …
+	LogoutServerFailed = "logout.server_failed"
+	// LogoutShort (cli.json): Sign this computer out and delete its device token and key
+	LogoutShort = "logout.short"
 	// MailDigestIntro (server.json): You have reached the limit of {{limit}} messages an hour, so the rest …
 	MailDigestIntro = "mail.digest.intro"
 	// MailDigestSubject (server.json): {{count}} more notifications
