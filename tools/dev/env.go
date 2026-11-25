@@ -37,11 +37,6 @@ func isFile(path string) bool {
 	return err == nil && info.Mode().IsRegular()
 }
 
-func isDir(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
-}
-
 // sandbox is the environment checks and tests run in: a temporary home
 // directory, the real Go caches, and a Go command that cannot reach the
 // network or modify go.mod.
