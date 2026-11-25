@@ -12,6 +12,7 @@ import (
 	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/internal/home"
 	"github.com/code2rich/rigdepot/internal/i18n"
+	"github.com/code2rich/rigdepot/internal/keyring"
 )
 
 // Checks returns the checks of this version, in the order people read them: the local data
@@ -24,6 +25,7 @@ func Checks() []Check {
 		intentsCheck{},
 		leftoversCheck{},
 		gitCheck{},
+		keyringCheck{},
 		toolsCheck{},
 		toolRootsCheck{},
 		// The checks that need a server (logged in, server reachable, versions compatible)
@@ -194,6 +196,10 @@ type Env struct {
 	Server string
 	// DisabledTools are the tool IDs the local configuration switches off.
 	DisabledTools []string
+
+	// Keyring looks at where the device key and token are kept. Nil means the real store of
+	// Home (package keyring), which inside tests never reaches the system keychain.
+	Keyring func() keyring.Status
 
 	// Adapters are the tool adapters this program contains, and AdapterEnv is what they see of
 	// the computer.
