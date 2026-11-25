@@ -1,0 +1,17 @@
+# Text files are stored and checked out with LF on every platform, so nobody
+# has to change their Git line-ending settings before cloning.
+* text=auto eol=lf
+
+# Test fixtures are bytes, not text: they hold real-world samples with CRLF
+# line endings and byte order marks on purpose, and a conversion by Git would
+# make the tests meaningless.
+**/testdata/** -text
+
+# Scripts that only ever run on Windows.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Generated files: collapsed in diffs on GitHub.
+*_gen.go linguist-generated=true
+go.sum linguist-generated=true
+tools/tools.sum linguist-generated=true

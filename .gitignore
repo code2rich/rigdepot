@@ -1,14 +1,38 @@
-.DS_Store
-dist/
+# Build output
+/dist/
+/web/dist/
+*.exe
+*.test
+*.out
 
-# 不属于开源软件本身的内容放在本地私有仓库 ../rigdepot-private，不进这个仓库
+# Local development state: sandbox home, sample data, previews
+/.dev/
+
+# Dependencies
+node_modules/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+/deploy/secrets/*
+!/deploy/secrets/README.md
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Design documents, the prototype, the demo site and agent instructions are
+# kept in a separate private repository. These entries stop a local copy from
+# being committed here by accident.
 /docs/
 /prototype/
 /site/
 /brand/
-/deploy/
-/services/feedback/
+/services/
 /AGENTS.md
 /CLAUDE.md
 /LESSONS.md
-/CONTRIBUTING.md
