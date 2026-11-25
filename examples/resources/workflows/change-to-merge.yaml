@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+# yaml-language-server: $schema=https://rigdepot.code2rich.com/schema/repo/v1/kinds/workflow.schema.json
+meta:
+  name: 从改动到合并
+  summary: 补单元测试 → 提交前自查 → 由人确认后再提合并请求
+  stages: [develop, test]
+  audience: rd
+  policy: optional
+  when: 改完一个任务，准备提合并请求时
+  try: /rgd-change-to-merge SHOP-1287
+  i18n:
+    en:
+      name: From change to merge
+      summary: Unit tests, a self-review, and the person's go-ahead before the merge request
+      when: When a task is done and a merge request is next
+      try: /rgd-change-to-merge SHOP-1287
+
+steps:
+  - use: unit-testing                 # 一个 Skill 或 Agent 的标识
+    with: [eng-handbook]              # 这一步还会用到的资源
+    checks:
+      - { text: 新增和改动的逻辑都有单元测试, by: ai }
+      - { text: 单元测试全部通过, by: command, run: "./gradlew test -q" }
+    then: continue
+  - use: code-review
+    checks:
+      - { text: 自查结论逐条给出了依据, by: ai }
+      - { text: 自查结论已由人确认, by: human }
+    forbid: [推送代码, 提交合并请求]
+    then: confirm

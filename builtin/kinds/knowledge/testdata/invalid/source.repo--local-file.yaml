@@ -1,0 +1,2 @@
+meta: { name: x }
+source: { type: git, repo: "file:///srv/handbook" }

@@ -24,7 +24,12 @@
 //     (kind.SecretUser, such as ${secret:NAME} in an MCP server) are checked as well. Any
 //     problem fails that resource only, with every reason found, each with a file and, where
 //     there is one, a line and a field.
+//     A kind that keeps directories on the person's computer (kind.LocalKeeper, an agent's
+//     memory) has them left out of the digest.
 //  4. Codes are unique across kinds; every resource sharing one fails.
+//  5. A resource that refers to other resources by code (kind.Referrer: the steps of a
+//     workflow, what an agent binds) fails when one of them is not in the repository or failed
+//     itself. Options.Alone leaves this out, for reading a resource without its repository.
 //
 // Unknown fields are reported as notices and block nothing; a field whose name starts with "x-"
 // is the author's own and is not reported. A failed resource is unknown, not deleted: code that

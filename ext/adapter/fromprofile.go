@@ -54,7 +54,8 @@ const (
 //
 // Plan translates each artifact independently:
 //
-//   - SkillDir becomes a WriteTree of the skills directory plus the artifact's name.
+//   - SkillDir becomes a WriteTree of the skills directory plus the artifact's name, with the
+//     same files and local directories.
 //   - Command and SubAgent become a WriteFile in the commands or agents directory, named after
 //     the artifact plus the profile's extension, holding a Markdown file whose YAML front matter
 //     carries the description (and, for a sub-agent, its name).
@@ -195,7 +196,7 @@ func (a *profileAdapter) Plan(ctx context.Context, req PlanRequest) (Plan, error
 			for i, f := range x.Files {
 				files[i] = File{Path: f.Path, Data: bytes.Clone(f.Data), Exec: f.Exec}
 			}
-			plan.Ops = append(plan.Ops, WriteTree{Resource: x.Resource, Dir: dir, Files: files})
+			plan.Ops = append(plan.Ops, WriteTree{Resource: x.Resource, Dir: dir, Files: files, Local: slices.Clone(x.Local)})
 
 		case Command:
 			if !caps.Commands {

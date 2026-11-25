@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rigdepot.code2rich.com/schema/repo/v1/kinds/knowledge.schema.json",
+  "title": "Knowledge base",
+  "description": "knowledge/<code>.yaml: a pointer to a knowledge base, never its content. The command line fetches the content onto each person's computer with that person's own access; it never passes through the server.",
+  "type": "object",
+  "required": ["meta", "source"],
+  "properties": {
+    "meta": { "$ref": "../meta.schema.json" },
+    "source": {
+      "description": "Where the knowledge base is.",
+      "type": "object",
+      "required": ["type", "repo"],
+      "properties": {
+        "type": {
+          "description": "git: a directory of a Git repository.",
+          "enum": ["git"]
+        },
+        "repo": {
+          "description": "The repository's address: https://…, ssh://… or user@host:path. No password in it: each person reads the repository with their own access.",
+          "type": "string",
+          "pattern": "^(https://|ssh://|[A-Za-z0-9._-]+@[A-Za-z0-9.-]+:)"
+        },
+        "branch": {
+          "description": "A branch, tag or commit; the repository's default branch when left out.",
+          "type": "string",
+          "minLength": 1
+        },
+        "dir": {
+          "description": "The directory inside the repository, with forward slashes; all of it when left out.",
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "description": "What kind of knowledge it is, for people and the AI, such as \"engineering rules\".",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -32,6 +32,11 @@ type WriteTree struct {
 	Dir string
 	// Files is the complete content of the directory.
 	Files []File
+	// Local lists directories inside Dir, relative to it with forward slashes, whose content
+	// belongs to the person's computer (SkillDir.Local). Replacing the directory keeps what is
+	// in them, and they do not count towards its digest; undoing the operation keeps a copy of
+	// what is in them before the directory goes.
+	Local []string
 }
 
 // WriteFile creates a file of ours or replaces it. Undoing it removes the file.
