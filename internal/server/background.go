@@ -50,7 +50,8 @@ func newBackground(app *App) *Background {
 // readiness item "mail"; the settings page's test mail goes through notify too. The module host
 // keeps its switches and the modules' settings in the settings package, writes the modules'
 // audit entries into the audit log and asks access for their permissions (modules.go); apiMounts
-// mounts its routes under /api/v1/x/.
+// mounts its routes under /api/v1/x/. The daily check of the audit chain is a job too
+// (auditcheck.go).
 func startBackground(ctx context.Context, app *App) (func(), error) {
 	b := app.bg
 	cat, err := i18n.Load(locales.FS, "server")
@@ -83,6 +84,9 @@ func startBackground(ctx context.Context, app *App) (func(), error) {
 		Modules:  app.modules,
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := app.addAuditCheck(); err != nil {
 		return nil, err
 	}
 	b.Jobs.Start()
