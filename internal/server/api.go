@@ -7,12 +7,14 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/logging"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/httpapi"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/accessapi"
 	"github.com/code2rich/rigdepot/internal/server/settings"
+	"github.com/code2rich/rigdepot/locales"
 )
 
 // api is the whole contract, httpapi.StrictServerInterface, assembled from
@@ -38,6 +40,7 @@ type api struct {
 	*settingsAPI
 	*setupAPI
 	*auditAPI
+	*catalogAPI
 }
 
 // fallback puts notImplemented's methods one embedding level below the
@@ -66,6 +69,12 @@ type hooks struct {
 	// sendTestMail sends a test message with the given mail server
 	// (notify, M1-18). Nil: sendTestMail answers 501.
 	sendTestMail func(ctx context.Context, server settings.MailConfig, to string) error
+	// delivery tells the catalog pages what people turned on or off and where resources are
+	// installed (delivery, M1-27). Nil: everything is on by its policy and installed nowhere.
+	delivery catalogDelivery
+	// secretsConfigured returns, by secret name, which secrets a person has set (secrets,
+	// M1-28). Nil: none.
+	secretsConfigured func(ctx context.Context, userID string) (map[string]bool, error)
 }
 
 // apiMounts builds the handlers that serve mounts: the API under /api/ and
@@ -77,16 +86,26 @@ type hooks struct {
 // logging.Request. Signing in (authn, M1-20) goes around it as middleware
 // that puts the caller into the context with access.WithActor.
 func apiMounts(app *App) Mounts {
+	texts, err := i18n.Load(locales.FS, "check")
+	if err != nil {
+		panic(err) // the catalogues are embedded and checked by tools/dev check
+	}
 	impl := api{
-		Handlers:    accessapi.New(app.access, accessapi.Options{BaseURL: app.cfg.BaseURL}),
+		Handlers:    accessapi.New(app.access, accessapi.Options{BaseURL: app.cfg.BaseURL, ResourceCounts: app.catalog.ResourceCounts}),
 		settingsAPI: &settingsAPI{settings: app.settings, hooks: &app.hooks},
 		setupAPI:    &setupAPI{settings: app.settings, hooks: &app.hooks},
 		auditAPI:    &auditAPI{log: app.audit, hooks: &app.hooks},
+		catalogAPI:  &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
 	}
+	uploadLimit := int64(app.cfg.MaxBundleMB) << 20
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", notFound) // paths the contract does not have
 	h := httpapi.NewHandler(impl, mux)
 	return Mounts{API: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !limitUpload(w, r, uploadLimit) {
+			return
+		}
+		r = withAcceptLanguage(r)
 		h.ServeHTTP(w, r)
 		// The mux has set the pattern it matched (GET /api/v1/settings) on
 		// r; log that instead of the real path.

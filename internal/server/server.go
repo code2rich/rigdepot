@@ -239,6 +239,7 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 	}
 	defer stopBackground()
 	app.bg = bg
+	app.events.bus.Store(bg.Events)
 	mounts := apiMounts
 	if e.mounts != nil {
 		mounts = e.mounts

@@ -62,24 +62,36 @@ func (a accessAuditor) Append(ctx context.Context, tx *dbx.Tx, e access.AuditEnt
 // of settings and the audit page map onto access's: everything about
 // settings, the wizard and modules is settings.manage on the platform;
 // reading the whole audit log is audit.read on the platform.
-func accessAuthorizer(svc *access.Service) func(ctx context.Context, a audit.Actor, action string, object audit.Object) (bool, error) {
+//
+// The log of one resource (object kind "resource", id its code, as package catalog records
+// it) is for those who manage the resource: its maintainers, the owners of its product and
+// platform administrators (access.ActionResourceDraftRead on it). resourceTarget describes
+// the resource; it is package catalog's.
+func accessAuthorizer(svc *access.Service, resourceTarget func(ctx context.Context, code string) (access.Target, bool, error)) func(ctx context.Context, a audit.Actor, action string, object audit.Object) (bool, error) {
 	return func(ctx context.Context, a audit.Actor, action string, object audit.Object) (bool, error) {
 		var act access.Action
+		target := access.TargetPlatform()
 		switch action {
 		case settings.ActionSettingsRead, settings.ActionSettingsUpdate, settings.ActionSetupComplete,
 			settings.ActionModuleEnable, settings.ActionModuleDisable:
 			act = access.ActionSettingsManage
 		case actionAuditRead:
-			if object != (audit.Object{}) {
-				// The log of one resource for its maintainers needs the
-				// resource's maintainers from catalog. TODO(M1-24).
+			switch {
+			case object == (audit.Object{}):
+				act = access.ActionAuditRead
+			case object.Kind == "resource" && resourceTarget != nil:
+				t, found, err := resourceTarget(ctx, object.ID)
+				if err != nil || !found {
+					return false, err
+				}
+				act, target = access.ActionResourceDraftRead, t
+			default:
 				return false, nil
 			}
-			act = access.ActionAuditRead
 		default:
 			return false, fmt.Errorf("no permission rule maps action %q", action)
 		}
-		d := svc.Can(ctx, accessActor(a), act, access.TargetPlatform())
+		d := svc.Can(ctx, accessActor(a), act, target)
 		return d.Allowed, d.Err
 	}
 }

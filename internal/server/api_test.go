@@ -64,6 +64,12 @@ type apiFixture struct {
 // stand-in for creating the first administrator.
 func newAPI(t *testing.T, withHooks bool) *apiFixture {
 	t.Helper()
+	return newAPIWith(t, withHooks, nil)
+}
+
+// newAPIWith is newAPI with setup run on the app before its services are opened.
+func newAPIWith(t *testing.T, withHooks bool, setup func(*App)) *apiFixture {
+	t.Helper()
 	dir := t.TempDir()
 	cfg, err := config.Load(config.Options{LookupEnv: func(k string) (string, bool) {
 		switch k {
@@ -94,6 +100,9 @@ func newAPI(t *testing.T, withHooks bool) *apiFixture {
 	app := NewApp(cfg, logging.Discard(), db, Mounts{})
 	if withHooks {
 		app.hooks.firstAdmin = fakeFirstAdmin{}
+	}
+	if setup != nil {
+		setup(app)
 	}
 	if err := app.openServices(ctx); err != nil {
 		t.Fatal(err)

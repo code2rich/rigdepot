@@ -17,8 +17,10 @@ import (
 
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
+	"github.com/code2rich/rigdepot/internal/server/catalog"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
+	"github.com/code2rich/rigdepot/internal/server/events"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/migrations"
 	"github.com/code2rich/rigdepot/internal/server/settings"
@@ -50,7 +52,14 @@ type App struct {
 	audit    *audit.Log
 	access   *access.Service
 	settings *settings.Service
+	catalog  *catalog.Service
 	hooks    hooks
+	// catalogOptions are the kinds and the rule set the catalog uses; the zero value is the
+	// program's registries (builtin/all). Tests, which cannot import builtin, set their own.
+	catalogOptions catalog.Options
+	// events forwards the domain services' events to the bus once the background parts run
+	// (serve); until then, and outside serve, events are dropped.
+	events lateEvents
 
 	checks   []ReadyCheck
 	draining atomic.Bool
@@ -83,6 +92,17 @@ func NewApp(cfg *config.Config, log *slog.Logger, db *dbx.DB, mounts Mounts) *Ap
 	}})
 	// "master_key" joins in openServices, which loads it.
 	return a
+}
+
+// lateEvents is events.Bus for services built before the bus: openServices runs before
+// startBackground.
+type lateEvents struct{ bus atomic.Pointer[events.Bus] }
+
+// Publish implements catalog.Events.
+func (l *lateEvents) Publish(tx events.Tx, p events.Payload) {
+	if b := l.bus.Load(); b != nil {
+		b.Publish(tx, p)
+	}
 }
 
 // Background returns the events, jobs, outbox and modules of a serving app, for apiMounts to

@@ -9,8 +9,10 @@ import (
 	"fmt"
 
 	"github.com/code2rich/rigdepot/internal/brand"
+	"github.com/code2rich/rigdepot/internal/buildinfo"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
+	"github.com/code2rich/rigdepot/internal/server/catalog"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
@@ -46,12 +48,19 @@ func (a *App) openServices(ctx context.Context) error {
 	// Events stay nil until package events (M1-14) provides the Publisher.
 	a.access = access.New(a.db, access.Options{Auditor: accessAuditor{log}})
 	if a.hooks.authorize == nil {
-		a.hooks.authorize = accessAuthorizer(a.access)
+		a.hooks.authorize = accessAuthorizer(a.access, func(ctx context.Context, code string) (access.Target, bool, error) {
+			return a.catalog.Target(ctx, code)
+		})
 	}
 	if a.hooks.names == nil {
 		a.hooks.names = accessNames{a.access}
 	}
 	a.settings = settings.New(a.db, keys, log, settings.Options{Authorize: a.hooks.settingsAuthorizer(), SetupToken: a.cfg.SetupToken})
+	co := a.catalogOptions
+	co.Auditor, co.Events, co.Version = log, &a.events, buildinfo.Version
+	if a.catalog, err = catalog.New(a.db, a.access, co); err != nil {
+		return err
+	}
 
 	// The master key is loaded and is the one the database was sealed with.
 	a.AddReadyCheck(ReadyCheck{Name: "master_key", Critical: true, Check: func(ctx context.Context) error {
