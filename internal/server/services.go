@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/code2rich/rigdepot/internal/brand"
+	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
@@ -17,8 +18,8 @@ import (
 )
 
 // openServices builds the domain services on the open, migrated database:
-// the master key, the audit log and the settings, then gets the setup
-// wizard ready. Other domains add theirs here, and set what they provide in
+// the master key, the audit log, access and the settings, then gets the
+// setup wizard ready. Other domains add theirs here, and set what they provide in
 // a.hooks.
 func (a *App) openServices(ctx context.Context) error {
 	keys, err := loadKeys(ctx, a.cfg, a.db, true)
@@ -42,6 +43,14 @@ func (a *App) openServices(ctx context.Context) error {
 		return err
 	}
 	a.keys, a.audit = keys, log
+	// Events stay nil until package events (M1-14) provides the Publisher.
+	a.access = access.New(a.db, access.Options{Auditor: accessAuditor{log}})
+	if a.hooks.authorize == nil {
+		a.hooks.authorize = accessAuthorizer(a.access)
+	}
+	if a.hooks.names == nil {
+		a.hooks.names = accessNames{a.access}
+	}
 	a.settings = settings.New(a.db, keys, log, settings.Options{Authorize: a.hooks.settingsAuthorizer(), SetupToken: a.cfg.SetupToken})
 
 	// The master key is loaded and is the one the database was sealed with.

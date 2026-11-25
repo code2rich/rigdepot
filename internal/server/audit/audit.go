@@ -60,8 +60,9 @@ var System = Actor{Origin: OriginSystem}
 // Object is what an operation was about. Label is its name at the time, so
 // that the entry stays readable after the object is renamed or removed.
 type Object struct {
-	Kind  string // such as "resource", "user", "settings"
-	ID    string
+	Kind string // such as "resource", "user", "settings"
+	ID   string // "" for something refused before it existed
+
 	Label string
 }
 
@@ -148,8 +149,9 @@ func (e *Entry) normalize() error {
 		return fmt.Errorf("%w: origin %q", ErrInvalid, e.Actor.Origin)
 	case e.Result != ResultOK && e.Result != ResultDenied && e.Result != ResultPending:
 		return fmt.Errorf("%w: result %q", ErrInvalid, e.Result)
-	case e.Object.Kind == "" || e.Object.ID == "":
-		return fmt.Errorf("%w: %s has no object", ErrInvalid, e.Action)
+	case e.Object.Kind == "":
+		// The id may be empty: a refused creation has no object yet.
+		return fmt.Errorf("%w: %s has no object kind", ErrInvalid, e.Action)
 	}
 	return nil
 }

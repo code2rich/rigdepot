@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
@@ -45,6 +46,7 @@ type App struct {
 	// to the API (hooks).
 	keys     *masterkey.Keyring
 	audit    *audit.Log
+	access   *access.Service
 	settings *settings.Service
 	hooks    hooks
 

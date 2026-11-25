@@ -8,8 +8,10 @@ import (
 	"net/http"
 
 	"github.com/code2rich/rigdepot/internal/logging"
+	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/httpapi"
+	"github.com/code2rich/rigdepot/internal/server/httpapi/accessapi"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
 
@@ -32,6 +34,7 @@ import (
 // rules live in the domain packages.
 type api struct {
 	fallback
+	*accessapi.Handlers
 	*settingsAPI
 	*setupAPI
 	*auditAPI
@@ -48,15 +51,17 @@ var _ httpapi.StrictServerInterface = api{}
 // answer 501 meanwhile. The assembly sets them in openServices.
 type hooks struct {
 	// authorize decides whether actor may do action on object (the zero
-	// Object for actions on the platform as a whole). The access package
-	// (M1-12) provides it; nil refuses every protected operation.
+	// Object for actions on the platform as a whole). openServices sets it
+	// to ask the access package (accessAuthorizer); nil refuses every
+	// protected operation.
 	authorize func(ctx context.Context, actor audit.Actor, action string, object audit.Object) (bool, error)
 	// firstAdmin creates the setup wizard's first administrator and signs
 	// them in (access and authn, M1-12 and M1-20). Nil: createSetupAdmin
 	// answers 501.
 	firstAdmin firstAdminCreator
 	// names turns user and device ids into names for the audit log's
-	// entries (access and authn). Nil: the ids stand in for the names.
+	// entries. openServices sets it to read users from access; device
+	// names come with authn (M1-20). Nil: the ids stand in for the names.
 	names auditNames
 	// sendTestMail sends a test message with the given mail server
 	// (notify, M1-18). Nil: sendTestMail answers 501.
@@ -70,9 +75,10 @@ type hooks struct {
 // The API handler receives the full path (/api/v1/…), with the base URL's
 // path already removed, and a request context that carries a
 // logging.Request. Signing in (authn, M1-20) goes around it as middleware
-// that puts the caller into the context with withCaller.
+// that puts the caller into the context with access.WithActor.
 func apiMounts(app *App) Mounts {
 	impl := api{
+		Handlers:    accessapi.New(app.access, accessapi.Options{BaseURL: app.cfg.BaseURL}),
 		settingsAPI: &settingsAPI{settings: app.settings, hooks: &app.hooks},
 		setupAPI:    &setupAPI{settings: app.settings, hooks: &app.hooks},
 		auditAPI:    &auditAPI{log: app.audit, hooks: &app.hooks},
@@ -90,19 +96,17 @@ func apiMounts(app *App) Mounts {
 	})}
 }
 
-type callerKey struct{}
-
-// withCaller returns ctx carrying who sends the request. The sign-in
-// middleware (authn, M1-20) calls it once it has checked the session or
-// token; it fills in the origin (web or cli), the device and X-Via-Tool.
-func withCaller(ctx context.Context, a audit.Actor) context.Context {
-	return context.WithValue(ctx, callerKey{}, a)
-}
-
-// callerFrom returns who sends the request; false when nobody is signed in.
+// callerFrom returns who sends the request, as the audit log records it;
+// false when nobody is signed in. The sign-in middleware (authn, M1-20)
+// puts the caller into the context with access.WithActor once it has
+// checked the session or token, with the origin (web or cli), the device and
+// X-Via-Tool. The server itself (access.System) never calls the API.
 func callerFrom(ctx context.Context) (audit.Actor, bool) {
-	a, ok := ctx.Value(callerKey{}).(audit.Actor)
-	return a, ok && a.UserID != ""
+	a, ok := access.ActorFrom(ctx)
+	if !ok || a.UserID == "" {
+		return audit.Actor{}, false
+	}
+	return auditActor(a), true
 }
 
 // errSignInRequired is the answer to an operation that needs a caller when

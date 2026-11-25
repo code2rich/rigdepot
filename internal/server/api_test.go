@@ -18,6 +18,7 @@ import (
 
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/logging"
+	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
@@ -34,16 +35,12 @@ const (
 	testUser   = "X-Test-User" // the header the test's stand-in for sign-in reads
 )
 
-// fakeAccess stands in for access and authn: the platform administrator may
-// do everything, others nothing; it creates the first administrator as a
-// users row and "signs in" with a placeholder cookie.
-type fakeAccess struct{}
+// fakeFirstAdmin stands in for authn (M1-20), which owns passwords and
+// sessions: it makes the users row a platform administrator and "signs in"
+// with a placeholder cookie.
+type fakeFirstAdmin struct{}
 
-func (fakeAccess) authorize(_ context.Context, a audit.Actor, _ string, _ audit.Object) (bool, error) {
-	return a.UserID == testAdmin, nil
-}
-
-func (fakeAccess) CreateFirstAdmin(ctx context.Context, tx *dbx.Tx, req httpapi.SetupAdminRequest) (settings.NewAdmin, error) {
+func (fakeFirstAdmin) CreateFirstAdmin(ctx context.Context, tx *dbx.Tx, req httpapi.SetupAdminRequest) (settings.NewAdmin, error) {
 	if len(req.Password) < 12 {
 		return settings.NewAdmin{}, httpapi.NewProblem(http.StatusBadRequest, httpapi.CodeRequestInvalid, "password too short")
 	}
@@ -52,18 +49,9 @@ func (fakeAccess) CreateFirstAdmin(ctx context.Context, tx *dbx.Tx, req httpapi.
 	return settings.NewAdmin{UserID: testAdmin, Username: req.Username}, err
 }
 
-func (fakeAccess) SignIn(_ context.Context, userID string) (string, httpapi.Me, error) {
+func (fakeFirstAdmin) SignIn(_ context.Context, userID string) (string, httpapi.Me, error) {
 	return "session=<placeholder>; Path=/; HttpOnly", httpapi.Me{Id: userID, Username: "admin", Status: "active", PlatformAdmin: true}, nil
 }
-
-func (fakeAccess) User(_ context.Context, id string) (string, string, bool) {
-	if id == testAdmin {
-		return "admin", "Local administrator", true
-	}
-	return "", "", false
-}
-
-func (fakeAccess) Device(context.Context, string) (string, bool) { return "", false }
 
 type apiFixture struct {
 	app *App
@@ -71,8 +59,9 @@ type apiFixture struct {
 }
 
 // newAPI assembles the server around a fresh database like serve does, with
-// the stand-ins in the hooks and a sign-in stand-in that takes the caller
-// from a header.
+// the real access package, an administrator and a member, and a sign-in
+// stand-in that takes the caller from a header. withHooks adds the
+// stand-in for creating the first administrator.
 func newAPI(t *testing.T, withHooks bool) *apiFixture {
 	t.Helper()
 	dir := t.TempDir()
@@ -93,12 +82,18 @@ func newAPI(t *testing.T, withHooks bool) *apiFixture {
 	if _, err := migrations.Apply(ctx, db); err != nil {
 		t.Fatal(err)
 	}
+	for _, u := range []struct {
+		id, name string
+		admin    bool
+	}{{testAdmin, "admin", true}, {testMember, "jdoe", false}} {
+		if _, err := db.ExecContext(ctx, `INSERT INTO users (id, username, display_name, status, is_admin, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, 1, 1)`,
+			u.id, u.name, "Name of "+u.name, u.admin); err != nil {
+			t.Fatal(err)
+		}
+	}
 	app := NewApp(cfg, logging.Discard(), db, Mounts{})
 	if withHooks {
-		f := fakeAccess{}
-		app.hooks.authorize = f.authorize
-		app.hooks.firstAdmin = f
-		app.hooks.names = f
+		app.hooks.firstAdmin = fakeFirstAdmin{}
 	}
 	if err := app.openServices(ctx); err != nil {
 		t.Fatal(err)
@@ -107,15 +102,10 @@ func newAPI(t *testing.T, withHooks bool) *apiFixture {
 	api := app.mounts.API
 	app.mounts.API = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if u := r.Header.Get(testUser); u != "" {
-			r = r.WithContext(withCaller(r.Context(), audit.Actor{UserID: u, Origin: audit.OriginWeb}))
+			r = r.WithContext(access.WithActor(r.Context(), access.Actor{UserID: u, Origin: access.OriginWeb}))
 		}
 		api.ServeHTTP(w, r)
 	})
-	for id, name := range map[string]string{testAdmin: "admin", testMember: "jdoe"} {
-		if _, err := db.ExecContext(ctx, `INSERT INTO users (id, username, status, created_at, updated_at) VALUES (?, ?, 'active', 1, 1)`, id, name); err != nil {
-			t.Fatal(err)
-		}
-	}
 	return &apiFixture{app: app, h: app.Handler()}
 }
 
@@ -216,7 +206,7 @@ func TestSettingsChangeOnlyInTheBrowser(t *testing.T) {
 	f := newAPI(t, true)
 	cli := f.app.mounts.API
 	f.app.mounts.API = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cli.ServeHTTP(w, r.WithContext(withCaller(r.Context(), audit.Actor{UserID: testAdmin, Origin: audit.OriginCLI, ViaTool: "claude-code"})))
+		cli.ServeHTTP(w, r.WithContext(access.WithActor(r.Context(), access.Actor{UserID: testAdmin, Origin: access.OriginCLI, ViaTool: "claude-code"})))
 	})
 	f.h = f.app.Handler()
 	rec, p := f.do(t, http.MethodPatch, "/api/v1/settings", "", `{"organization":{"name":"x"}}`, map[string]string{"If-Match": `"x"`})
@@ -280,10 +270,6 @@ func TestSetupWithoutAccountsYetIs501(t *testing.T) {
 	rec, p := f.do(t, http.MethodPost, "/api/v1/setup/admin", "", `{"username":"admin","password":"<placeholder: at least 12>"}`, map[string]string{"X-Setup-Token": token})
 	if rec.Code != http.StatusNotImplemented || p.Code != httpapi.CodeNotImplemented {
 		t.Errorf("%d %+v", rec.Code, p)
-	}
-	// And with no permission checks, nobody may read the settings.
-	if rec, p := f.do(t, http.MethodGet, "/api/v1/settings", testAdmin, "", nil); rec.Code != http.StatusForbidden {
-		t.Errorf("settings without access: %d %+v", rec.Code, p)
 	}
 }
 
@@ -534,5 +520,46 @@ func TestSendTestMail(t *testing.T) {
 	}
 	if sentWith.Password != pw || sentWith.Host != "smtp.example.com" {
 		t.Errorf("the channel got %+v", sentWith.Mail)
+	}
+}
+
+// TestAccessIsMountedAndAudited: access's operations answer through the
+// composed API, and its writes go into the audit chain in their own
+// transaction, with access's action names.
+func TestAccessIsMountedAndAudited(t *testing.T) {
+	f := newAPI(t, false)
+	rec, _ := f.do(t, http.MethodGet, "/api/v1/me", testMember, "", nil)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"username":"jdoe"`) {
+		t.Fatalf("GET /api/v1/me: %d %s", rec.Code, rec.Body)
+	}
+	if rec, _ := f.do(t, http.MethodGet, "/api/v1/me", "", "", nil); rec.Code != http.StatusUnauthorized {
+		t.Errorf("signed out: %d", rec.Code)
+	}
+
+	ctx := context.Background()
+	admin := access.Actor{UserID: testAdmin, Origin: access.OriginCLI, ViaTool: "claude-code", DeviceID: "0193a4b2-6c1e-7a00-8000-000000000201"}
+	if _, err := f.app.access.CreateProduct(ctx, admin, access.NewProduct{Code: "shop", Name: "Shop", Owners: []string{testMember}}); err != nil {
+		t.Fatal(err)
+	}
+	member := access.Actor{UserID: testMember, Origin: access.OriginWeb}
+	if _, err := f.app.access.CreateProduct(ctx, member, access.NewProduct{Code: "mine", Name: "Mine", Owners: []string{testMember}}); err == nil {
+		t.Fatal("a member created a product")
+	}
+	page, err := f.app.audit.Query(ctx, audit.Filter{Action: string(access.ActionProductCreate)}, 0, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Rows) != 2 {
+		t.Fatalf("product.create entries: %+v", page.Rows)
+	}
+	denied, ok := page.Rows[0], page.Rows[1]
+	if ok.Result != audit.ResultOK || ok.Category != audit.CategoryPlatform || ok.Actor != auditActor(admin) || ok.Object.Kind != "product" {
+		t.Errorf("allowed entry %+v", ok)
+	}
+	if denied.Result != audit.ResultDenied || denied.Actor.UserID != testMember || denied.Reason == "" {
+		t.Errorf("denied entry %+v", denied)
+	}
+	if rep, err := f.app.audit.Verify(ctx, 1, ""); err != nil || rep.Broken != nil || rep.Checked < 2 {
+		t.Errorf("chain: %+v %v", rep, err)
 	}
 }
