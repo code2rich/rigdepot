@@ -131,22 +131,6 @@ func (s *Service) handles(ctx context.Context, q dbx.Querier, a access.Actor, t 
 	return d.Allowed, d.Err
 }
 
-// target is what a decision about fb looks at: its resource, or the platform for feedback
-// about no resource (or one that no longer exists), which platform administrators handle.
-func (s *Service) target(ctx context.Context, resourceID string) (access.Target, error) {
-	if resourceID == "" {
-		return access.TargetPlatform(), nil
-	}
-	bs, err := s.res.Briefs(ctx, []string{resourceID})
-	if err != nil {
-		return access.Target{}, err
-	}
-	if b, ok := bs[resourceID]; ok {
-		return b.Target, nil
-	}
-	return access.TargetPlatform(), nil
-}
-
 // sees reports whether a may see fb: its submitter, its assignee, and whoever handles it.
 func (s *Service) sees(ctx context.Context, q dbx.Querier, a access.Actor, fb Feedback, t access.Target) (bool, error) {
 	if a.IsSystem() {
