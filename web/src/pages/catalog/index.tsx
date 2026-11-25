@@ -267,7 +267,7 @@ export default function Catalog() {
             </div>
           ) : (
             <div class="card">
-              <div class="tbl-wrap">
+              <div class="tbl-wrap" tabIndex={0}>
                 <table>
                   <thead>
                     <tr>
@@ -402,13 +402,7 @@ function Card(props: {
   const { r } = props
   const [icon, line, tail] = meta(r)
   return (
-    <div
-      class={r.enabled ? 'rc' : 'rc off'}
-      data-k={r.kind}
-      role="button"
-      aria-label={t('catalog.open.card', { name: r.name, kind: kindName(r.kind) })}
-      {...clickable(() => props.onOpen(r.code))}
-    >
+    <div class={r.enabled ? 'rc' : 'rc off'} data-k={r.kind} onClick={() => props.onOpen(r.code)}>
       <div class="rc-in">
         <div class="rc-top">
           <KindTag kind={r.kind} version={r.version} />
@@ -416,7 +410,15 @@ function Card(props: {
         </div>
         <div>
           <div class="rc-n">
-            {r.name}
+            {/* The card opens on a click anywhere; from the keyboard, through its name. Clicking the
+                button reaches the card's handler too, so it has none of its own. */}
+            <button
+              type="button"
+              class="rc-open"
+              aria-label={t('catalog.open.card', { name: r.name, kind: kindName(r.kind) })}
+            >
+              {r.name}
+            </button>
             <span class="mono">{codeLabel(r)}</span>
           </div>
         </div>

@@ -156,7 +156,7 @@ function Secrets() {
         <Empty title={t('keys.secrets.empty')} why={t('keys.secrets.empty.why')} />
       )}
       {items.length > 0 && (
-        <div class="tbl-wrap">
+        <div class="tbl-wrap" tabIndex={0}>
           <table>
             <thead>
               <tr>
@@ -387,7 +387,7 @@ function Devices() {
         </Empty>
       )}
       {items.length > 0 && (
-        <div class="tbl-wrap">
+        <div class="tbl-wrap" tabIndex={0}>
           <table>
             <thead>
               <tr>
@@ -509,7 +509,7 @@ function Tokens() {
         <Empty title={t('keys.tokens.empty')} why={t('keys.tokens.empty.why')} />
       )}
       {items.length > 0 && (
-        <div class="tbl-wrap">
+        <div class="tbl-wrap" tabIndex={0}>
           <table>
             <thead>
               <tr>

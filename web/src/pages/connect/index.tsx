@@ -224,9 +224,11 @@ function Commands() {
     <section class="card" style={{ marginTop: '16px' }}>
       <div class="card-h">
         <h3>{t('connect.cmd.title')}</h3>
-        <span class="tag">{`${CLI} --help`}</span>
+        <span class="tag" translate={false}>
+          {`${CLI} --help`}
+        </span>
       </div>
-      <div class="tbl-wrap">
+      <div class="tbl-wrap" tabIndex={0}>
         <table>
           <tbody>
             {rows.map(([c, d]) => (

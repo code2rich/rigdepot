@@ -217,7 +217,7 @@ export default function Users() {
           {data.users.length === 0 ? (
             <Empty title={t('users.empty.title')} why={t('users.empty.why')} />
           ) : (
-            <div class="tbl-wrap">
+            <div class="tbl-wrap" tabIndex={0}>
               <table>
                 <thead>
                   <tr>

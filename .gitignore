@@ -1,6 +1,8 @@
 # Build output
 /dist/
 /web/dist/
+# Browser test output when Playwright runs without tools/dev (which writes to .dev/e2e-web)
+/web/e2e/.out/
 *.exe
 *.test
 *.out

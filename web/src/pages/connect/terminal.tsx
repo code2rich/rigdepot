@@ -33,7 +33,7 @@ function Line(props: { children: ComponentChildren; cls?: string }) {
 
 function Prompt(props: { cmd: string }) {
   return (
-    <div class="pl-cmd">
+    <div class="pl-cmd" translate={false}>
       <span>$</span>
       {props.cmd}
     </div>

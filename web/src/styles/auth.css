@@ -16,6 +16,8 @@
 .trail { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; margin-top: 26px; max-width: 620px }
 .trail div { padding: 8px 0 0; border-top: 2px solid var(--line-3); font-size: 12px; color: var(--ink-2) } .trail small { display: block; font-family: var(--mono); color: var(--ink-3); font-size: 9.5px }
 .trail div:nth-child(4) { border-top-color: var(--accent) }
+/* 和工作台的环节条一样：中文以外的环节名长，排成两行四个 */
+.trail:not(:lang(zh)) { grid-template-columns: repeat(4, minmax(0, 1fr)) }
 .auth-foot { display: flex; gap: 36px }
 .auth-foot b { display: block; font-family: var(--display); font-weight: 800; font-size: 40px; line-height: .9; color: var(--ink); font-variant-numeric: tabular-nums; margin-bottom: 6px }
 .auth-r { display: grid; place-items: center; padding: 32px 20px; background: var(--bg) }
@@ -27,7 +29,7 @@
 .center-card { width: min(720px, 100%); padding: 0; display: flex; flex-direction: column }
 .cc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--line) }
 .cc-body { padding: 22px; display: flex; flex-direction: column; gap: 18px }
-.cc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 22px; border-top: 1px solid var(--line); background: var(--panel-2); border-radius: 0 0 var(--r-3) var(--r-3) }
+.cc-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 22px; border-top: 1px solid var(--line); background: var(--panel-2); border-radius: 0 0 var(--r-3) var(--r-3) }
 .center-card h1 { font-size: 20px; font-weight: 600; letter-spacing: -.01em }
 .wizard { display: grid; grid-template-columns: 210px minmax(0, 1fr) }
 .wizard > ol { padding: 18px 16px; border-right: 1px solid var(--line); background: var(--panel-2) }

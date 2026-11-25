@@ -15,6 +15,7 @@ All from the repository root.
 | Build the server with the console in it                       | `go build -tags webdist ./cmd/...`                                                  |
 | Format, lint, type check, unit tests, test build              | part of `go run ./tools/dev check` (the "web console" step; "not run" without Node) |
 | Regenerate the generated files                                | `go run ./tools/dev gen`                                                            |
+| Browser tests (Chromium and WebKit; not part of `check`)      | `go run ./tools/dev web-deps --browsers` once, then `go run ./tools/dev e2e-web`    |
 
 Inside `web/` the usual `pnpm exec prettier --check .`, `pnpm exec eslint .`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` and `pnpm build` work too.
 
@@ -66,6 +67,17 @@ Every page has an id and a path in `src/pages/registry.ts`. A page that is plann
 4. **Text**: every string comes from `locales/en/web.json` and `locales/zh-CN/web.json`, added to both in the same change, keys prefixed with the page id (`catalog.filter.search`). Write keys out in full in `t('…')`: `check` reads them to find unused keys, and the type check rejects keys that do not exist. Then `go run ./tools/dev gen`.
 5. **Data**: call the API through `api` from `src/api/client.ts`; the types come from the contract, so a contract change the page does not follow fails `tsc`. Show loading, failure and empty states: every list passes its own `Empty` with why it is empty and what to do next. A 403 is the page's to explain — hiding a button is not a permission.
 6. **Check**: `go run ./tools/dev check`, then look at the page in both themes, at 390 px wide and in both languages.
+
+## Browser tests
+
+`web/e2e/` holds Playwright tests that run in Chromium and WebKit. `go run ./tools/dev e2e-web` runs them twice, in a temporary home:
+
+- **mock**: every page against the development stand-in (started on a free port with `VITE_API_MOCK=1`), for the three roles and the pages before signing in, in light and dark, at 390 and 1440 px, in Chinese, English and the pseudo-language (`?lang=en-XA`, see `locales/README.md`). Each page must open without errors in the browser's console, not scroll sideways, show no message key in place of its text, leave no plain English under the pseudo-language and cut no message off; the keyboard must reach the page, and drawers and dialogs must take the focus, keep it and give it back on Escape. axe-core checks WCAG 2.1 A and AA on every page in both themes.
+- **real**: the console built into a real server (`go build -tags webdist`) on a loopback port, with an empty SQLite database: the first-run wizard, signing in, inviting someone who then creates their account, a product with that person in it, uploading a skill and publishing it, finding it in the catalog, then the pages at 390 px in the dark theme in Chinese and the pseudo-language. A 501 (an operation the server does not implement yet) is listed in the report, not counted as an error.
+
+`e2e-web mock` or `e2e-web real` runs one of them; `--shots` saves a screenshot of every page visited; `--out DIR` puts the reports, screenshots and the traces of failures somewhere other than `.dev/e2e-web`; arguments after `--` go to `playwright test` (`-- --project chromium -g "member"`). The browsers come from `go run ./tools/dev web-deps --browsers`, which downloads them once into Playwright's cache for this user.
+
+In CI, on a Linux runner with Node and pnpm: `go run ./tools/dev web-deps`, then `pnpm --dir web exec playwright install --with-deps chromium webkit` (the system libraries WebKit needs), then `go run ./tools/dev e2e-web --out e2e-web` and keep `e2e-web/` as the job's artifacts.
 
 ## Rules the content security policy enforces
 

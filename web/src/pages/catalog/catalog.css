@@ -13,11 +13,12 @@
 .rc-top { display: flex; align-items: center; gap: 10px }
 .rc-top .ktag { flex: 1; min-width: 0 } .rc-top .ktag .v { color: var(--ink-3) }
 .rc-n { font-size: 15px; font-weight: 600; line-height: 1.35; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap }
+.rc-open { padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer }
 .rc-n .mono { font-size: 10.5px; font-weight: 400; color: var(--ink-3) }
 .rc-d { font-size: 12.5px; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 39px; line-height: 1.55 }
 .rc-b { display: flex; flex-wrap: wrap; gap: 4px }
 .rc-m { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-3); min-width: 0 }
-.rc-m > svg { width: 13px; height: 13px; flex: none } .rc-m .grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.rc-m > svg { width: 13px; height: 13px; flex: none } .rc-m .grow { min-width: 0; overflow-wrap: anywhere }
 /* One figure until usage comes with the insights module (the prototype has three: uses, people, rating) */
 .rc-stat { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--line) }
 .rc-stat > div { padding: 9px 0 9px 16px; font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }

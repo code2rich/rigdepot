@@ -53,8 +53,10 @@ button.pillar:hover .t svg, button.pillar:focus-visible .t svg { opacity: 1; tra
 .stg:hover { background: var(--hover); border-top-color: var(--line-3) }
 .stg small { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: .04em }
 .stg small em { font-style: normal; color: var(--ink-2); font-family: var(--sans); font-size: 10.5px } .stg small em::before { content: ""; display: inline-block; width: 4px; height: 4px; background: var(--ink-2); margin-right: 4px; vertical-align: 2px }
-.stg b { font-size: 13.5px; font-weight: 600; color: var(--ink-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap } .stg .c { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums }
+.stg b { font-size: 13.5px; font-weight: 600; color: var(--ink-2); max-width: 100%; line-height: 1.25; overflow-wrap: anywhere; hyphens: auto } .stg .c { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums }
 .stg.on { border-top-color: var(--ink); background: var(--soft) } .stg.on b { color: var(--ink) }
+/* 环节名在拼音文字里长好几倍（Configuration 对 配置）：中文以外排成两行四个，手机上两列，名字不截断 */
+.stages:not(:lang(zh)) { grid-template-columns: repeat(4, minmax(0, 1fr)) }
 .kgroup { display: flex; align-items: center; gap: 8px; margin: 18px 0 4px; font-family: var(--mono); font-size: var(--f-tag); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2) }
 .kgroup .n { color: var(--ink-3) } .kgroup::after { content: ""; flex: 1; height: 1px; background: var(--line) }
 .li .chev { width: 16px; height: 16px; color: var(--ink-3); flex: none } .li .chev svg { width: 100%; height: 100%; display: block }
@@ -72,5 +74,6 @@ button.pillar:hover .t svg, button.pillar:focus-visible .t svg { opacity: 1; tra
   .hero h1 { font-size: 22px }
   .pillars, .pillars.three { grid-template-columns: minmax(0, 1fr) } .pillar + .pillar { border-left: 0; border-top: 1px solid var(--line) } .pillar .v { font-size: 32px }
   .stg { padding: 8px 8px 9px }
+  .stages:not(:lang(zh)) { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .guide-l { padding: 16px } .guide-r { padding: 14px 16px }
 }
