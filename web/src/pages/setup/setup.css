@@ -1,0 +1,128 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* The first-run wizard. The frame (.wizard, .wz-prog) is in styles/auth.css; the step list is the
+   prototype's .steps, and the rest is what the prototype (V.setup) writes inline. */
+
+.center-card.wz-card {
+  width: min(880px, 100%);
+}
+.wz-after {
+  margin-left: 6px;
+}
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.steps li {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  font-size: 13px;
+  padding: 6px 0;
+}
+.steps .n {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line-2);
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-3);
+  flex: none;
+  background: var(--panel);
+}
+.steps .n svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.2;
+}
+.steps li.done .n {
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 9%, var(--panel));
+}
+.steps li.cur .n {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+.steps li b {
+  display: block;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.steps li.done b {
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.steps li span {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.steps.click li {
+  border-radius: var(--r-2);
+  padding: 6px 8px;
+  margin: 0 -8px;
+  transition: background var(--t-fast) var(--ease);
+}
+.steps.click li:hover {
+  background: var(--hover);
+}
+.steps.click li > button {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.steps.click li > button[disabled] {
+  cursor: default;
+}
+.wz-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.wz-picks {
+  display: grid;
+  gap: 6px;
+}
+.wz-set {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wz-set legend {
+  padding: 0;
+  margin-bottom: 10px;
+}
+.wz-list {
+  padding: 2px 14px;
+}
+.wz-mod .desc {
+  white-space: normal;
+  line-height: 1.6;
+}
+.wz-notice {
+  margin-top: 4px;
+  color: var(--warn);
+}
+@media (max-width: 760px) {
+  .wz-after {
+    display: none;
+  }
+}
