@@ -6,6 +6,7 @@ package all
 import (
 	"github.com/code2rich/rigdepot/builtin/adapters/claudecode"
 	"github.com/code2rich/rigdepot/builtin/adapters/codex"
+	"github.com/code2rich/rigdepot/builtin/adapters/opencode"
 	"github.com/code2rich/rigdepot/ext/adapter"
 )
 
@@ -13,4 +14,5 @@ func init() {
 	// One line per tool adapter under builtin/adapters, in alphabetical order.
 	adapter.Register(claudecode.New())
 	adapter.Register(codex.New())
+	adapter.Register(opencode.New())
 }

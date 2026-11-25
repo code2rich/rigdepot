@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      // Written by `opencode mcp add --global tracker --url …`.
+      "tracker": {
+        "type": "remote",
+        "url": "https://tracker.example.com/mcp"
+      }
+    }
+  }
+}

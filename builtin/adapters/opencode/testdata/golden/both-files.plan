@@ -1,0 +1,10 @@
+op write-tree ~/.config/opencode/skills/rgd-contract-skill (skill/contract-skill@3): SKILL.md, scripts/check.sh*
+op write-file ~/.config/opencode/commands/rgd-contract-command.md (workflow/contract-command@1)
+op write-file ~/.config/opencode/agents/rgd-contract-agent.md (agent/contract-agent@1)
+skip mcp/contract-stdio@2 config_unwritable: both ~/.config/opencode/opencode.jsonc and ~/.config/opencode/opencode.json exist; OpenCode reads both, and it is not known which one to change
+skip mcp/contract-http@1 config_unwritable: both ~/.config/opencode/opencode.jsonc and ~/.config/opencode/opencode.json exist; OpenCode reads both, and it is not known which one to change
+skip mcp/contract-secret@1 config_unwritable: both ~/.config/opencode/opencode.jsonc and ~/.config/opencode/opencode.json exist; OpenCode reads both, and it is not known which one to change
+core:
+  + tree ~/.config/opencode/skills/rgd-contract-skill
+  + file ~/.config/opencode/commands/rgd-contract-command.md
+  + file ~/.config/opencode/agents/rgd-contract-agent.md

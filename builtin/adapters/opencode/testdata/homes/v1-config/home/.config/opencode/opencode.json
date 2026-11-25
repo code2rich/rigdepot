@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "example/large-model",
+  "mcp": {
+    "tracker": {
+      "type": "remote",
+      "url": "https://tracker.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer {env:TRACKER_TOKEN}"
+      }
+    },
+    "scratch": {
+      "type": "local",
+      "command": ["npx", "-y", "example-scratch-mcp"],
+      "enabled": false
+    }
+  }
+}
