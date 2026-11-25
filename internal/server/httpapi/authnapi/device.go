@@ -118,9 +118,16 @@ func (h *Ops) DenyDeviceRequest(ctx context.Context, req httpapi.DenyDeviceReque
 	return httpapi.DenyDeviceRequest204Response{}, nil
 }
 
+// DeviceSync is what a computer said at its last sync: when it finished,
+// how it went and the AI tools it found (package delivery keeps it).
+type DeviceSync struct {
+	LastSync httpapi.LastSync
+	Tools    []httpapi.DetectedTool
+}
+
 // ListMyDevices implements httpapi.StrictServerInterface. What the command
-// line last reported (the last sync, the tools) comes with the install
-// reports (delivery); until then they are empty.
+// line last reported (the last sync, the tools) comes from the install
+// reports (Options.DeviceSyncs); a computer that never synced has none.
 func (h *Ops) ListMyDevices(ctx context.Context, _ httpapi.ListMyDevicesRequestObject) (httpapi.ListMyDevicesResponseObject, error) {
 	if h.devices == nil {
 		return nil, errNoDevices()
@@ -133,12 +140,29 @@ func (h *Ops) ListMyDevices(ctx context.Context, _ httpapi.ListMyDevicesRequestO
 	if err != nil {
 		return nil, fail(ctx, err)
 	}
+	syncs := map[string]DeviceSync{}
+	if h.syncs != nil && len(ds) > 0 {
+		ids := make([]string, len(ds))
+		for i, d := range ds {
+			ids[i] = d.ID
+		}
+		if syncs, err = h.syncs(ctx, ids); err != nil {
+			return nil, err
+		}
+	}
 	out := httpapi.ListMyDevices200JSONResponse{Items: make([]httpapi.Device, len(ds))}
 	for i, d := range ds {
 		out.Items[i] = httpapi.Device{
 			Id: d.ID, Name: d.Name, Os: httpapi.DeviceOs(d.OS), Arch: d.Arch, CliVersion: d.CLIVersion,
 			KeyStorage: httpapi.DeviceKeyStorage(d.KeyStorage), Current: d.Current,
 			CreatedAt: d.CreatedAt, LastSeenAt: d.LastSeenAt, Tools: []httpapi.DetectedTool{},
+		}
+		if sy, ok := syncs[d.ID]; ok {
+			last := sy.LastSync
+			out.Items[i].LastSync = &last
+			if sy.Tools != nil {
+				out.Items[i].Tools = sy.Tools
+			}
 		}
 	}
 	return out, nil
