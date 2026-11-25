@@ -479,6 +479,25 @@ func (s *Service) ResourceCounts(ctx context.Context) (map[string]int, error) {
 	return out, rows.Err()
 }
 
+// PersonalOwners returns the people who have a published personal resource (scope me).
+func (s *Service) PersonalOwners(ctx context.Context) (map[string]bool, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT DISTINCT owner_user_id FROM resources
+		WHERE scope_kind = 'me' AND status = 'published' AND owner_user_id IS NOT NULL`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out[id] = true
+	}
+	return out, rows.Err()
+}
+
 // Target describes a resource for a permission decision about it, such as whether someone may
 // read its audit log: false when there is no resource with the code.
 func (s *Service) Target(ctx context.Context, code string) (access.Target, bool, error) {
