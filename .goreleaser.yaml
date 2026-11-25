@@ -4,9 +4,19 @@
 # Release configuration. Run it through the development entry point, which
 # uses the goreleaser version pinned in tools/release.mod:
 #
-#   go run ./tools/dev release-snapshot    build everything into dist/, publish nothing
+#   go run ./tools/dev release-snapshot    build everything into dist/, publish nothing,
+#                                          build again elsewhere and compare the checksums,
+#                                          install from dist/ with scripts/install.sh
 #
 # Only features of the open-source edition of goreleaser are used.
+#
+# Switches, all set by tools/dev; running goreleaser by hand gets the defaults:
+#
+#   RELEASE_WEBDIST=0        build rgd-server without the web console (default: with it,
+#                            which needs web/dist from "go run ./tools/dev web")
+#   RELEASE_SBOM=1           write an SPDX SBOM next to every archive (needs syft on PATH)
+#   PACKAGES_GITHUB_TOKEN    a token that can push to the Homebrew tap and the Scoop bucket;
+#                            without it the cask and the manifest are only written into dist/
 
 version: 2
 project_name: rigdepot
@@ -15,6 +25,8 @@ before:
   hooks:
     # Generated files must be up to date.
     - go run ./tools/dev gen --check
+    # Shell completions and third-party notices for the archives, into .dev/release/.
+    - go run ./tools/dev release-files
 
 # A build that is not a release shows as 0.0.0-dev+<commit>, so that it
 # cannot be mistaken for one.
@@ -29,7 +41,11 @@ builds:
     env: [CGO_ENABLED=0]
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
-    flags: [-trimpath]
+    # -buildvcs=false: the version, commit and commit time come in through
+    # ldflags. Left to itself, go build also records the VCS state, and only
+    # where it can read it: a build in a git worktree and one in a clone of the
+    # same commit came out different.
+    flags: [-trimpath, -buildvcs=false]
     ldflags: &ldflags
       - -s -w
       - -X github.com/code2rich/rigdepot/internal/buildinfo.Version={{ .Version }}
@@ -38,15 +54,17 @@ builds:
     # Reproducible: the same commit gives the same bytes on any machine.
     mod_timestamp: "{{ .CommitTimestamp }}"
 
-  # The server: Linux only. Once the web console exists it is built first and
-  # embedded with the "webdist" build tag.
+  # The server: Linux only, with the web console embedded ("webdist"; web/dist
+  # must have been built first).
   - id: rgd-server
     main: ./cmd/rgd-server
     binary: rgd-server
     env: [CGO_ENABLED=0]
     goos: [linux]
     goarch: [amd64, arm64]
-    flags: [-trimpath]
+    flags: [-trimpath, -buildvcs=false]
+    tags:
+      - '{{ if ne (envOrDefault "RELEASE_WEBDIST" "1") "0" }}webdist{{ end }}'
     ldflags: *ldflags
     mod_timestamp: "{{ .CommitTimestamp }}"
 
@@ -65,6 +83,13 @@ archives:
         info: &file_info { owner: root, group: root, mtime: "{{ .CommitDate }}" }
       - src: NOTICE
         info: *file_info
+      - src: .dev/release/THIRD_PARTY_NOTICES
+        dst: THIRD_PARTY_NOTICES
+        info: *file_info
+      - src: .dev/release/completions/*
+        dst: completions
+        strip_parent: true
+        info: *file_info
     builds_info:
       owner: root
       group: root
@@ -79,6 +104,9 @@ archives:
         info: *file_info
       - src: NOTICE
         info: *file_info
+      - src: .dev/release/THIRD_PARTY_NOTICES
+        dst: THIRD_PARTY_NOTICES
+        info: *file_info
       - src: deploy/systemd/rigdepot-server.service
         info: *file_info
     builds_info:
@@ -89,6 +117,20 @@ archives:
 checksum:
   name_template: checksums.txt
   algorithm: sha256
+  # The install scripts are release files too: a mirror serves them next to the
+  # archives, and someone who reads one before running it can check it.
+  extra_files:
+    - glob: scripts/install.sh
+    - glob: scripts/install.ps1
+
+# A software bill of materials in SPDX for every archive, made by syft
+# (docs: 10-release, third-party notices). Off unless RELEASE_SBOM=1, because
+# syft is not something every machine has; tools/dev turns it on when it finds
+# syft and reports it as not run when it does not.
+sboms:
+  - id: archives
+    artifacts: archive
+    disable: '{{ if eq (envOrDefault "RELEASE_SBOM" "0") "1" }}false{{ else }}true{{ end }}'
 
 # Signing: not enabled yet.
 #
@@ -120,10 +162,11 @@ checksum:
 # Windows code signing comes last; until then Windows users install with Scoop
 # or the install script, which do not trigger SmartScreen.
 
-# Package managers. Both write into repositories that do not exist yet
-# (code2rich/homebrew-tap, code2rich/scoop-bucket), so nothing is uploaded:
-# the files are only generated into dist/ for review. Create the repositories,
-# give the release a token that can push to them, then remove skip_upload.
+# Package managers: a Homebrew tap (code2rich/homebrew-tap) and a Scoop bucket
+# (code2rich/scoop-bucket). The release's own token can only write to this
+# repository, so pushing to those two takes PACKAGES_GITHUB_TOKEN: a token with
+# write access to their contents. Without it, and always for a pre-release
+# ("auto"), the cask and the manifest are only written into dist/.
 homebrew_casks:
   - name: rigdepot
     ids: [rgd]
@@ -133,7 +176,13 @@ homebrew_casks:
     repository:
       owner: code2rich
       name: homebrew-tap
-    skip_upload: true
+      token: "{{ .Env.PACKAGES_GITHUB_TOKEN }}"
+    skip_upload: '{{ if isEnvSet "PACKAGES_GITHUB_TOKEN" }}auto{{ else }}true{{ end }}'
+    # Written by tools/dev release-files and packed into every archive.
+    completions:
+      bash: completions/rgd.bash
+      zsh: completions/_rgd
+      fish: completions/rgd.fish
     # Homebrew marks what a cask downloads as quarantined, and Gatekeeper then
     # stops a binary that is not notarized. Until releases are notarized, the
     # cask removes the mark from the one file it installed. Delete this hook
@@ -159,7 +208,8 @@ scoops:
     repository:
       owner: code2rich
       name: scoop-bucket
-    skip_upload: true
+      token: "{{ .Env.PACKAGES_GITHUB_TOKEN }}"
+    skip_upload: '{{ if isEnvSet "PACKAGES_GITHUB_TOKEN" }}auto{{ else }}true{{ end }}'
 
 release:
   github:
