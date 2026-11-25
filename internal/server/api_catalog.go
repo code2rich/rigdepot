@@ -15,6 +15,7 @@ import (
 	extcheck "github.com/code2rich/rigdepot/ext/check"
 	"github.com/code2rich/rigdepot/ext/resource"
 	"github.com/code2rich/rigdepot/internal/i18n"
+	"github.com/code2rich/rigdepot/internal/i18n/msg"
 	"github.com/code2rich/rigdepot/internal/logging"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/catalog"
@@ -749,6 +750,44 @@ func (c *catalogAPI) ListCheckRules(ctx context.Context, _ httpapi.ListCheckRule
 			rule.Waivable = &r.Waivable
 		}
 		out.Rules = append(out.Rules, rule)
+	}
+	return out, nil
+}
+
+// stageNames are the translations of the default stages' names (locales/*/server.json).
+var stageNames = map[string]string{
+	"requirement":  msg.StageRequirement,
+	"architecture": msg.StageArchitecture,
+	"design":       msg.StageDesign,
+	"develop":      msg.StageDevelop,
+	"test":         msg.StageTest,
+	"scm":          msg.StageScm,
+	"release":      msg.StageRelease,
+	"ops":          msg.StageOps,
+}
+
+// ListStages lists the stages of the delivery process in the request's language. Anyone signed
+// in may: a person whose account is not active yet picks the stages they follow when asking to
+// join.
+func (c *catalogAPI) ListStages(ctx context.Context, _ httpapi.ListStagesRequestObject) (httpapi.ListStagesResponseObject, error) {
+	if _, err := catalogCaller(ctx); err != nil {
+		return nil, err
+	}
+	stages, err := c.cat.Stages(ctx)
+	if err != nil {
+		return nil, err
+	}
+	p := c.printer(ctx)
+	out := httpapi.ListStages200JSONResponse{Items: make([]httpapi.Stage, 0, len(stages))}
+	for _, st := range stages {
+		name := st.Name
+		if key, ok := stageNames[st.ID]; ok && name == "" {
+			name = p.T(key)
+		}
+		if name == "" {
+			name = st.ID
+		}
+		out.Items = append(out.Items, httpapi.Stage{Id: st.ID, Name: name, Hidden: st.Hidden})
 	}
 	return out, nil
 }

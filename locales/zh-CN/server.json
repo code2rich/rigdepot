@@ -47,5 +47,13 @@
   "notify.resource_published.body": "范围内的人下次同步时会装上它。",
   "notify.resource_published.title": "{{resource}} v{{version}} 已发布",
   "notify.resource_rolled_back.body": "v{{rollback_of}} 的内容重新发布为 v{{version}}，范围内的人下次同步时生效。",
-  "notify.resource_rolled_back.title": "{{resource}} 已回滚到 v{{rollback_of}}"
+  "notify.resource_rolled_back.title": "{{resource}} 已回滚到 v{{rollback_of}}",
+  "stage.architecture": "架构",
+  "stage.design": "设计",
+  "stage.develop": "开发",
+  "stage.ops": "运维",
+  "stage.release": "发布",
+  "stage.requirement": "需求",
+  "stage.scm": "配管",
+  "stage.test": "测试"
 }

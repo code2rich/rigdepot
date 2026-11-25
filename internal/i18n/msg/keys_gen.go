@@ -1015,6 +1015,22 @@ const (
 	SourceUnreachable = "source.unreachable"
 	// SourceUnreadable (cli.json): Cannot read the resource repository {{url}}: {{detail}}. Nothing was c…
 	SourceUnreadable = "source.unreadable"
+	// StageArchitecture (server.json): Architecture
+	StageArchitecture = "stage.architecture"
+	// StageDesign (server.json): Design
+	StageDesign = "stage.design"
+	// StageDevelop (server.json): Development
+	StageDevelop = "stage.develop"
+	// StageOps (server.json): Operations
+	StageOps = "stage.ops"
+	// StageRelease (server.json): Release
+	StageRelease = "stage.release"
+	// StageRequirement (server.json): Requirements
+	StageRequirement = "stage.requirement"
+	// StageScm (server.json): SCM
+	StageScm = "stage.scm"
+	// StageTest (server.json): Testing
+	StageTest = "stage.test"
 	// StatusDiffAdded (cli.json): {{file}}: only on this computer
 	StatusDiffAdded = "status.diff.added"
 	// StatusDiffBinary (cli.json): (not text; the lines are not shown)

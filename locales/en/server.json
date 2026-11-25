@@ -47,5 +47,13 @@
   "notify.resource_published.body": "It reaches the computers of the people it is for at their next sync.",
   "notify.resource_published.title": "{{resource}} v{{version}} is published",
   "notify.resource_rolled_back.body": "The content of v{{rollback_of}} is published again as v{{version}}. It reaches the computers of the people it is for at their next sync.",
-  "notify.resource_rolled_back.title": "{{resource}} was rolled back to v{{rollback_of}}"
+  "notify.resource_rolled_back.title": "{{resource}} was rolled back to v{{rollback_of}}",
+  "stage.architecture": "Architecture",
+  "stage.design": "Design",
+  "stage.develop": "Development",
+  "stage.ops": "Operations",
+  "stage.release": "Release",
+  "stage.requirement": "Requirements",
+  "stage.scm": "SCM",
+  "stage.test": "Testing"
 }
