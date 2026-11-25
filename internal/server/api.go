@@ -51,6 +51,8 @@ type api struct {
 	*deliveryAPI
 	*metaAPI
 	*notificationsAPI
+	*sourcesAPI
+	*feedbackAPI
 	*cliAPI
 }
 
@@ -131,6 +133,8 @@ func apiMounts(app *App) Mounts {
 		toolsAPI:         &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
 		catalogAPI:       &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
 		notificationsAPI: &notificationsAPI{access: app.access},
+		sourcesAPI:       &sourcesAPI{cat: app.catalog},
+		feedbackAPI:      &feedbackAPI{fb: app.feedback, hooks: &app.hooks},
 		cliAPI:           &cliAPI{dist: app.cli, base: publicBase(app.cfg.BaseURL), downloadBase: app.cfg.CLIDownloadBase, version: app.version, log: app.log},
 	}
 	if impl.toolsAPI.version == "" {

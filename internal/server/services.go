@@ -19,6 +19,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/delivery"
 	"github.com/code2rich/rigdepot/internal/server/events"
+	"github.com/code2rich/rigdepot/internal/server/feedback"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/modhost"
@@ -97,11 +98,20 @@ func (a *App) openServices(ctx context.Context) error {
 		a.hooks.firstAdmin = a.authnOps
 	}
 	co := a.catalogOptions
-	co.Auditor, co.Version = log, buildinfo.Version
+	co.Auditor, co.Version, co.Keys = log, buildinfo.Version, keys
 	if a.bg != nil {
 		co.Events = a.bg.Events
+		jobs := a.bg.Jobs
+		co.PullNow = func() { jobs.Trigger(catalog.SourceSyncJob) }
 	}
 	if a.catalog, err = catalog.New(a.db, a.access, co); err != nil {
+		return err
+	}
+	fo := feedback.Options{Auditor: log}
+	if a.bg != nil {
+		fo.Events = a.bg.Events
+	}
+	if a.feedback, err = feedback.New(a.db, a.access, a.catalog, fo); err != nil {
 		return err
 	}
 	// Delivery counts the installs of the computers that are signed in: the device code flow's.
@@ -158,10 +168,9 @@ func loadKeys(ctx context.Context, cfg *config.Config, db *dbx.DB, generate bool
 
 // rewrappers are the tables with sealed values, for "keys rotate". Every
 // domain package that stores sealed values adds its masterkey.Rewrapper
-// here: TODO(M1-28) secrets (secret_values), TODO(M1-25) catalog (sources'
-// credentials).
+// here: TODO(M1-28) secrets (secret_values).
 func rewrappers() []masterkey.Rewrapper {
-	return []masterkey.Rewrapper{settings.Rewrapper, authn.Rewrapper}
+	return []masterkey.Rewrapper{settings.Rewrapper, authn.Rewrapper, catalog.SourcesRewrapper}
 }
 
 // keyRotationObject is what the rotation's audit entry is about.

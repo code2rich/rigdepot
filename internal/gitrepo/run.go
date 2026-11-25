@@ -82,6 +82,9 @@ type command struct {
 	args   []string
 	stdout io.Writer // nil: collect and return it
 	shown  *address  // the address in args, to be replaced by its redacted form in messages
+	// config are configuration entries passed through the environment rather than with -c,
+	// because they carry a credential: their values never appear in messages either.
+	config [][2]string
 }
 
 // run runs git with a timeout and returns what it printed on standard output. A failure carries
@@ -96,7 +99,7 @@ func (f *Fetcher) run(ctx context.Context, c command) ([]byte, error) {
 	}
 	args = append(args, c.args...)
 	cmd := exec.CommandContext(ctx, f.git, args...)
-	cmd.Env = environment(c.allow)
+	cmd.Env = withConfig(environment(c.allow), c.config)
 	cmd.Stdin = nil // the null device: nothing to answer a prompt with
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -123,6 +126,9 @@ func (f *Fetcher) run(ctx context.Context, c command) ([]byte, error) {
 	msg := strings.TrimSpace(stderr.String())
 	if c.shown != nil && c.shown.arg != c.shown.shown {
 		msg = strings.ReplaceAll(msg, c.shown.arg, c.shown.shown)
+	}
+	for _, e := range c.config {
+		msg = strings.ReplaceAll(msg, e[1], "xxxxx")
 	}
 	if msg == "" {
 		msg = err.Error()
