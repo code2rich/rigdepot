@@ -62,7 +62,7 @@ func writeCert(t *testing.T, certFile, keyFile string, serial int64, bump time.D
 // servedSerial connects to addr and returns the serial number of the certificate it serves.
 func servedSerial(t *testing.T, addr string) int64 {
 	t.Helper()
-	conn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: "hub.example.com", InsecureSkipVerify: true})
+	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 10 * time.Second}, "tcp", addr, &tls.Config{ServerName: "hub.example.com", InsecureSkipVerify: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,6 +133,8 @@ func TestCertificateReloadsWhenTheFilesChange(t *testing.T) {
 	e, _ := tlsEnv(t, certFile, keyFile)
 	e.certCheckEvery = 20 * time.Millisecond
 	srv := startServe(t, e)
+	// The server reads the files once it listens: change them only once it serves them.
+	waitSerial(t, srv.addr, 1)
 	writeCert(t, certFile, keyFile, 2, time.Second)
 	waitSerial(t, srv.addr, 2)
 

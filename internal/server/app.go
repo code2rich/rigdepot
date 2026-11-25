@@ -178,6 +178,7 @@ func (a *App) Serve(ctx context.Context, ln net.Listener) error {
 	if a.cfg.ServesTLS() {
 		setup, err := a.tlsSetup()
 		if err != nil {
+			ln.Close()
 			return err
 		}
 		ln = tls.NewListener(ln, setup.config)
@@ -189,6 +190,7 @@ func (a *App) Serve(ctx context.Context, ln net.Listener) error {
 		if addr := a.cfg.TLS.HTTPRedirectListen; addr != "" {
 			rln, err := net.Listen("tcp", addr)
 			if err != nil {
+				ln.Close()
 				return fmt.Errorf("listen %s (HTTP redirect): %w", addr, err)
 			}
 			h := a.redirectToHTTPS()
