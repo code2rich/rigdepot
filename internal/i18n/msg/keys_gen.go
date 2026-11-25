@@ -9,6 +9,50 @@ const (
 	AdapterDetectUnreadable = "adapter.detect.unreadable"
 	// CheckBundledenvFound (check.json): {{file}} holds real configuration values and would be handed to everyo…
 	CheckBundledenvFound = "check.bundledenv.found"
+	// CheckCLIBlockedHint (cli.json): A resource with a problem that must be fixed cannot be published.
+	CheckCLIBlockedHint = "check.cli.blocked_hint"
+	// CheckCLIConfigInvalid (cli.json): {{file}} cannot be used, so nothing in the repository was checked:
+	CheckCLIConfigInvalid = "check.cli.config_invalid"
+	// CheckCLIFlagBranch (cli.json): With --repo: the branch, tag or commit (default: the repository's defa…
+	CheckCLIFlagBranch = "check.cli.flag.branch"
+	// CheckCLIFlagDir (cli.json): With --repo: the directory in the repository that holds the resources
+	CheckCLIFlagDir = "check.cli.flag.dir"
+	// CheckCLIFlagRepo (cli.json): Check a resource repository by its address instead of a local director…
+	CheckCLIFlagRepo = "check.cli.flag.repo"
+	// CheckCLIFlagRules (cli.json): Run only these rules, by ID, separated by commas
+	CheckCLIFlagRules = "check.cli.flag.rules"
+	// CheckCLIFlagStrict (cli.json): Also exit with 4 when only advisory problems are found
+	CheckCLIFlagStrict = "check.cli.flag.strict"
+	// CheckCLIHeader (cli.json): Checked {{count}} resources in {{source}} against rule set v{{ruleset}…
+	CheckCLIHeader = "check.cli.header"
+	// CheckCLIIncompatible (cli.json): This repository needs a newer {{cli}}: {{detail}}
+	CheckCLIIncompatible = "check.cli.incompatible"
+	// CheckCLILong (cli.json): PATH is a resource repository, a directory in one, or one resource; th…
+	CheckCLILong = "check.cli.long"
+	// CheckCLINoResource (cli.json): There is no resource at {{path}}.
+	CheckCLINoResource = "check.cli.no_resource"
+	// CheckCLINoRules (cli.json): This build of {{cli}} has no check rules.
+	CheckCLINoRules = "check.cli.no_rules"
+	// CheckCLINotARepository (cli.json): {{path}} is not in a resource repository: there is no {{file}} there o…
+	CheckCLINotARepository = "check.cli.not_a_repository"
+	// CheckCLINotices (cli.json): About the repository:
+	CheckCLINotices = "check.cli.notices"
+	// CheckCLIPassed (cli.json): Nothing to fix.
+	CheckCLIPassed = "check.cli.passed"
+	// CheckCLIRepoAndPath (cli.json): Give either a path or --repo, not both.
+	CheckCLIRepoAndPath = "check.cli.repo_and_path"
+	// CheckCLIRepoFailed (cli.json): Cannot read the repository {{repo}}: {{detail}}
+	CheckCLIRepoFailed = "check.cli.repo_failed"
+	// CheckCLIRepoOnly (cli.json): {{flag}} only works together with --repo.
+	CheckCLIRepoOnly = "check.cli.repo_only"
+	// CheckCLIShort (cli.json): Check resources before they are published, with the rules the server u…
+	CheckCLIShort = "check.cli.short"
+	// CheckCLISummary (cli.json): {{blocking}} must fix · {{advisory}} advisory
+	CheckCLISummary = "check.cli.summary"
+	// CheckCLIUnknownRule (cli.json): There is no rule "{{rule}}". The rules are: {{rules}}.
+	CheckCLIUnknownRule = "check.cli.unknown_rule"
+	// CheckCLIUnreadable (cli.json): Cannot read {{path}}: {{detail}}
+	CheckCLIUnreadable = "check.cli.unreadable"
 	// CheckDangerousDeleteRoot (check.json): Deletes the root or the home directory (rm -rf on /, ~ or $HOME).
 	CheckDangerousDeleteRoot = "check.dangerous.delete_root"
 	// CheckDangerousPipeToShell (check.json): Runs a downloaded script straight in a shell. Download it, look at it,…

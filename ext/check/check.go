@@ -85,9 +85,9 @@ type Input struct {
 	// Files holds every file of the resource, read-only, laid out as resource.Bundle.Files
 	// describes: the resource's directory, or a directory holding the resource's one file.
 	Files fs.FS
-	// Peers describes the other published resources, for rules that compare. It is empty when
-	// a resource is checked on its own, as rgd check does without a server; a rule that needs
-	// peers then has nothing to report.
+	// Peers describes the other published resources, for rules that compare. rgd check gives
+	// the other resources of the repository, which would be published together. It is empty
+	// when a resource is checked on its own; a rule that needs peers then has nothing to report.
 	Peers Peers
 }
 
