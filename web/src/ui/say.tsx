@@ -39,7 +39,8 @@ export function CopyButton(props: { text: string; label?: string; plain?: boolea
 export function Cmd(props: { text: string }) {
   return (
     <div class="cmd">
-      <code>{props.text}</code>
+      {/* A long command scrolls sideways; the keyboard can scroll it once it has the focus. */}
+      <code tabIndex={0}>{props.text}</code>
       <CopyButton text={props.text} plain />
     </div>
   )

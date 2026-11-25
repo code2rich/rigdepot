@@ -127,7 +127,7 @@ export default function Audit() {
             why={category === 'login' ? t('audit.empty.login') : t('audit.empty.platform')}
           />
         ) : (
-          <div class="tbl-wrap">
+          <div class="tbl-wrap" tabIndex={0}>
             {category === 'platform' ? (
               <table class="au-tbl" aria-busy={!log.data}>
                 <thead>

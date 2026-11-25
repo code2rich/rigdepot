@@ -1276,7 +1276,6 @@ export type MessageKey =
   | "setup.steps"
   | "setup.tag"
   | "shell.account.job"
-  | "shell.account.label"
   | "shell.account.line"
   | "shell.account.menu"
   | "shell.account.platform_role"

@@ -1236,7 +1236,6 @@
   "setup.steps": "Setup steps",
   "setup.tag": "Setup",
   "shell.account.job": "Job",
-  "shell.account.label": "Account: {{name}}",
   "shell.account.line": "{{role}} · {{job}}",
   "shell.account.menu": "Account",
   "shell.account.platform_role": "Platform",

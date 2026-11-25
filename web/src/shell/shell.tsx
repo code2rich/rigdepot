@@ -136,7 +136,7 @@ export function Shell(props: { children: ComponentChildren }) {
                 class="who"
                 onClick={() => setMenuOpen(!menuOpen)}
                 aria-expanded={menuOpen}
-                aria-label={t('shell.account.label', { name: person.display_name })}
+                aria-haspopup="dialog"
               >
                 <span class="avatar">{initial(person.display_name)}</span>
                 <div class="txt">

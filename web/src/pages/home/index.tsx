@@ -655,7 +655,6 @@ function Browse(props: { catalog: Item[]; fresh: boolean; open: (code: string) =
                   class="li"
                   role="button"
                   style={{ cursor: 'pointer' }}
-                  aria-label={t('catalog.open', { name: r.name })}
                   {...clickable(() => props.open(r.code))}
                 >
                   <KindIcon kind={r.kind} />

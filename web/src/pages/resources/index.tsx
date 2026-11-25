@@ -128,7 +128,7 @@ export default function Resources() {
           </select>
         </div>
         <section class="card">
-          <div class="tbl-wrap">
+          <div class="tbl-wrap" tabIndex={0}>
             <table class="rs-tbl">
               <thead>
                 <tr>

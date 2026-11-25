@@ -159,7 +159,7 @@ export default function Products() {
 function ProductTable(props: { list: Product[]; current?: Product; onPick: (code: string) => void }) {
   return (
     <section class="card">
-      <div class="tbl-wrap">
+      <div class="tbl-wrap" tabIndex={0}>
         <table>
           <thead>
             <tr>
@@ -394,9 +394,10 @@ function JoinRequests(props: { list: Request[]; onReject: (q: Request) => void; 
               fmtRelative(q.created_at),
             ].filter(Boolean)
             return (
-              <div class="li" key={q.id} style={{ alignItems: 'flex-start' }}>
+              // The buttons move under the request when there is no room beside it (a phone, longer text).
+              <div class="li" key={q.id} style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <span class="avatar">{initial(q.user.display_name)}</span>
-                <div class="grow">
+                <div class="grow" style={{ flexBasis: '180px' }}>
                   <div class="name">
                     {q.user.display_name} <span class="mono">{q.user.username}</span>
                   </div>
@@ -411,7 +412,7 @@ function JoinRequests(props: { list: Request[]; onReject: (q: Request) => void; 
                     )}
                   </div>
                 </div>
-                <div class="row" style={{ flexWrap: 'nowrap', gap: '4px' }}>
+                <div class="row" style={{ flexWrap: 'nowrap', gap: '4px', marginLeft: 'auto' }}>
                   <button
                     type="button"
                     class="btn sm"

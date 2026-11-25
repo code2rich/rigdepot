@@ -1236,7 +1236,6 @@
   "setup.steps": "初始化步骤",
   "setup.tag": "初始化",
   "shell.account.job": "岗位",
-  "shell.account.label": "账号与身份：{{name}}",
   "shell.account.line": "{{role}} · {{job}}",
   "shell.account.menu": "账号与身份",
   "shell.account.platform_role": "平台身份",

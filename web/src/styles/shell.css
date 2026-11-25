@@ -29,7 +29,7 @@
 .side-foot { position: relative; margin-top: 10px; border-top: 1px solid var(--line); padding: 10px; display: flex; align-items: center; gap: 4px }
 .who { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 6px; border-radius: var(--r-2); transition: background var(--t-fast) var(--ease) }
 .who:hover, .who[aria-expanded="true"] { background: var(--hover) }
-.who .txt { min-width: 0 } .who .txt div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.who .txt { min-width: 0 } .who .txt div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap } .who .txt div + div { white-space: normal; overflow-wrap: anywhere }
 .avatar { width: 28px; height: 28px; border-radius: var(--r-2); background: var(--soft); border: 1px solid var(--line-2); color: var(--ink); display: grid; place-items: center; font-size: 12px; font-weight: 600; flex: none }
 .avatar.lg { width: 36px; height: 36px; font-size: 14px }
 .pop { position: absolute; left: 10px; bottom: calc(100% + 6px); width: 284px; z-index: 30; background: var(--raised); border: 1px solid var(--line-2); border-radius: var(--r-3); box-shadow: var(--shadow-pop); padding: 14px; display: grid; gap: 12px; animation: pop-in var(--t-mid) var(--ease) both; transform-origin: 20% 100% }

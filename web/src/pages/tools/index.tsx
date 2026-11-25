@@ -76,7 +76,7 @@ export default function Tools() {
         {adapters.state === 'failed' && !adapters.data ? (
           <LoadError error={adapters.error} retry={adapters.reload} />
         ) : (
-          <div class="tbl-wrap">
+          <div class="tbl-wrap" tabIndex={0}>
             <table class="tl-tbl" aria-busy={!adapters.data}>
               <thead>
                 <tr>
