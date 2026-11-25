@@ -52,7 +52,7 @@ export const NAV: readonly NavGroup[] = [
         route: '/catalog/:code?',
         label: 'nav.catalog',
         icon: 'box',
-        component: notBuilt('catalog'),
+        component: lazy(() => import('./catalog')),
       },
       {
         id: 'connect',
