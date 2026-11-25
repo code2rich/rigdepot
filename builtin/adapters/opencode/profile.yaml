@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+#
+# OpenCode. Where it keeps things, and how that was checked:
+# docs/architecture/04a-platforms.md in the design repository, section "OpenCode".
+#
+# The configuration root is ~/.config/opencode on macOS too, not ~/Library. Directory names are
+# plural (the singular ones are still found, never written). A skill's name is taken from its
+# directory, not from its front matter.
+#
+# What the profile cannot say, and the adapter's code does: version 2 lists MCP servers under
+# mcp.servers (the path below), version 1 directly under mcp; a local server's command and its
+# arguments are one array; and when both opencode.jsonc and opencode.json exist it is not
+# verified which one wins, so MCP servers are skipped rather than guessed.
+id: opencode
+name: OpenCode
+detect:
+  bins: [opencode]
+  dirs: ["{config}"]
+  version: { run: [opencode, --version], match: 'v?(\d+\.\d+\.\d+)' }
+roots:
+  config: { env: XDG_CONFIG_HOME, join: opencode, default: "~/.config/opencode" }
+verified:
+  version: "2.2.7"
+  os: [darwin]
+  at: "2026-11-24"
+  how: >-
+    ran opencode mcp add --global in a temporary home directory and read the opencode.json it
+    wrote; reading our entry back with opencode mcp list was not done (its server could not
+    start); skills, commands and agents from the official documentation
+skills:   { dir: "{config}/skills", layout: dir }
+commands: { dir: "{config}/commands", ext: .md }
+agents:   { dir: "{config}/agents", ext: .md }
+mcp:
+  files: ["{config}/opencode.jsonc", "{config}/opencode.json"]
+  format: jsonc
+  path: [mcp, servers]
+# OpenCode reads these skill directories of other tools as well, lowest priority first.
+alsoReads:
+  - { kind: skill, dir: "~/.claude/skills" }
+  - { kind: skill, dir: "~/.agents/skills" }
+credentials: [auth.json]

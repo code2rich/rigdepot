@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+#
+# Claude Code. Where it keeps things, and how that was checked:
+# docs/architecture/04a-platforms.md in the design repository, section "Claude Code".
+#
+# What the profile cannot say, and the adapter's code does: when CLAUDE_CONFIG_DIR is set,
+# .claude.json moves from the home directory into that directory, next to everything else.
+id: claude-code
+name: Claude Code
+detect:
+  bins: [claude]
+  dirs: ["{config}"]
+  # Prints "2.1.330 (Claude Code)".
+  version: { run: [claude, --version], match: '(\d+\.\d+\.\d+)' }
+roots:
+  config: { env: CLAUDE_CONFIG_DIR, default: "~/.claude" }
+verified:
+  version: "2.1.330"
+  os: [darwin]
+  at: "2026-11-24"
+  how: >-
+    ran claude mcp add --scope user in a temporary home directory and read the .claude.json it
+    wrote, then claude mcp list read our entry back; skills, commands and agents from the
+    official documentation (skills, sub-agents and settings pages)
+skills:   { dir: "{config}/skills", layout: dir }
+# The documentation calls command files the older format of skills; they still work and are
+# what a workflow a person starts by name needs.
+commands: { dir: "{config}/commands", ext: .md }
+agents:   { dir: "{config}/agents", ext: .md }
+mcp:
+  # Strict JSON, rewritten by Claude Code itself all the time. An entry needs "type": without
+  # it, an entry with a url is taken for a stdio server and fails.
+  files: ["~/.claude.json"]
+  format: json
+  path: [mcpServers]
+credentials: [.credentials.json]

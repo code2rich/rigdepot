@@ -1,0 +1,7 @@
+{
+  "mcp": {
+    "servers": {
+      "rgd-contract-stdio": { "type": "stdio", "command": "my-own-server" }
+    }
+  }
+}

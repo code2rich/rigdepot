@@ -1,0 +1,4 @@
+{
+  "env": { "FAKECODE_HOME": "~/work/fake-config" },
+  "versionOutput": "fakecode 1.0.3 (linux-x64)"
+}
