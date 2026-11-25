@@ -7,8 +7,15 @@
 //
 // ?mock=admin (default), ?mock=owner, ?mock=member pick who is signed in; ?mock=signed-out has nobody.
 // mock-auth.ts adds more for the sign-in, setup and users pages (?mock=pending, ?mock=setup, ?mockfail=…).
+//
+// Each route has one answer, whichever page asks: mock-auth.ts first fails calls on purpose (?mockfail=…);
+// then the essentials below; then mock-admin.ts (products and members, join requests, resources,
+// repositories, settings, modules, adapters, command-line versions, audit); then mock-member.ts (the
+// catalog, stages, the person's own things, feedback); last mock-auth.ts (sign-in, setup, users, invitations,
+// sign-in methods, device confirmation).
 
 import type { Schemas } from './client'
+import { adminMock } from './mock-admin'
 import { authMock, patchMeta } from './mock-auth'
 import { memberMock } from './mock-member'
 
@@ -97,6 +104,7 @@ export function mockServer(): (request: Request) => Promise<Response> {
     },
     people,
   })
+  const admin = adminMock()
   return async (request) => {
     const path = new URL(request.url).pathname.replace(/^.*\/api\//, '/api/')
     const route = `${request.method} ${path}`
@@ -120,6 +128,10 @@ export function mockServer(): (request: Request) => Promise<Response> {
         current = 'signed-out'
         sessionStorage.setItem('mock', current)
         return new Response(null, { status: 204 })
+    }
+    if (current !== 'signed-out') {
+      const managed = admin(request, current as 'admin' | 'owner' | 'member' | 'pending')
+      if (managed) return managed
     }
     if (current !== 'signed-out' && current !== 'pending') {
       const answer = await member(request, path, current as 'admin' | 'owner' | 'member')

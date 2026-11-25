@@ -21,6 +21,8 @@ export function failText(err: unknown, known: Known = {}): string {
   if (err.status === 0) return t('ui.fail.network')
   if (err.status === 403) return t('ui.fail.forbidden')
   if (err.status === 429) return t('ui.fail.rate_limited')
+  // Someone changed it meanwhile: the page reloads it and says so.
+  if (err.status === 412) return t('ui.fail.stale')
   if (err.problem?.detail) return err.problem.detail
   return t('ui.fail.server', { status: err.status })
 }
@@ -30,13 +32,15 @@ export function isCode(err: unknown, code: string): boolean {
   return err instanceof ApiError && err.code === code
 }
 
-/** Fail is a failure in place: a red callout read out when it appears, with an optional way to retry. */
+/** Fail is a failure in place: a red callout read out when it appears, with an optional way to retry; nothing when error is null. */
 export function Fail(props: {
   error: unknown
   known?: Known
   retry?: () => void
   children?: ComponentChildren
 }) {
+  // Nothing failed (yet): nothing to say. Lets a form keep its error in state and always render <Fail>.
+  if (props.error === null || props.error === undefined) return null
   return (
     <div class="callout bad" role="alert">
       <span class="grow">{failText(props.error, props.known)}</span>

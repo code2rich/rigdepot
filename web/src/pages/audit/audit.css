@@ -1,0 +1,15 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 The Rigdepot Authors */
+
+/* D-03 审计. On a narrow screen the log scrolls sideways (inside .tbl-wrap) rather than breaking every cell
+   into one word a line. */
+
+.au-tbl {
+  min-width: 960px;
+}
+.au-tbl.login {
+  min-width: 640px;
+}
+.au-tbl td:nth-child(3) {
+  min-width: 150px;
+}

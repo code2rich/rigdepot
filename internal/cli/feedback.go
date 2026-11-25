@@ -191,7 +191,7 @@ func (a *app) feedbackText(message string) (string, error) {
 // version and the operating system always; from an AI tool, the tool, its version and the
 // session's friction counts.
 //
-// TODO(M1-27): the result of the last sync (last_sync) once sync keeps it.
+// TODO: the result of the last sync (last_sync) once rgd sync records it; nothing keeps it yet.
 func (a *app) feedbackContext(f feedbackFlags, path string) (apiclient.FeedbackContext, []string, error) {
 	version, _, _ := strings.Cut(buildinfo.Get().Version, "+")
 	goos := a.env.GOOS

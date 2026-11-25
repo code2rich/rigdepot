@@ -42,6 +42,11 @@ type Resource struct {
 	Spec kind.Spec
 	// Path is where the resource is in the repository, or "" when it came from the server.
 	Path string
+	// Reason says, for a resource from the server, why it is delivered: "policy", "enabled"
+	// (the person turned it on) or "dependency" (RequiredBy, other delivered resources, use
+	// it). Empty for a repository.
+	Reason     string
+	RequiredBy []string
 }
 
 // Reason says why a resource the source holds is not delivered. The values are stable names for
