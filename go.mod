@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
+	github.com/tailscale/hujson v0.0.0-20260727124030-b80ff77dac4f
 	go.yaml.in/yaml/v4 v4.0.0
 )
 

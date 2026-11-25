@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "rgd-jira": {
+      "args": [
+        "mcp",
+        "run",
+        "jira"
+      ],
+      "command": "/opt/example/bin/rgd",
+      "env": {},
+      "type": "stdio"
+    }
+  }
+}
