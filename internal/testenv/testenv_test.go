@@ -91,9 +91,13 @@ func TestEnvironmentIsScrubbed(t *testing.T) {
 		if os.Getenv(brand.EnvPrefix+"TEST_REAL_TOOLS") != "claude" {
 			t.Errorf("the test knob %sTEST_REAL_TOOLS was removed", brand.EnvPrefix)
 		}
+		// The system keychain is off, whatever the developer's shell said.
+		if got := os.Getenv(brand.EnvPrefix + "KEYRING"); got != "file" {
+			t.Errorf("%sKEYRING = %q, want \"file\"", brand.EnvPrefix, got)
+		}
 		return
 	}
-	env := []string{helperVariable + "=scrub", brand.EnvPrefix + "TEST_REAL_TOOLS=claude"}
+	env := []string{helperVariable + "=scrub", brand.EnvPrefix + "TEST_REAL_TOOLS=claude", brand.EnvPrefix + "KEYRING=auto"}
 	for _, name := range leaked {
 		env = append(env, name+"=leaked-from-the-developer-shell")
 	}

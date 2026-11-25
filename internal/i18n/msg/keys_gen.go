@@ -291,6 +291,28 @@ const (
 	DoctorIntentsUnreadable = "doctor.intents.unreadable"
 	// DoctorIntentsUnreadableHint (cli.json): Until this is fixed, sync and uninstall change nothing. Do not delete …
 	DoctorIntentsUnreadableHint = "doctor.intents.unreadable_hint"
+	// DoctorKeyringFileHint (cli.json): Anyone who can read your files, or a backup of them, can act as this d…
+	DoctorKeyringFileHint = "doctor.keyring.file_hint"
+	// DoctorKeyringPlainFile (cli.json): The device key and token are kept in files in {{path}} that only you c…
+	DoctorKeyringPlainFile = "doctor.keyring.plain_file"
+	// DoctorKeyringProtectedFile (cli.json): The device key and token are kept in files in {{path}}, encrypted for …
+	DoctorKeyringProtectedFile = "doctor.keyring.protected_file"
+	// DoctorKeyringReason (cli.json): There is no system keychain to use: {{detail}}
+	DoctorKeyringReason = "doctor.keyring.reason"
+	// DoctorKeyringSystem (cli.json): The device key and token are kept in the system keychain.
+	DoctorKeyringSystem = "doctor.keyring.system"
+	// DoctorKeyringTitle (cli.json): System keychain
+	DoctorKeyringTitle = "doctor.keyring.title"
+	// DoctorKeyringTooOpen (cli.json): Others can open {{path}}, so it is not used until that is fixed.
+	DoctorKeyringTooOpen = "doctor.keyring.too_open"
+	// DoctorKeyringUnavailable (cli.json): The device key and token are kept in the system keychain, which cannot…
+	DoctorKeyringUnavailable = "doctor.keyring.unavailable"
+	// DoctorKeyringUnavailableHint (cli.json): Until it can be reached, {{cli}} cannot act as this device; it deletes…
+	DoctorKeyringUnavailableHint = "doctor.keyring.unavailable_hint"
+	// DoctorKeyringUnreadable (cli.json): Cannot tell whether the device key and token can be read: {{detail}}
+	DoctorKeyringUnreadable = "doctor.keyring.unreadable"
+	// DoctorKeyringUnreadableHint (cli.json): Nothing is deleted or regenerated while this lasts. If the keychain is…
+	DoctorKeyringUnreadableHint = "doctor.keyring.unreadable_hint"
 	// DoctorLeftoversFound (cli.json): {{count}} temporary files or directories were left behind by runs that…
 	DoctorLeftoversFound = "doctor.leftovers.found"
 	// DoctorLeftoversFoundHint (cli.json): Nothing uses them. Delete them while no {{cli}} is running.

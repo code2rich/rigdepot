@@ -105,7 +105,7 @@ func stepStructure(s *sandbox) (string, error) {
 		}
 		return "", fmt.Errorf("%d violation(s):\n%s", len(violations), strings.TrimRight(b.String(), "\n"))
 	}
-	return "R1-R8, registration, test isolation, brand literals, license headers", nil
+	return "R1-R8, no testing in programs, registration, test isolation, brand literals, license headers", nil
 }
 
 func stepCoreOnly(s *sandbox) (string, error) {

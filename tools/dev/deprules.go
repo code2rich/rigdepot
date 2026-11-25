@@ -316,14 +316,14 @@ func checkClosures(module string, pkgs []pkg) []violation {
 				return strings.Join(hops, " -> ")
 			}
 			if cur != start.Path && underAny(cur, entry.local) {
-				out = append(out, violation{"R5", start.Path, cur, entry.why + " (import chain: " + chain("") + ")"})
+				out = append(out, violation{entry.rule, start.Path, cur, entry.why + " (import chain: " + chain("") + ")"})
 				continue
 			}
 			for _, imp := range byPath[cur].Imports {
 				rel, local := relPath(module, imp)
 				if !local {
 					if hasModulePrefix(imp, entry.external) {
-						out = append(out, violation{"R5", start.Path, imp, entry.why + " (import chain: " + chain(imp) + ")"})
+						out = append(out, violation{entry.rule, start.Path, imp, entry.why + " (import chain: " + chain(imp) + ")"})
 					}
 					continue
 				}
@@ -348,6 +348,7 @@ func underAny(p string, dirs []string) bool {
 
 // closureEntry describes one program and what must stay out of it.
 type closureEntry struct {
+	rule     string
 	pkg      string
 	local    []string
 	external []string
@@ -360,15 +361,25 @@ var closureEntries []closureEntry
 func setClosureEntries(b brandNames) {
 	closureEntries = []closureEntry{
 		{
+			rule:     "R5",
 			pkg:      "cmd/" + b.CLI,
 			local:    cliForbiddenLocal,
 			external: cliForbidden,
 			why:      "the command-line program must not link database drivers, identity protocols or anything from the server side",
 		},
 		{
+			rule:  "R5",
 			pkg:   "cmd/" + b.Server,
 			local: serverForbiddenLocal,
 			why:   "the server must not link the code that edits other tools' configuration",
 		},
+	}
+	for _, prog := range []string{b.CLI, b.Server} {
+		closureEntries = append(closureEntries, closureEntry{
+			rule:     "no-testing",
+			pkg:      "cmd/" + prog,
+			external: programForbidden,
+			why:      "a shipped program must not link the testing package; keep test-only code in _test.go files or in a package only tests import",
+		})
 	}
 }
