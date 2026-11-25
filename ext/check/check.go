@@ -5,6 +5,7 @@ package check
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 
 	"github.com/code2rich/rigdepot/ext/resource"
@@ -27,6 +28,30 @@ func (s Severity) String() string {
 		return "must_fix"
 	}
 	return "advisory"
+}
+
+// MarshalText returns the name of the severity, so that it is written as "advisory" or
+// "must_fix" in JSON, as the server's API and rgd check --json write it, not as a number.
+func (s Severity) MarshalText() ([]byte, error) {
+	switch s {
+	case Advisory, MustFix:
+		return []byte(s.String()), nil
+	}
+	return nil, fmt.Errorf("check: %d is not a severity", int(s))
+}
+
+// UnmarshalText reads a name MarshalText writes. Anything else is an error, never Advisory: a
+// finding whose level cannot be read must not stop blocking.
+func (s *Severity) UnmarshalText(text []byte) error {
+	switch string(text) {
+	case "advisory":
+		*s = Advisory
+	case "must_fix":
+		*s = MustFix
+	default:
+		return fmt.Errorf("check: %q is not a severity; use advisory or must_fix", text)
+	}
+	return nil
 }
 
 // Rule is one check. An implementation is stateless and safe to call from several goroutines.
