@@ -45,6 +45,7 @@ type api struct {
 	*auditAPI
 	*modulesAPI
 	*toolsAPI
+	*notificationsAPI
 }
 
 // fallback puts notImplemented's methods one embedding level below the
@@ -94,17 +95,24 @@ type hooks struct {
 // checks the credential each operation's security list asks for and puts
 // the caller into the context with access.WithActor.
 func apiMounts(app *App) Mounts {
+	accessOpts := accessapi.Options{
+		BaseURL: app.cfg.BaseURL,
+		SignIns: authnapi.SignIns(app.authn),
+	}
+	if bg := app.bg; bg != nil && bg.Notify != nil {
+		// Invitations go out by mail once mail is set up; until then the
+		// administrator gets the link (notify.ErrMailOff).
+		accessOpts.MailInvite = bg.Notify.MailInvite
+	}
 	impl := api{
-		Handlers: accessapi.New(app.access, accessapi.Options{
-			BaseURL: app.cfg.BaseURL,
-			SignIns: authnapi.SignIns(app.authn),
-		}),
-		Ops:         app.authnOps,
-		settingsAPI: &settingsAPI{settings: app.settings, hooks: &app.hooks},
-		setupAPI:    &setupAPI{settings: app.settings, hooks: &app.hooks},
-		auditAPI:    &auditAPI{log: app.audit, hooks: &app.hooks},
-		modulesAPI:  &modulesAPI{settings: app.settings},
-		toolsAPI:    &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
+		Handlers:         accessapi.New(app.access, accessOpts),
+		Ops:              app.authnOps,
+		settingsAPI:      &settingsAPI{settings: app.settings, hooks: &app.hooks},
+		setupAPI:         &setupAPI{settings: app.settings, hooks: &app.hooks},
+		auditAPI:         &auditAPI{log: app.audit, hooks: &app.hooks},
+		modulesAPI:       &modulesAPI{settings: app.settings},
+		toolsAPI:         &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
+		notificationsAPI: &notificationsAPI{access: app.access},
 	}
 	if impl.toolsAPI.version == "" {
 		impl.toolsAPI.version = buildinfo.Get().Version
@@ -116,6 +124,9 @@ func apiMounts(app *App) Mounts {
 		impl.modulesAPI.host = bg.Modules
 		impl.modulesAPI.text = bg.text
 		modules = bg.Modules.Handler(http.HandlerFunc(notFound))
+	}
+	if bg := app.bg; bg != nil && bg.Notify != nil {
+		impl.notificationsAPI.notify = bg.Notify
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", notFound) // paths the contract does not have

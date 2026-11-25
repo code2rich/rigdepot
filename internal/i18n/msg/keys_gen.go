@@ -527,6 +527,90 @@ const (
 	MailTestSubject = "mail.test.subject"
 	// MCPAsSkill (catalog.json): This tool cannot connect to the MCP server directly, so it gets a skil…
 	MCPAsSkill = "mcp.as_skill"
+	// NotifyAdminGrantedBody (server.json): You can manage users and sign-in, tool adapters, the audit log and the…
+	NotifyAdminGrantedBody = "notify.admin_granted.body"
+	// NotifyAdminGrantedTitle (server.json): You are now a platform administrator
+	NotifyAdminGrantedTitle = "notify.admin_granted.title"
+	// NotifyAdminRevokedBody (server.json): Your roles in products stay as they are.
+	NotifyAdminRevokedBody = "notify.admin_revoked.body"
+	// NotifyAdminRevokedTitle (server.json): You are no longer a platform administrator
+	NotifyAdminRevokedTitle = "notify.admin_revoked.title"
+	// NotifyAuditBrokenBody (server.json): The daily check found entry #{{seq}} changed, removed or inserted; the…
+	NotifyAuditBrokenBody = "notify.audit_broken.body"
+	// NotifyAuditBrokenTitle (server.json): The audit log was tampered with
+	NotifyAuditBrokenTitle = "notify.audit_broken.title"
+	// NotifyFeedbackAcceptedBody (server.json): Someone is looking into your feedback.
+	NotifyFeedbackAcceptedBody = "notify.feedback_accepted.body"
+	// NotifyFeedbackAcceptedTitle (server.json): FB-{{number}} was accepted
+	NotifyFeedbackAcceptedTitle = "notify.feedback_accepted.title"
+	// NotifyFeedbackCommentedBody (server.json): Open the feedback to read the reply.
+	NotifyFeedbackCommentedBody = "notify.feedback_commented.body"
+	// NotifyFeedbackCommentedTitle (server.json): New reply on FB-{{number}}
+	NotifyFeedbackCommentedTitle = "notify.feedback_commented.title"
+	// NotifyFeedbackInProgressBody (server.json): You will hear when it is resolved.
+	NotifyFeedbackInProgressBody = "notify.feedback_in_progress.body"
+	// NotifyFeedbackInProgressTitle (server.json): Work on FB-{{number}} has started
+	NotifyFeedbackInProgressTitle = "notify.feedback_in_progress.title"
+	// NotifyFeedbackReopenedBody (server.json): The outcome was rated low, so the feedback is open again.
+	NotifyFeedbackReopenedBody = "notify.feedback_reopened.body"
+	// NotifyFeedbackReopenedTitle (server.json): FB-{{number}} was reopened
+	NotifyFeedbackReopenedTitle = "notify.feedback_reopened.title"
+	// NotifyFeedbackResolvedBody (server.json): If it works for you now, rate how it was handled.
+	NotifyFeedbackResolvedBody = "notify.feedback_resolved.body"
+	// NotifyFeedbackResolvedTitle (server.json): FB-{{number}} was resolved
+	NotifyFeedbackResolvedTitle = "notify.feedback_resolved.title"
+	// NotifyFeedbackWontFixBody (server.json): Open the feedback to read why.
+	NotifyFeedbackWontFixBody = "notify.feedback_wont_fix.body"
+	// NotifyFeedbackWontFixTitle (server.json): FB-{{number}} will not be fixed
+	NotifyFeedbackWontFixTitle = "notify.feedback_wont_fix.title"
+	// NotifyInviteBody (server.json): {{inviter}} invited you to {{product}}, where your team shares Skills,…
+	NotifyInviteBody = "notify.invite.body"
+	// NotifyInviteTitle (server.json): You are invited to {{product}}
+	NotifyInviteTitle = "notify.invite.title"
+	// NotifyJoinApprovedBody (server.json): Your request to join {{product_name}} was approved. Its resources reac…
+	NotifyJoinApprovedBody = "notify.join_approved.body"
+	// NotifyJoinApprovedTitle (server.json): You can now use {{product_name}}
+	NotifyJoinApprovedTitle = "notify.join_approved.title"
+	// NotifyJoinRejectedBody (server.json): The reason given: {{reason}}
+	NotifyJoinRejectedBody = "notify.join_rejected.body"
+	// NotifyJoinRejectedTitle (server.json): Your request to join {{product_name}} was not approved
+	NotifyJoinRejectedTitle = "notify.join_rejected.title"
+	// NotifyJoinRequestedBody (server.json): Approve or reject the request under Products and members.
+	NotifyJoinRequestedBody = "notify.join_requested.body"
+	// NotifyJoinRequestedTitle (server.json): {{user}} asked to join {{product_name}}
+	NotifyJoinRequestedTitle = "notify.join_requested.title"
+	// NotifyMemberAddedBody (server.json): Its resources reach your computer at your next sync.
+	NotifyMemberAddedBody = "notify.member_added.body"
+	// NotifyMemberAddedTitle (server.json): You were added to {{product_name}}
+	NotifyMemberAddedTitle = "notify.member_added.title"
+	// NotifyMemberRemovedBody (server.json): Its resources leave your computer at your next sync.
+	NotifyMemberRemovedBody = "notify.member_removed.body"
+	// NotifyMemberRemovedTitle (server.json): You were removed from {{product_name}}
+	NotifyMemberRemovedTitle = "notify.member_removed.title"
+	// NotifyOwnerAddedBody (server.json): You can manage its members, join requests and resources.
+	NotifyOwnerAddedBody = "notify.owner_added.body"
+	// NotifyOwnerAddedTitle (server.json): You are now an owner of {{product_name}}
+	NotifyOwnerAddedTitle = "notify.owner_added.title"
+	// NotifyOwnerRemovedBody (server.json): You remain a member of it.
+	NotifyOwnerRemovedBody = "notify.owner_removed.body"
+	// NotifyOwnerRemovedTitle (server.json): You are no longer an owner of {{product_name}}
+	NotifyOwnerRemovedTitle = "notify.owner_removed.title"
+	// NotifyResourceDraftBody (server.json): Look at the changes and the check results, then publish it or leave it…
+	NotifyResourceDraftBody = "notify.resource_draft.body"
+	// NotifyResourceDraftTitle (server.json): {{resource}} has an update waiting to be published
+	NotifyResourceDraftTitle = "notify.resource_draft.title"
+	// NotifyResourceNewDraftBody (server.json): Look at it and the check results, then publish it or leave it as a dra…
+	NotifyResourceNewDraftBody = "notify.resource_new_draft.body"
+	// NotifyResourceNewDraftTitle (server.json): New resource {{resource}} is waiting to be published
+	NotifyResourceNewDraftTitle = "notify.resource_new_draft.title"
+	// NotifyResourcePublishedBody (server.json): It reaches the computers of the people it is for at their next sync.
+	NotifyResourcePublishedBody = "notify.resource_published.body"
+	// NotifyResourcePublishedTitle (server.json): {{resource}} v{{version}} is published
+	NotifyResourcePublishedTitle = "notify.resource_published.title"
+	// NotifyResourceRolledBackBody (server.json): The content of v{{rollback_of}} is published again as v{{version}}. It…
+	NotifyResourceRolledBackBody = "notify.resource_rolled_back.body"
+	// NotifyResourceRolledBackTitle (server.json): {{resource}} was rolled back to v{{rollback_of}}
+	NotifyResourceRolledBackTitle = "notify.resource_rolled_back.title"
 	// PlanDetected (cli.json): Detected AI tools: {{tools}}
 	PlanDetected = "plan.detected"
 	// PlanGroupAttention (cli.json): Left alone: needs you
