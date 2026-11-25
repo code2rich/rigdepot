@@ -1,0 +1,9 @@
+id: examplecode
+name: Example Code
+detect:
+  bins: [examplecode]
+verified:
+  version: "1.4.0"
+  os: [linux]
+  at: last week
+  how: ran examplecode mcp add in a temporary home directory

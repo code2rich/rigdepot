@@ -1,0 +1,4 @@
+schema: 1
+stages:
+  - { id: develop, name: 开发 }
+  - { name: 压测 }

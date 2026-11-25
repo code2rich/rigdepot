@@ -1,0 +1,5 @@
+# The shape from the first sketch of the profile format: "bin", one value.
+id: examplecode
+name: Example Code
+detect:
+  bins: examplecode

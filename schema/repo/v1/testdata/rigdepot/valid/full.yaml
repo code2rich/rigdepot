@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://rigdepot.code2rich.com/schema/repo/v1/rigdepot.schema.json
+schema: 1                         # 必填。格式的大版本
+name: 示例科技的 AI 资源           # 可选，显示用
+locale: zh-CN                     # 可选。没写 i18n 的字段是什么语言；默认 en
+
+requires:                         # 可选。用了新字段时声明最低版本
+  rgd: ">=0.4.0"
+
+stages:                           # 可选。不写就是默认八个
+  - { id: requirement, name: 需求 }
+  - { id: develop,     name: 开发 }
+  - { id: test,        name: 测试 }
+  - { id: perf,        name: 压测 }          # 增加一个
+  - { id: scm,         name: 配管, hidden: true }   # 被引用过的环节不能删，只能隐藏
+
+defaults:                         # 可选。资源自己没写时用这里的
+  scope: org
+  policy: recommended
+  audience: rd
+
+products:                         # 可选。仓库里用到的产品代号
+  - { code: shop, name: 商城 }
+  - { code: pay,  name: 支付 }
+
+secrets:                          # 密钥定义：名字、给人看的说明、去哪申请。值永远不在仓库里
+  JIRA_API_TOKEN:
+    label: Jira API 令牌
+    howto: Jira → 个人设置 → 安全 → API 令牌
+  GITLAB_TOKEN:
+    label: GitLab 个人访问令牌
+    howto: GitLab → 偏好设置 → 访问令牌，勾选 read_api

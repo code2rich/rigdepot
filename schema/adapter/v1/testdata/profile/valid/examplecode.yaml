@@ -1,0 +1,16 @@
+id: examplecode
+name: Example Code
+detect:
+  bins: [examplecode]
+  dirs: ["{config}"]
+  version: { run: [examplecode, --version], match: '(\d+\.\d+\.\d+)' }
+roots:
+  config: { env: EXAMPLECODE_HOME, default: "~/.examplecode" }
+verified:                    # 必填。没有核对记录的档案不会下发任何东西
+  version: "1.4.0"
+  os: [linux]
+  at: "2026-12-01"
+  how: "临时 HOME 里 examplecode mcp add 后读出文件"
+skills:   { dir: "{config}/skills", layout: dir }
+mcp:      { files: ["{config}/mcp.json"], format: json, path: [mcpServers] }
+credentials: ["auth.json"]

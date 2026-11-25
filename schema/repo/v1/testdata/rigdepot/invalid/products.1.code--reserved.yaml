@@ -1,0 +1,4 @@
+schema: 1
+products:
+  - { code: shop, name: 商城 }
+  - { code: org, name: 全公司 }

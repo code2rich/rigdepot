@@ -1,0 +1,2 @@
+summary: 为改动生成并运行单元测试
+stages: [test]

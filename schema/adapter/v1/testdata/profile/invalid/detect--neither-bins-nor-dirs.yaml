@@ -1,0 +1,4 @@
+id: examplecode
+name: Example Code
+detect:
+  version: { run: [examplecode, --version], match: '(\d+\.\d+\.\d+)' }

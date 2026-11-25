@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rigdepot.code2rich.com/schema/repo/v1/rigdepot.schema.json",
+  "title": "Resource repository configuration",
+  "description": "rigdepot.yaml, at the root of a resource repository: the format version, delivery stages, defaults, product codes and the definitions of personal secrets. Unknown fields are allowed: a field starting with \"x-\" is yours to use, any other unknown field is reported as a possible typo but does not block anything.",
+  "type": "object",
+  "required": ["schema"],
+  "properties": {
+    "schema": {
+      "description": "The major version of the repository format. This schema describes version 1.",
+      "const": 1
+    },
+    "name": {
+      "description": "Display name of the repository.",
+      "type": "string"
+    },
+    "locale": {
+      "description": "The language of every field that has no translation under i18n. Defaults to \"en\".",
+      "$ref": "meta.schema.json#/$defs/locale"
+    },
+    "requires": {
+      "description": "Minimum versions this repository needs. Declare one when the repository uses a field that older versions do not know; they then refuse to read it and ask for an upgrade instead of guessing.",
+      "type": "object",
+      "properties": {
+        "rgd": {
+          "description": "The lowest version of the command-line program that can read this repository, written \">=1.2.3\".",
+          "type": "string",
+          "pattern": "^>= ?[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      }
+    },
+    "stages": {
+      "description": "The delivery stages, in display order. Left out, the repository has the eight default stages. A stage that resources refer to is never removed, only hidden.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "$ref": "meta.schema.json#/$defs/stageId" },
+          "name": {
+            "description": "Display name, in the repository's language.",
+            "type": "string",
+            "minLength": 1
+          },
+          "hidden": {
+            "description": "Keeps the stage out of the user interface while resources that name it stay valid.",
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "defaults": {
+      "description": "Values used for a resource that does not set them itself.",
+      "type": "object",
+      "properties": {
+        "scope": { "$ref": "meta.schema.json#/$defs/scope" },
+        "policy": { "$ref": "meta.schema.json#/$defs/policy" },
+        "audience": { "$ref": "meta.schema.json#/$defs/audience" }
+      }
+    },
+    "products": {
+      "description": "The product codes this repository uses as scopes. With a server, the server's list of products is authoritative and this one is only cross-checked.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "code": {
+            "description": "The code of the product, as used in \"scope\". \"org\" and \"me\" are scopes of their own and cannot be product codes.",
+            "$ref": "meta.schema.json#/$defs/slug",
+            "not": { "enum": ["org", "me"] }
+          },
+          "name": {
+            "description": "Display name of the product.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "secrets": {
+      "description": "The personal secrets resources may refer to, by name. Only definitions live here: what the secret is and where to get one. The value of a secret is never written into a repository.",
+      "type": "object",
+      "propertyNames": { "$ref": "meta.schema.json#/$defs/secretName" },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "description": "What the secret is, for people.",
+            "type": "string",
+            "minLength": 1
+          },
+          "howto": {
+            "description": "Where and how a person gets one.",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

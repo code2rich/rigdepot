@@ -1,0 +1,3 @@
+id: examplecode
+name: Example Code
+skills: { dir: "~/.examplecode/skills", layout: dir }

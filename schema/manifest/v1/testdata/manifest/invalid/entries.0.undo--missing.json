@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "rgd": "0.4.0",
+  "entries": [
+    { "id": "claude-code:exec:rgd-delivery-check@rigdepot",
+      "tool": "claude-code", "resource": "delivery-check",
+      "op": "exec",
+      "at": "2026-11-24T10:02:15Z" }
+  ]
+}

@@ -1,0 +1,5 @@
+id: examplecode
+name: Example Code
+detect:
+  bins: [examplecode]
+  version: { run: "examplecode --version", match: '(\d+\.\d+\.\d+)' }

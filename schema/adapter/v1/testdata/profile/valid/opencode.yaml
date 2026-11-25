@@ -1,0 +1,24 @@
+id: opencode
+name: OpenCode
+detect:
+  bins: [opencode]
+  dirs: ["{config}"]
+  version: { run: [opencode, --version], match: 'v?(\d+\.\d+\.\d+)' }
+roots:
+  config: { env: XDG_CONFIG_HOME, join: opencode, default: "~/.config/opencode" }
+verified:                       # 核对记录：谁都能照着复现
+  version: "2.2.7"
+  os: [darwin]
+  at: 2026-11-24
+  how: "临时 HOME 里 opencode mcp add --global 后读出文件"
+skills:   { dir: "{config}/skills",   layout: dir }
+commands: { dir: "{config}/commands", ext: .md }
+agents:   { dir: "{config}/agents",   ext: .md }
+mcp:
+  files: ["{config}/opencode.jsonc", "{config}/opencode.json"]   # 用存在的那个；都没有时新建最后一个
+  format: jsonc
+  path: [mcp, servers]
+alsoReads:
+  - { kind: skill, dir: "~/.claude/skills" }
+  - { kind: skill, dir: "~/.agents/skills" }
+credentials: ["auth.json"]      # 预览时绝不复制进临时 HOME 的文件

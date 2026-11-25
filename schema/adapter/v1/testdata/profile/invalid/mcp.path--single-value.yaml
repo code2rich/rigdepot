@@ -1,0 +1,6 @@
+id: examplecode
+name: Example Code
+detect:
+  bins: [examplecode]
+# The shape from the first sketch of the profile format: one file, a dotted path.
+mcp: { files: ["~/.examplecode/mcp.json"], format: json, path: mcpServers }

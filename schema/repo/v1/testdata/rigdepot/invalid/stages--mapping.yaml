@@ -1,0 +1,4 @@
+schema: 1
+stages:
+  develop: 开发
+  test: 测试

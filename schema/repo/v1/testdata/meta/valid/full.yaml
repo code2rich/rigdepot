@@ -1,0 +1,18 @@
+name: 单元测试                  # 必填。显示名
+summary: 为改动生成并运行单元测试，补齐边界用例
+stages: [test]
+audience: rd                   # rd 研发 / mgmt 协作
+scope: org                     # org / <产品代号>
+policy: recommended            # required / recommended / optional
+when: 要给改动补单元测试时
+try: 给我刚改的这几个类补单元测试
+secrets: []
+maintainers: [xuran]
+tags: [java]
+
+i18n:
+  en:
+    name: Unit testing
+    summary: Generate and run unit tests for a change, covering edge cases
+    when: When a change needs unit tests
+    try: Add unit tests for the classes I just changed

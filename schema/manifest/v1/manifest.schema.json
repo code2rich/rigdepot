@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rigdepot.code2rich.com/schema/manifest/v1/manifest.schema.json",
+  "title": "Local manifest",
+  "description": "manifest.json in the local data directory: every place the command-line program wrote to on this computer. Uninstalling and drift detection look at nothing else. A manifest that cannot be read or does not match this schema is unknown, never empty.",
+  "type": "object",
+  "required": ["schema", "entries"],
+  "properties": {
+    "schema": {
+      "description": "The version of the manifest format. This schema describes version 1.",
+      "const": 1
+    },
+    "rgd": {
+      "description": "The version of the command-line program that last wrote the manifest.",
+      "type": "string"
+    },
+    "source": {
+      "description": "Where the resources came from at the last sync.",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "description": "\"server\" for a team server, \"repo\" for a resource repository read directly.",
+          "enum": ["server", "repo"]
+        },
+        "url": {
+          "description": "The address of the server or repository.",
+          "type": "string"
+        }
+      }
+    },
+    "entries": {
+      "description": "One entry per place written, in the order they were written.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "toolId": {
+      "description": "The identifier of a tool adapter, such as \"claude-code\".",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "path": {
+      "description": "A path with forward slashes on every platform. A path inside the home directory starts with \"~/\" and is expanded on use, so the manifest survives a renamed user or a moved home directory.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\\\]*$"
+    },
+    "argv": {
+      "description": "A command and its arguments, run as they are, without a shell.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["id", "tool", "resource", "op", "at"],
+      "properties": {
+        "id": {
+          "description": "Identifies the target: tool, operation and place, such as \"claude-code:tree:~/.claude/skills/<name>\". Unique in the manifest.",
+          "type": "string",
+          "minLength": 1
+        },
+        "tool": { "$ref": "#/$defs/toolId" },
+        "resource": {
+          "description": "The code of the resource this entry delivers.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "minLength": 2,
+          "maxLength": 48
+        },
+        "version": {
+          "description": "The published version of the resource. 0 or absent when the resource came straight from a repository.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "op": {
+          "description": "What was written: \"tree\" a directory of ours, \"file\" a file of ours, \"key\" one key in a tool's configuration file, \"exec\" something installed with the tool's own command.",
+          "enum": ["tree", "file", "key", "exec"]
+        },
+        "path": {
+          "description": "The directory or file written, or for \"key\" the configuration file.",
+          "$ref": "#/$defs/path"
+        },
+        "format": {
+          "description": "The syntax of the configuration file. Only for \"key\".",
+          "enum": ["json", "jsonc", "toml"]
+        },
+        "key": {
+          "description": "The key that was set, one element per level; a key name may itself contain dots. Only for \"key\".",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "digest": {
+          "description": "The digest of what was written, for detecting later changes. \"tree\": the content digest of the directory; \"file\": the SHA-256 of the file; \"key\": the SHA-256 of the key's value as canonical JSON.",
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "backup": {
+          "description": "Where the configuration file was copied before it was first changed, relative to the local data directory. Only for \"key\". A backup is for a person to restore by hand; undoing an entry never copies it back.",
+          "$ref": "#/$defs/path"
+        },
+        "undo": {
+          "description": "The command that reverses the installation. Only for \"exec\".",
+          "$ref": "#/$defs/argv"
+        },
+        "sharedWith": {
+          "description": "Other tools that read this entry's directory and therefore did not get a copy of their own.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/toolId" },
+          "uniqueItems": true
+        },
+        "at": {
+          "description": "When the entry was written, as an RFC 3339 timestamp.",
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "op": { "enum": ["tree", "file", "key"] } }, "required": ["op"] },
+          "then": { "required": ["path", "digest"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "key" } }, "required": ["op"] },
+          "then": { "required": ["format", "key"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "exec" } }, "required": ["op"] },
+          "then": { "required": ["undo"] }
+        }
+      ]
+    }
+  }
+}

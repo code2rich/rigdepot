@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rigdepot.code2rich.com/schema/repo/v1/meta.schema.json",
+  "title": "Resource metadata",
+  "description": "The metadata every resource carries, whatever its kind. Directory-shaped kinds (skills, agents) keep it in meta.yaml; single-file kinds (MCP servers, workflows, knowledge bases) keep it under the \"meta\" key of their file. Unknown fields are allowed: a field starting with \"x-\" is yours to use, any other unknown field is reported as a possible typo but does not block anything.",
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "description": "Display name.",
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "description": "One sentence for people. A skill without one shows the description from its SKILL.md.",
+      "type": "string"
+    },
+    "stages": {
+      "description": "Identifiers of the delivery stages this resource belongs to. May be left out for resources that do not belong to a stage.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/stageId" },
+      "uniqueItems": true
+    },
+    "audience": { "$ref": "#/$defs/audience" },
+    "scope": { "$ref": "#/$defs/scope" },
+    "policy": { "$ref": "#/$defs/policy" },
+    "when": {
+      "description": "The situation this resource is for. Recommendations match a task against it on the person's own computer.",
+      "type": "string"
+    },
+    "try": {
+      "description": "A sentence a person can send to their AI tool as it is to see the resource work.",
+      "type": "string"
+    },
+    "secrets": {
+      "description": "Names of the personal secrets this resource needs. Each must be defined in rigdepot.yaml. Secrets an MCP server refers to as ${secret:NAME} count without being listed here.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/secretName" },
+      "uniqueItems": true
+    },
+    "maintainers": {
+      "description": "Account names of the people who maintain this resource.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "tags": {
+      "description": "Free-form labels.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "i18n": {
+      "description": "Name and descriptions in other languages, keyed by BCP 47 language tag. Only what people read is translated; what an AI reads, such as SKILL.md, exists once.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/locale" },
+      "additionalProperties": { "$ref": "#/$defs/text" }
+    }
+  },
+  "$defs": {
+    "slug": {
+      "description": "Lower-case letters and digits in groups joined by single hyphens.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "code": {
+      "description": "The identifier of a resource: its directory name, or its file name without the extension. 2 to 48 characters, unique in the repository across all kinds.",
+      "$ref": "#/$defs/slug",
+      "minLength": 2,
+      "maxLength": 48
+    },
+    "stageId": {
+      "description": "The identifier of a delivery stage. The default stages are requirement, architecture, design, develop, test, scm, release and ops; rigdepot.yaml can define others.",
+      "$ref": "#/$defs/slug"
+    },
+    "scope": {
+      "description": "Who the resource is for: \"org\" for the whole organisation, or the code of a product. A suggestion: once an administrator changes it on the server, the server's value wins.",
+      "$ref": "#/$defs/slug"
+    },
+    "policy": {
+      "description": "How the resource reaches the people in its scope: \"required\" is installed for everyone and cannot be turned off, \"recommended\" is installed unless a person turns it off, \"optional\" is installed only for people who turn it on. A suggestion, like scope.",
+      "enum": ["required", "recommended", "optional"]
+    },
+    "audience": {
+      "description": "\"rd\" for engineering work, \"mgmt\" for the collaboration work around it.",
+      "enum": ["rd", "mgmt"]
+    },
+    "secretName": {
+      "description": "The name of a personal secret: an upper-case letter followed by 1 to 63 upper-case letters, digits and underscores.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+    },
+    "locale": {
+      "description": "A BCP 47 language tag, such as \"en\" or \"zh-CN\".",
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+    },
+    "text": {
+      "description": "The fields people read, in one language. A field left out is shown untranslated.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string" },
+        "when": { "type": "string" },
+        "try": { "type": "string" }
+      }
+    }
+  }
+}

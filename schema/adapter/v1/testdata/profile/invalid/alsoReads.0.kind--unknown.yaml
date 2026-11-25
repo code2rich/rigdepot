@@ -1,0 +1,6 @@
+id: examplecode
+name: Example Code
+detect:
+  bins: [examplecode]
+alsoReads:
+  - { kind: command, dir: "~/.claude/commands" }

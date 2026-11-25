@@ -1,0 +1,3 @@
+name: Example Code
+detect:
+  bins: [examplecode]

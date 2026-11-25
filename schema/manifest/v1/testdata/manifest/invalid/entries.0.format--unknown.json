@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "rgd": "0.4.0",
+  "entries": [
+    { "id": "codex:key:~/.codex/config.toml#mcp_servers.rgd-jira",
+      "tool": "codex", "resource": "jira",
+      "op": "key", "path": "~/.codex/config.toml", "format": "yaml", "key": ["mcp_servers", "rgd-jira"],
+      "digest": "sha256:1e32847769dc4a1588004a1dfdf10041407a3494ae910bc76783917fffea7789", "at": "2026-11-24T10:02:12Z" }
+  ]
+}

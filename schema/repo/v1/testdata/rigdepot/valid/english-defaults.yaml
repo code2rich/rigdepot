@@ -1,0 +1,16 @@
+schema: 1
+name: Example Tech AI resources
+requires:
+  rgd: ">= 1.12.0"
+defaults:
+  scope: shop
+  policy: optional
+  audience: mgmt
+products:
+  - code: shop
+  - code: data-platform
+    name: Data platform
+secrets:
+  A1:
+    label: Shortest name a secret can have
+  SHOP_TEST_API_TOKEN: {}

@@ -1,0 +1,9 @@
+# Written for a newer version, plus one team's own extension.
+name: Delivery check
+policy: optional
+x-reviewed-by: qa-guild
+deprecated: false
+i18n:
+  en:
+    name: Delivery check
+    keywords: [release, checklist]

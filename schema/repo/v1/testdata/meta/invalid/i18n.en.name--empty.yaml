@@ -1,0 +1,5 @@
+name: 单元测试
+i18n:
+  en:
+    name: ""
+    summary: Generate and run unit tests for a change

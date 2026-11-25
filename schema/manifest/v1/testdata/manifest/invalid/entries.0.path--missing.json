@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "rgd": "0.4.0",
+  "entries": [
+    { "id": "claude-code:file:~/.claude/commands/rgd-task-to-submit.md",
+      "tool": "claude-code", "resource": "task-to-submit",
+      "op": "file",
+      "digest": "sha256:13aa900168c6ec8c928a3d3fa2f3af99981c2c844b0028f8526dc5210d611208", "at": "2026-11-24T10:02:12Z" }
+  ]
+}

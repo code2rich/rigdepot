@@ -1,0 +1,22 @@
+# Skills do not follow CODEX_HOME: the tool reads them from the home directory.
+id: codex
+name: Codex
+detect:
+  bins: [codex]
+  dirs: ["{config}"]
+  version:
+    run: [codex, --version]
+    match: 'codex-cli (\d+\.\d+\.\d+)'
+roots:
+  config: { env: CODEX_HOME, default: "~/.codex" }
+verified:
+  version: "0.167.1"
+  os: [darwin, linux]
+  at: 2026-11-24
+  how: ran codex mcp add in a temporary home directory and read config.toml
+skills: { dir: "~/.agents/skills", layout: dir }
+mcp:
+  files: ["{config}/config.toml"]
+  format: toml
+  path: [mcp_servers]
+credentials: [auth.json]

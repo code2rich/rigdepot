@@ -1,0 +1,6 @@
+# Nobody has checked this tool yet. The profile may exist, so that the tool is
+# listed as "not verified"; without a verification record nothing is written.
+id: zcode
+name: Zcode
+detect:
+  dirs: ["~/.zcode"]

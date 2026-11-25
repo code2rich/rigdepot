@@ -1,0 +1,21 @@
+# A repository written for a newer version, and one team's own extensions.
+# Reading must stay possible: unknown fields are reported, not refused.
+schema: 1
+name: Example Tech AI resources
+x-owner: platform-team
+x-cost-center:
+  code: 4411
+mirrors:
+  - https://git.example.com/platform/ai-resources.git
+stages:
+  - id: develop
+    name: Develop
+    color: "#2f6feb"
+products:
+  - code: shop
+    name: Shop
+    x-jira-project: SHOP
+secrets:
+  JIRA_API_TOKEN:
+    label: Jira API token
+    rotation: 90d

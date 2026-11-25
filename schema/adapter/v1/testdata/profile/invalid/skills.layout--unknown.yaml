@@ -1,0 +1,5 @@
+id: examplecode
+name: Example Code
+detect:
+  bins: [examplecode]
+skills: { dir: "~/.examplecode/skills", layout: symlink }

@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "rgd": "0.4.0",
+  "entries": [
+    { "tool": "claude-code", "resource": "unit-testing", "version": 5,
+      "op": "tree", "path": "~/.claude/skills/rgd-unit-testing",
+      "digest": "sha256:187695a95cc9286d4563ca4398a230623205bdddb36fb37086c90ae6f75ed7b1", "at": "2026-11-24T10:02:11Z" }
+  ]
+}

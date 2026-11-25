@@ -1,0 +1,13 @@
+name: Shop test environment helper
+stages: [develop, test, perf]
+audience: mgmt
+scope: shop
+policy: required
+secrets: [SHOP_TEST_API_TOKEN, GITLAB_TOKEN]
+maintainers: [xuran, lin.q]
+i18n:
+  zh-CN:
+    name: 商城测试环境助手
+  zh-Hant-TW:
+    name: 商城測試環境助手
+    try: 幫我看一下測試環境現在的版本

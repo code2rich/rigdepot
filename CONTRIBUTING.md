@@ -6,7 +6,7 @@ Thank you for considering a contribution. This page takes about ten minutes to r
 
 Ideas and questions are contributions too, and you do not have to write code: open an issue, or talk to us on [Discord](https://discord.gg/feGwwqs7x). Issues and pull requests are welcome in English or Chinese.
 
-> **Where the project is.** The design is complete and M0, the command-line core, is in development. The repository skeleton, the development entry point and the checks described here work today. The extension interfaces for tools, resource kinds and check rules are defined in `ext/` (read them with `go doc ./ext/adapter`, `./ext/kind` and `./ext/check`). Nothing implements them yet, so the five kinds of contribution described [below](#the-five-most-common-contributions) are the shape things will have, not something you can copy from yet. Each section says what exists.
+> **Where the project is.** The design is complete and M0, the command-line core, is in development. The repository skeleton, the development entry point and the checks described here work today. The extension interfaces for tools, resource kinds and check rules are defined in `ext/` (read them with `go doc ./ext/adapter`, `./ext/kind` and `./ext/check`), and so are the JSON Schemas of the file formats in `schema/`. Nothing implements them yet, so the five kinds of contribution described [below](#the-five-most-common-contributions) are the shape things will have, not something you can copy from yet. Each section says what exists.
 
 ## What this is
 
@@ -59,13 +59,14 @@ builtin/     built-in implementations, one directory each      <- most contribut
   all/         the registry: a new item is one more line here (server-only items: all/server/)
 modules/     optional modules (large features that are off by default)
 internal/    the core: sync engine, executor, manifest, the server's domains
+schema/      JSON Schema of the resource repository, the local manifest and adapter profiles
 tools/dev/   the one development command
 scripts/     install.sh, install.ps1
 deploy/      Compose file, systemd unit
 brand.json   every name the code uses, in one file
 ```
 
-Still to come as M0 and M1 progress: `locales/` (translations, one directory per language; contributions that need no code will go there), `schema/` (JSON Schema), `api/` (the OpenAPI contract), `web/` sources (the web console) and `examples/` (a sample resource repository).
+Still to come as M0 and M1 progress: `locales/` (translations, one directory per language; contributions that need no code will go there), `api/` (the OpenAPI contract), `web/` sources (the web console) and `examples/` (a sample resource repository).
 
 Every package has a `doc.go` with one sentence saying what it is for. If you are looking for where something belongs, this prints them all:
 
