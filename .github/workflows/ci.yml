@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+#
+# CI runs the same command a contributor runs locally. No check is written
+# in this file: a check that lives here cannot run on a contributor's machine.
+#
+# Actions are pinned by commit, permissions are read-only, and pull requests
+# from forks get no secrets (this uses pull_request, never pull_request_target).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # A run on main is never cancelled: a release needs a complete green run on
+  # its commit.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: tools/tools.sum
+
+      - name: Download dependencies
+        run: go run ./tools/dev deps
+
+      - name: Check
+        run: go run ./tools/dev check
