@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
@@ -37,7 +38,21 @@ func before(o Observed) string {
 func checkFiles(tool Tool, op adapter.WriteTree) error {
 	defect := func(problem string) error { return &DefectError{Tool: tool.ID, Target: op.Dir, Problem: problem} }
 	seen := map[string]bool{}
+	locals := map[string]bool{}
+	for _, l := range op.Local {
+		if err := checkTreeFile(l); err != nil {
+			return defect("local directory: " + err.Error())
+		}
+		key := strings.ToLower(l)
+		if locals[key] {
+			return defect(fmt.Sprintf("local directory %q is listed twice (ignoring case)", l))
+		}
+		locals[key] = true
+	}
 	for _, f := range op.Files {
+		if locals[strings.ToLower(f.Path)] {
+			return defect(fmt.Sprintf("%q is both a file and a local directory", f.Path))
+		}
 		if err := checkTreeFile(f.Path); err != nil {
 			return defect(err.Error())
 		}
@@ -64,8 +79,9 @@ type write struct {
 	in      manifest.Intent
 	missing []string // parents to create, relative to the root, outermost first
 	stage   string
-	old     string // set once what was at the target has been moved aside
-	movedIn bool   // the new content is at the target
+	local   []string // a tree's local directories: left out of the digest when verifying
+	old     string   // set once what was at the target has been moved aside
+	movedIn bool     // the new content is at the target
 }
 
 // undo takes a failed write back: the new content out, the old content back, the staging area
@@ -149,7 +165,7 @@ func (w *write) finish(op manifest.Op, replace bool, res Applied) (Applied, erro
 			res.Leftover = w.e.loc.display(w.t.idx, w.old)
 		}
 	}
-	if got := observe(w.t, op); got.State != Present || got.Digest != w.in.After {
+	if got := observe(w.t, op, w.local...); got.State != Present || got.Digest != w.in.After {
 		return Applied{}, fmt.Errorf("%s: %w", w.t.display, ErrVerify)
 	}
 	recorded, err := w.e.journal.Commit(w.in)
@@ -168,19 +184,97 @@ func (e *Executor) applyTree(tool Tool, op adapter.WriteTree, pre Observed, opt 
 	if err := checkFiles(tool, op); err != nil {
 		return Applied{}, err
 	}
-	cur := observe(t, manifest.OpTree)
+	cur := observe(t, manifest.OpTree, op.Local...)
 	if err := checkPre(pre, cur); err != nil {
 		return Applied{}, fmt.Errorf("%s: %w", t.display, err)
 	}
-	entry := e.newEntry(tool, op.Resource, manifest.OpTree, t, filesDigest(op.Files))
+	entry := e.newEntry(tool, op.Resource, manifest.OpTree, t, filesDigest(op.Files, op.Local...))
+	entry.Local = slices.Clone(op.Local)
 	w, res, err := e.begin(t, entry, cur, opt)
 	if err != nil {
 		return Applied{}, err
 	}
+	w.local = op.Local
 	if err := e.writeStage(w, tool, op); err != nil {
 		return Applied{}, w.undo(err)
 	}
+	if cur.State == Present {
+		if err := carryLocal(t.root, t.rel, w.stage, op.Local); err != nil {
+			return Applied{}, w.undo(fmt.Errorf("keeping the local directories of %s: %w", t.display, err))
+		}
+	}
 	return w.finish(manifest.OpTree, cur.State == Present, res)
+}
+
+// carryLocal puts what is in the local directories of the directory being replaced (from) into
+// the new content (to), in place of whatever the new content has there: what the person's
+// tools wrote into them belongs to the person. The old directory stays as it is until the new
+// one is in place, so a failure loses nothing.
+func carryLocal(root *os.Root, from, to string, local []string) error {
+	for _, l := range local {
+		src := from + "/" + l
+		fi, err := root.Lstat(filepath.FromSlash(src))
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		dst := to + "/" + l
+		if err := removeAllIn(root, dst); err != nil {
+			return err
+		}
+		if !fi.IsDir() {
+			// Something else where a directory was meant: carried as it is.
+			if err := copyEntry(root, src, dst, fi); err != nil {
+				return err
+			}
+			continue
+		}
+		err = fs.WalkDir(root.FS(), src, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			out := dst + strings.TrimPrefix(p, src)
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			return copyEntry(root, p, out, info)
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// copyEntry copies one directory entry inside root: a directory is made, a file copied with its
+// permissions, a symbolic link made again pointing where it pointed. Anything else is left out.
+func copyEntry(root *os.Root, src, dst string, fi fs.FileInfo) error {
+	name := filepath.FromSlash(dst)
+	if dir := path.Dir(dst); dir != "." {
+		if err := root.MkdirAll(filepath.FromSlash(dir), 0o755); err != nil {
+			return err
+		}
+	}
+	switch {
+	case fi.IsDir():
+		return root.MkdirAll(name, fi.Mode().Perm()|0o700)
+	case fi.Mode().IsRegular():
+		data, err := root.ReadFile(filepath.FromSlash(src))
+		if err != nil {
+			return err
+		}
+		return writeNew(root, dst, data, fi.Mode().Perm())
+	case fi.Mode()&fs.ModeSymlink != 0:
+		link, err := root.Readlink(filepath.FromSlash(src))
+		if err != nil {
+			return err
+		}
+		return root.Symlink(link, name)
+	}
+	return nil
 }
 
 // writeStage writes the new directory next to the target, every file flushed to disk.
