@@ -48,6 +48,7 @@ type api struct {
 	*modulesAPI
 	*toolsAPI
 	*catalogAPI
+	*metaAPI
 	*notificationsAPI
 }
 
@@ -132,11 +133,16 @@ func apiMounts(app *App) Mounts {
 	if impl.toolsAPI.version == "" {
 		impl.toolsAPI.version = buildinfo.Get().Version
 	}
+	impl.metaAPI = &metaAPI{cfg: app.cfg, settings: app.settings, version: impl.toolsAPI.version}
+	if app.authnOps != nil {
+		impl.metaAPI.methods = app.authnOps.LoginMethods
+	}
 	// The routes of the optional modules that are on, under /api/v1/x/<id>/;
 	// they log their own route templates.
 	var modules http.Handler
 	if bg := app.bg; bg != nil && bg.Modules != nil {
 		impl.modulesAPI.host = bg.Modules
+		impl.metaAPI.modules = bg.Modules
 		impl.modulesAPI.text = bg.text
 		modules = bg.Modules.Handler(http.HandlerFunc(notFound))
 	}

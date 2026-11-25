@@ -164,6 +164,10 @@ func (notImplemented) UpdateIdentityProvider(context.Context, httpapi.UpdateIden
 	return nil, httpapi.ErrNotImplemented
 }
 
+func (notImplemented) TestIdentityProvider(context.Context, httpapi.TestIdentityProviderRequestObject) (httpapi.TestIdentityProviderResponseObject, error) {
+	return nil, httpapi.ErrNotImplemented
+}
+
 func (notImplemented) GetInstallsSummary(context.Context, httpapi.GetInstallsSummaryRequestObject) (httpapi.GetInstallsSummaryResponseObject, error) {
 	return nil, httpapi.ErrNotImplemented
 }

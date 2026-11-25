@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/ext/identity"
 	"github.com/code2rich/rigdepot/ext/module"
 	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/server/access"
@@ -75,6 +76,12 @@ type App struct {
 	// adapters are the tool adapters compiled in; nil means the registry
 	// (ext/adapter). Tests put adapters made from profiles here.
 	adapters []adapter.Adapter
+	// identitySources are the kinds of identity sources compiled in; nil
+	// means the registry (ext/identity). Tests put the OIDC source here.
+	identitySources []identity.Provider
+	// signInRate limits signing in per client address; the zero value is
+	// authnapi's default. Tests that sign in often raise it.
+	signInRate authnapi.Rate
 	// version is this server's version; "" means the build's (buildinfo).
 	version string
 

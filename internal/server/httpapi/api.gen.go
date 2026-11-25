@@ -1779,6 +1779,9 @@ type Id = string
 
 // IdentityProvider defines model for IdentityProvider.
 type IdentityProvider struct {
+	// CallbackUrl The address to register at the identity provider as the redirect URI. Not set for local accounts.
+	CallbackUrl *string `json:"callback_url,omitempty"`
+
 	// Config The non-secret settings, shaped by the kind's `config_schema`.
 	Config  map[string]any `json:"config"`
 	Enabled bool           `json:"enabled"`
@@ -1809,6 +1812,16 @@ type IdentityProviderKindList struct {
 // IdentityProviderList defines model for IdentityProviderList.
 type IdentityProviderList struct {
 	Items []IdentityProvider `json:"items"`
+}
+
+// IdentityProviderTestResult defines model for IdentityProviderTestResult.
+type IdentityProviderTestResult struct {
+	// Detail What went wrong, in English as the provider or the network said it, with the client secret masked.
+	Detail *string `json:"detail,omitempty"`
+	Ok     bool    `json:"ok"`
+
+	// Step Which check failed: `config`, the settings; `discovery`, the provider's address (discovery document, key set, token endpoint); `client`, the client ID and secret. More steps may be added.
+	Step *string `json:"step,omitempty"`
 }
 
 // Impact defines model for Impact.
@@ -3568,6 +3581,9 @@ type ServerInterface interface {
 	// UpdateIdentityProvider Change a sign-in method
 	// (PATCH /api/v1/identity-providers/{provider_id})
 	UpdateIdentityProvider(w http.ResponseWriter, r *http.Request, providerId ProviderId, params UpdateIdentityProviderParams)
+	// TestIdentityProvider Check that a sign-in method works
+	// (POST /api/v1/identity-providers/{provider_id}/test)
+	TestIdentityProvider(w http.ResponseWriter, r *http.Request, providerId ProviderId)
 	// GetInstallsSummary How far the organisation has connected
 	// (GET /api/v1/installs/summary)
 	GetInstallsSummary(w http.ResponseWriter, r *http.Request, params GetInstallsSummaryParams)
@@ -5047,6 +5063,32 @@ func (siw *ServerInterfaceWrapper) UpdateIdentityProvider(w http.ResponseWriter,
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateIdentityProvider(w, r, providerId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// TestIdentityProvider operation middleware
+func (siw *ServerInterfaceWrapper) TestIdentityProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "provider_id" -------------
+	var providerId ProviderId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "provider_id", r.PathValue("provider_id"), &providerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "provider_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TestIdentityProvider(w, r, providerId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7400,6 +7442,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/identity-providers", wrapper.ListIdentityProviders)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/identity-providers", wrapper.CreateIdentityProvider)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/identity-providers/kinds", wrapper.ListIdentityProviderKinds)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/identity-providers/{provider_id}/test", wrapper.TestIdentityProvider)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1/identity-providers/{provider_id}", wrapper.DeleteIdentityProvider)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/identity-providers/{provider_id}", wrapper.GetIdentityProvider)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/identity-providers/{provider_id}", wrapper.UpdateIdentityProvider)
@@ -9038,6 +9081,45 @@ type UpdateIdentityProviderdefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response UpdateIdentityProviderdefaultApplicationProblemPlusJSONResponse) VisitUpdateIdentityProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TestIdentityProviderRequestObject struct {
+	ProviderId ProviderId `json:"provider_id"`
+}
+
+type TestIdentityProviderResponseObject interface {
+	VisitTestIdentityProviderResponse(w http.ResponseWriter) error
+}
+
+type TestIdentityProvider200JSONResponse IdentityProviderTestResult
+
+func (response TestIdentityProvider200JSONResponse) VisitTestIdentityProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TestIdentityProviderdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response TestIdentityProviderdefaultApplicationProblemPlusJSONResponse) VisitTestIdentityProviderResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
@@ -12841,6 +12923,9 @@ type StrictServerInterface interface {
 	// UpdateIdentityProvider Change a sign-in method
 	// (PATCH /api/v1/identity-providers/{provider_id})
 	UpdateIdentityProvider(ctx context.Context, request UpdateIdentityProviderRequestObject) (UpdateIdentityProviderResponseObject, error)
+	// TestIdentityProvider Check that a sign-in method works
+	// (POST /api/v1/identity-providers/{provider_id}/test)
+	TestIdentityProvider(ctx context.Context, request TestIdentityProviderRequestObject) (TestIdentityProviderResponseObject, error)
 	// GetInstallsSummary How far the organisation has connected
 	// (GET /api/v1/installs/summary)
 	GetInstallsSummary(ctx context.Context, request GetInstallsSummaryRequestObject) (GetInstallsSummaryResponseObject, error)
@@ -14105,6 +14190,32 @@ func (sh *strictHandler) UpdateIdentityProvider(w http.ResponseWriter, r *http.R
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateIdentityProviderResponseObject); ok {
 		if err := validResponse.VisitUpdateIdentityProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TestIdentityProvider operation middleware
+func (sh *strictHandler) TestIdentityProvider(w http.ResponseWriter, r *http.Request, providerId ProviderId) {
+	var request TestIdentityProviderRequestObject
+
+	request.ProviderId = providerId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.TestIdentityProvider(ctx, request.(TestIdentityProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TestIdentityProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TestIdentityProviderResponseObject); ok {
+		if err := validResponse.VisitTestIdentityProviderResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
