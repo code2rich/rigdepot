@@ -8,6 +8,7 @@
 // ?mock=admin (default), ?mock=owner, ?mock=member pick who is signed in; ?mock=signed-out has nobody.
 
 import type { Schemas } from './client'
+import { memberMock } from './mock-member'
 
 type Who = 'admin' | 'owner' | 'member' | 'signed-out'
 
@@ -85,6 +86,7 @@ const problem = (status: number, code: string) =>
 /** mockServer answers the console's requests in memory. */
 export function mockServer(): (request: Request) => Promise<Response> {
   let current = who()
+  const member = memberMock()
   return async (request) => {
     const path = new URL(request.url).pathname.replace(/^.*\/api\//, '/api/')
     const route = `${request.method} ${path}`
@@ -93,10 +95,20 @@ export function mockServer(): (request: Request) => Promise<Response> {
         return json(200, meta)
       case 'GET /api/v1/me':
         return current === 'signed-out' ? problem(401, 'auth.required') : json(200, people[current])
+      case 'PATCH /api/v1/me': {
+        if (current === 'signed-out') return problem(401, 'auth.required')
+        const patch = (await request.json()) as Schemas['UpdateMeRequest']
+        people[current] = { ...people[current], ...patch }
+        return json(200, people[current])
+      }
       case 'POST /api/v1/auth/logout':
         current = 'signed-out'
         sessionStorage.setItem('mock', current)
         return new Response(null, { status: 204 })
+    }
+    if (current !== 'signed-out') {
+      const answer = await member(request, path, current)
+      if (answer) return answer
     }
     return problem(404, 'mock.not_implemented')
   }

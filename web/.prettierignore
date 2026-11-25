@@ -7,3 +7,4 @@ pnpm-lock.yaml
 public/
 # Copied from the prototype and kept in its compact form, so the two can be compared line by line.
 src/styles/*.css
+src/pages/**/*.css

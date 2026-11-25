@@ -21,6 +21,11 @@ export interface NavPage {
   label: MessageKey
   icon: IconName
   component: ComponentType
+  /**
+   * The route pattern when the page also answers sub-paths, such as "/catalog/:code?" for a resource's
+   * details. One pattern keeps the page mounted while the sub-path changes (a drawer opens over it).
+   */
+  route?: string
 }
 
 export interface NavGroup {
@@ -41,12 +46,26 @@ export const NAV: readonly NavGroup[] = [
     roles: all,
     pages: [
       { id: 'home', path: '/', label: 'nav.home', icon: 'home', component: lazy(() => import('./home')) },
-      { id: 'catalog', path: '/catalog', label: 'nav.catalog', icon: 'box', component: notBuilt('catalog') },
-      { id: 'connect', path: '/connect', label: 'nav.connect', icon: 'plug', component: notBuilt('connect') },
+      {
+        id: 'catalog',
+        path: '/catalog',
+        route: '/catalog/:code?',
+        label: 'nav.catalog',
+        icon: 'box',
+        component: notBuilt('catalog'),
+      },
+      {
+        id: 'connect',
+        path: '/connect',
+        label: 'nav.connect',
+        icon: 'plug',
+        component: notBuilt('connect'),
+      },
       { id: 'keys', path: '/keys', label: 'nav.keys', icon: 'key', component: notBuilt('keys') },
       {
         id: 'feedback',
         path: '/feedback',
+        route: '/feedback/:number?',
         label: 'nav.feedback',
         icon: 'chat',
         component: notBuilt('feedback'),
