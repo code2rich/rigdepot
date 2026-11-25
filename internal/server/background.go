@@ -100,6 +100,13 @@ func startBackground(ctx context.Context, app *App) (func(), error) {
 			return nil, err
 		}
 	}
+	if app.devices != nil {
+		// Signs out the devices idle for 90 days, forgets ended sign-in
+		// requests (docs/architecture/06-server.md, the expire job).
+		if err := b.Jobs.Add(jobs.Job{Name: "devices-expire", Every: time.Hour, Timeout: time.Minute, Run: app.devices.PurgeDevices}); err != nil {
+			return nil, err
+		}
+	}
 	b.Jobs.Start()
 	if err := b.Modules.Start(ctx); err != nil {
 		app.log.Error("modules", "err", err)
