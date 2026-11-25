@@ -153,6 +153,55 @@ func TestInTx(t *testing.T) {
 	})
 }
 
+// TestAfterCommit: hooks run after a commit, in order, with the change
+// already visible; never after a rollback or a panic.
+func TestAfterCommit(t *testing.T) {
+	dbxtest.Each(t, func(t *testing.T, db *dbx.DB) {
+		ctx := withItems(t, db)
+		var ran []string
+		insert := func(tx *dbx.Tx, name string) error {
+			_, err := tx.ExecContext(ctx, `INSERT INTO items (id, name, created_at) VALUES (?, ?, 0)`, dbx.NewID(), name)
+			return err
+		}
+
+		_ = db.InTx(ctx, func(tx *dbx.Tx) error {
+			tx.AfterCommit(func() { ran = append(ran, "returned an error") })
+			if err := insert(tx, "x"); err != nil {
+				return err
+			}
+			return insert(tx, "x") // a unique violation
+		})
+		func() {
+			defer func() { _ = recover() }()
+			_ = db.InTx(ctx, func(tx *dbx.Tx) error {
+				tx.AfterCommit(func() { ran = append(ran, "panicked") })
+				panic("boom")
+			})
+		}()
+		if len(ran) != 0 {
+			t.Fatalf("hooks ran without a commit: %v", ran)
+		}
+
+		var seen int
+		err := db.InTx(ctx, func(tx *dbx.Tx) error {
+			tx.AfterCommit(func() {
+				ran = append(ran, "first")
+				if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM items WHERE name = 'y'`).Scan(&seen); err != nil {
+					t.Error(err)
+				}
+			})
+			tx.AfterCommit(func() { ran = append(ran, "second") })
+			return insert(tx, "y")
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Join(ran, ",") != "first,second" || seen != 1 {
+			t.Errorf("after commit: ran %v, the row visible %d times; want first,second and 1", ran, seen)
+		}
+	})
+}
+
 func TestSQLiteReadPoolIsReadOnly(t *testing.T) {
 	db := dbxtest.Open(t, dbxtest.SQLiteURL(t))
 	ctx := withItems(t, db)
