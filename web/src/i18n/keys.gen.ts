@@ -6,6 +6,7 @@
  * with the plural forms (_one, _other …) folded into one key.
  */
 export type MessageKey =
+  | "agent.as_skill"
   | "boot.failed.offline"
   | "boot.failed.retry"
   | "boot.failed.server"
@@ -51,6 +52,7 @@ export type MessageKey =
   | "check.structure.repo.parse"
   | "check.structure.repo.read"
   | "check.structure.repo.schema"
+  | "check.structure.repo.undefined_ref"
   | "check.structure.repo.undefined_secret"
   | "check.structure.repo.undefined_stage"
   | "check.structure.repo.unknown_dir"
@@ -118,3 +120,4 @@ export type MessageKey =
   | "shell.skip"
   | "shell.theme.to_dark"
   | "shell.theme.to_light"
+  | "workflow.as_skill"

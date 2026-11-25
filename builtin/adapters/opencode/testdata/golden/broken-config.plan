@@ -1,4 +1,5 @@
 op write-tree ~/.config/opencode/skills/rgd-contract-skill (skill/contract-skill@3): SKILL.md, scripts/check.sh*
+op write-tree ~/.config/opencode/skills/rgd-contract-agent (agent/contract-agent@1): SKILL.md, memory/README.md, skills/review/SKILL.md local memory, workspace
 op write-file ~/.config/opencode/commands/rgd-contract-command.md (workflow/contract-command@1)
 op write-file ~/.config/opencode/agents/rgd-contract-agent.md (agent/contract-agent@1)
 skip mcp/contract-stdio@2 config_unreadable: ~/.config/opencode/opencode.jsonc: not valid jsonc at byte 229

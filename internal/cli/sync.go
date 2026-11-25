@@ -16,9 +16,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/ext/kind"
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/cliout"
 	"github.com/code2rich/rigdepot/internal/desired"
+	"github.com/code2rich/rigdepot/internal/gitrepo"
 	"github.com/code2rich/rigdepot/internal/home"
 	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/i18n/msg"
@@ -135,7 +137,18 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 	if res == nil {
 		return a.stateError(applyErr)
 	}
+	// What the command line keeps for later (workflows, knowledge bases) follows a run that went
+	// through; after a failure the run stopped, and so does this.
+	var kept *sync.Local
+	if applyErr == nil {
+		if kept, applyErr = s.KeepLocal(ctx, st, a.knowledgeFetcher(l)); kept == nil {
+			kept = &sync.Local{}
+		}
+	}
 	doc := syncDoc{Plan: a.newPlanDoc(p, st, &prev), Done: []doneDoc{}, Deferred: []opDoc{}, Retry: []retryDoc{}, Manifest: a.showData(l, home.ManifestFile)}
+	if kept != nil {
+		doc.Plan.Knowledge = a.knowledgeDocs(l, kept)
+	}
 	for _, d := range res.Done {
 		dd := doneDoc{opDoc: newOpDoc(d.Item, false), Kept: d.Kept, Outcome: string(d.Outcome), Leftover: d.Leftover}
 		doc.Done = append(doc.Done, dd)
@@ -154,24 +167,90 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 		doc.Error = &errorField{Code: failure.Code, Message: failure.Message}
 	}
 	if err := a.out.Result(cliout.Schema("sync", 1), doc, func(w io.Writer) error {
-		return a.writeView(w, a.syncResultView(l, p, st, res, f))
+		return a.writeView(w, a.syncResultView(l, p, st, res, kept, f))
 	}); err != nil {
 		return err
 	}
 	if failure != nil {
 		return failure
 	}
-	return syncExit(p, res)
+	return syncExit(p, res, kept)
+}
+
+// knowledgeFetcher is the person's own git for the knowledge bases. Their addresses come from the
+// resource repository, not from the person, so a local path is not accepted.
+func (a *app) knowledgeFetcher(l *local) sync.Fetcher {
+	if a.env.Knowledge != nil {
+		return a.env.Knowledge
+	}
+	f, err := gitrepo.New(gitrepo.Options{Git: l.cfg.String(localconfig.KeyGit), CacheDir: l.data.Join(home.CacheDir, "repos")})
+	if err != nil {
+		return nil // every knowledge base reports that there is no git
+	}
+	return f
+}
+
+// knowledgeDocs is what a sync did about the knowledge bases, for --json.
+func (a *app) knowledgeDocs(l *local, kept *sync.Local) []knowledgeDoc {
+	out := []knowledgeDoc{}
+	for _, pl := range kept.Knowledge {
+		d := knowledgeDoc{Resource: pl.Resource.Code, Repo: pl.Source.URL, Ref: pl.Source.Ref, Dir: pl.Source.Dir, Path: pl.Path}
+		if pl.Err != nil {
+			d.Error = pl.Err.Error()
+		} else {
+			files := pl.Files
+			d.Commit, d.Files = pl.Commit, &files
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+// knowledgeGroup lists the knowledge bases: in a plan, what a sync fetches; after a sync, what it
+// fetched and what it could not.
+func (a *app) knowledgeGroup(l *local, st *desired.State, kept *sync.Local) group {
+	g := group{title: a.p.T(msg.SyncGroupKnowledge)}
+	if kept == nil {
+		for _, r := range st.Resources {
+			if pl, ok := r.Spec.(kind.Pulled); ok {
+				g.lines = append(g.lines, line{mark: "+", style: cliout.Green, path: a.showData(l, home.KnowledgeDir, r.Ref.Code) + "/",
+					note: a.p.T(msg.SyncKnowledgeFrom, i18n.V("repo", pl.Pull().URL))})
+			}
+		}
+		return g
+	}
+	for _, pl := range kept.Knowledge {
+		ln := line{mark: "+", style: cliout.Green, path: a.showData(l, home.KnowledgeDir, pl.Resource.Code) + "/"}
+		if pl.Err != nil {
+			ln.mark, ln.style = "!", cliout.Yellow
+			ln.note = a.p.T(msg.SyncKnowledgeFailed, i18n.V("detail", pl.Err.Error()))
+			g.warn = true
+		} else {
+			ln.note = a.p.T(msg.SyncKnowledgeFetched, i18n.Count(pl.Files), i18n.V("commit", shortCommit(pl.Commit)))
+		}
+		g.lines = append(g.lines, ln)
+	}
+	for _, code := range kept.KnowledgeRemoved {
+		g.lines = append(g.lines, line{mark: "-", style: cliout.Red, path: a.showData(l, home.KnowledgeDir, code) + "/"})
+	}
+	return g
+}
+
+func shortCommit(c string) string {
+	if len(c) > 12 {
+		return c[:12]
+	}
+	return c
 }
 
 // syncExit is the exit code of a sync that ran to the end.
-func syncExit(p *sync.Plan, res *sync.Result) error {
+func syncExit(p *sync.Plan, res *sync.Result, kept *sync.Local) error {
 	for _, t := range p.Tools {
 		if t.Status == sync.ToolFailed {
 			return cliout.Status(cliout.ExitFailure)
 		}
 	}
-	pending := res.Attention() || len(p.Attention()) > 0 ||
+	pending := res.Attention() || len(p.Attention()) > 0 || (kept != nil && kept.Failed()) ||
 		slices.ContainsFunc(p.Tools, func(t sync.Tool) bool { return t.Status == sync.ToolUnreadable })
 	if pending {
 		return cliout.Status(cliout.ExitPending)
@@ -224,6 +303,7 @@ func (a *app) planView(l *local, p *sync.Plan, st *desired.State, f syncFlags) v
 	for _, g := range a.changeGroups(l, p, p.Items) {
 		v.add(g)
 	}
+	v.add(a.knowledgeGroup(l, st, nil))
 	v.add(a.attentionGroup(l, p))
 	v.add(a.skippedGroup(p, st))
 	v.foot = append(v.foot, a.p.T(msg.PlanUntouched))
@@ -239,7 +319,7 @@ func (a *app) planView(l *local, p *sync.Plan, st *desired.State, f syncFlags) v
 }
 
 // syncResultView is the human output of rgd sync: what was done, what waits, and why.
-func (a *app) syncResultView(l *local, p *sync.Plan, st *desired.State, res *sync.Result, f syncFlags) view {
+func (a *app) syncResultView(l *local, p *sync.Plan, st *desired.State, res *sync.Result, local *sync.Local, f syncFlags) view {
 	var v view
 	v.head = append(v.head, a.out.Paint(cliout.Dim, a.detectedLine(p)))
 	var done []sync.Item
@@ -265,6 +345,9 @@ func (a *app) syncResultView(l *local, p *sync.Plan, st *desired.State, res *syn
 		retry.lines = append(retry.lines, a.itemLine(l, p, names, r.Item))
 	}
 	v.add(retry)
+	if local != nil {
+		v.add(a.knowledgeGroup(l, st, local))
+	}
 	v.add(a.attentionGroup(l, p))
 	v.add(a.skippedGroup(p, st))
 

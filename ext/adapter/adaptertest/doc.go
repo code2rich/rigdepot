@@ -40,7 +40,9 @@
 //
 // Every adapter is synced with the same artifacts: a skill, a slash command, a sub-agent, an MCP
 // server over stdio, one over HTTP and one that needs a personal secret, as far as the adapter's
-// capabilities take them. Their names carry the product's prefix, as the core gives them.
+// capabilities take them; and what the resource kinds make of an agent (a skill directory with
+// its own skills and local directories) and, for a tool without slash commands, of a workflow (a
+// skill). Their names carry the product's prefix, as the core gives them.
 //
 // # Assertions
 //
@@ -58,6 +60,8 @@
 //	                 differs by those keys only
 //	[idempotent]     a second sync writes nothing
 //	[drift]          a file we wrote, changed by hand, is reported and left alone
+//	[local]          what is written into the local directories of a tree we wrote (an agent's
+//	                 memory) is not reported as a change, and survives an update
 //	[uninstall]      undoing everything restores the home byte for byte, directories included
 //	[unreadable]     broken-config: the plan reports ConfigUnreadable, sets no key in the broken
 //	                 file, and nothing at all is written

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://rigdepot.code2rich.com/schema/repo/v1/kinds/workflow.schema.json
+meta:
+  name: 从任务到提测
+  summary: 任务开发 → 单元测试 → 提测前自查
+  stages: [develop, test]
+  when: 接到一个开发任务，要一直做到提测时
+  try: /rgd-task-to-submit SHOP-1287
+
+steps:
+  - use: task-development            # 一个 Skill 或 Agent 的标识
+    with: [eng-handbook]             # 这一步还会用到的资源
+    checks:
+      - { text: 改动没有超出任务范围, by: ai }
+      - { text: 工程能编译通过, by: command, run: "./gradlew compileJava -q" }
+    then: continue
+  - use: unit-testing
+    checks:
+      - { text: 单元测试全部通过, by: command, run: "./gradlew test -q" }
+  - use: delivery-check
+    checks:
+      - { text: 自查结论已由人确认, by: human }
+    forbid: [推送代码]
+    then: confirm

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rigdepot.code2rich.com/schema/repo/v1/kinds/workflow.schema.json",
+  "title": "Workflow",
+  "description": "workflows/<code>.yaml: ordered steps, each done by a skill or an agent, with the checks that have to hold before the next step is handed out. In a tool with slash commands it arrives as a command, elsewhere as a skill; either way the command line hands the steps out one at a time.",
+  "type": "object",
+  "required": ["meta", "steps"],
+  "properties": {
+    "meta": { "$ref": "../meta.schema.json" },
+    "steps": {
+      "description": "The steps, in order.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": ["use"],
+        "properties": {
+          "use": {
+            "description": "The code of the skill or agent that does the step. It is installed along with the workflow.",
+            "$ref": "#/$defs/code"
+          },
+          "with": {
+            "description": "Codes of further resources the step uses, such as a knowledge base.",
+            "type": "array",
+            "items": { "$ref": "#/$defs/code" },
+            "uniqueItems": true
+          },
+          "checks": {
+            "description": "What has to hold at the end of the step. The next step is only handed out once every check has passed.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["text", "by"],
+              "properties": {
+                "text": { "description": "What has to hold.", "type": "string", "minLength": 1 },
+                "by": {
+                  "description": "ai: the AI checks it and states its evidence; command: the command line runs \"run\" in the project's directory and it passes with exit code 0; human: the person confirms it.",
+                  "enum": ["ai", "command", "human"]
+                },
+                "run": { "description": "The command of a check by command, run by the system's shell.", "type": "string", "minLength": 1 }
+              },
+              "allOf": [
+                { "if": { "properties": { "by": { "const": "command" } } }, "then": { "required": ["run"] } }
+              ]
+            }
+          },
+          "forbid": {
+            "description": "What must not be done in this step.",
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "then": {
+            "description": "continue: once the checks have passed, the next step is handed out; confirm: it waits for the person to say so.",
+            "enum": ["continue", "confirm"],
+            "default": "continue"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "code": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "minLength": 2,
+      "maxLength": 48
+    }
+  }
+}

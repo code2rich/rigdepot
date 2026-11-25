@@ -45,10 +45,10 @@
 //	                 ErrNotApplicable
 //	[names]          every artifact is for the resource and named with the prefix given; one
 //	                 artifact is named prefix plus code; another prefix changes the names by the
-//	                 prefix and nothing else
+//	                 prefix and nothing else; no two artifacts of the same shape share a name
 //	[artifacts]      every artifact fits the tool (a stdio server only for a tool that takes
 //	                 stdio, …) and is well formed (a skill directory has a SKILL.md and relative
-//	                 paths, and carries its form's Degraded)
+//	                 paths and well-formed local directories, and carries its form's Degraded)
 //	[secrets]        no MCP server holds a ${secret:…} reference as text: in its command,
 //	                 arguments, URL, environment or headers a secret is adapter.Value.Secret
 //	[deterministic]  the same resource and tool give the same artifacts
