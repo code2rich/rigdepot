@@ -1,0 +1,5 @@
+meta:
+  summary: 读写需求和缺陷
+server:
+  type: http
+  url: https://jira.example.com/mcp

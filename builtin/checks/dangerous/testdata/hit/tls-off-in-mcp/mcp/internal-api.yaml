@@ -1,0 +1,9 @@
+meta:
+  name: 内部接口
+server:
+  type: stdio
+  command: node
+  args: ["server.js"]
+  env:
+    NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    API_URL: https://api.example.com

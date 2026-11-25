@@ -1,0 +1,5 @@
+name: 单元测试
+summary: s
+stages: [test]
+policy: recommended
+x-team: qa

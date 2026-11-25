@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+name: 发版说明
+summary: 从提交记录归纳发版说明
+stages: [release]
+audience: mgmt
+policy: optional
+when: 发版前要写发版说明时
+try: 帮我整理 v2.3.0 的发版说明
+i18n:
+  en:
+    name: Release notes
+    summary: Summarise the commits of a release into release notes

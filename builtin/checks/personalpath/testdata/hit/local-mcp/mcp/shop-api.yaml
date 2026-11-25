@@ -1,0 +1,5 @@
+meta:
+  name: 商城接口
+server:
+  type: http
+  url: http://localhost:3000/mcp

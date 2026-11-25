@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+name: 单元测试
+summary: 为改动生成并运行单元测试，补齐边界用例
+stages: [test]
+audience: rd
+policy: recommended
+when: 要给改动补单元测试时
+try: 给我刚改的这几个类补单元测试
+secrets: [SHOP_TEST_API_TOKEN]
+maintainers: [qa-platform]
+tags: [java, testing]
+i18n:
+  en:
+    name: Unit testing
+    summary: Generate and run unit tests for a change, covering edge cases
+    when: When a change needs unit tests
+    try: Add unit tests for the classes I just changed

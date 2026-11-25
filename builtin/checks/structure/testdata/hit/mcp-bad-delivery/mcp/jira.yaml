@@ -1,0 +1,6 @@
+meta:
+  name: Jira
+server:
+  type: http
+  url: https://jira.example.com/mcp
+delivery: lazy
