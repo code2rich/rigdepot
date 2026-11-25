@@ -541,7 +541,7 @@ func TestKeysRotateAndAuditVerifyCommands(t *testing.T) {
 		t.Errorf("verify an empty log: %d %s %s", c, out, errOut)
 	}
 	e2, out, errOut := reenv()
-	if c := runBounded(e2, "keys", "rotate"); c != exitOK || !strings.Contains(out.String(), "Rewrapped 2 sealed records (settings 2)") {
+	if c := runBounded(e2, "keys", "rotate"); c != exitOK || !strings.Contains(out.String(), "Rewrapped 2 sealed records (secrets 0, settings 2)") {
 		t.Fatalf("rotate: %d %s %s", c, out, errOut)
 	}
 	e3, out, errOut := reenv()

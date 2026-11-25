@@ -20,6 +20,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/modhost"
+	"github.com/code2rich/rigdepot/internal/server/secrets"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
 
@@ -95,6 +96,16 @@ func (a *App) openServices(ctx context.Context) error {
 	if a.catalog, err = catalog.New(a.db, a.access, co); err != nil {
 		return err
 	}
+	// Personal secrets: values sealed with the master key, handed out sealed to one device.
+	a.secrets = secrets.New(a.db, keys, secrets.Options{Audit: log})
+	if a.hooks.secretsConfigured == nil {
+		a.hooks.secretsConfigured = a.secrets.Configured
+	}
+	if a.bg != nil {
+		// Which resource uses which secret, once a version is live or its settings changed.
+		a.bg.Events.Subscribe("secrets", []string{events.ResourcePublished{}.EventName(), events.ResourceUpdated{}.EventName()},
+			useSecrets(a.catalog, a.secrets))
+	}
 
 	// The master key is loaded and is the one the database was sealed with.
 	a.AddReadyCheck(ReadyCheck{Name: "master_key", Critical: true, Check: func(ctx context.Context) error {
@@ -141,10 +152,10 @@ func loadKeys(ctx context.Context, cfg *config.Config, db *dbx.DB, generate bool
 
 // rewrappers are the tables with sealed values, for "keys rotate". Every
 // domain package that stores sealed values adds its masterkey.Rewrapper
-// here: TODO(M1-28) secrets (secret_values), TODO(M1-25) catalog (sources'
-// credentials), TODO(M1-21) identity providers' client secrets.
+// here: TODO(M1-25) catalog (sources' credentials), TODO(M1-21) identity
+// providers' client secrets.
 func rewrappers() []masterkey.Rewrapper {
-	return []masterkey.Rewrapper{settings.Rewrapper}
+	return []masterkey.Rewrapper{settings.Rewrapper, secrets.Rewrapper}
 }
 
 // keyRotationObject is what the rotation's audit entry is about.

@@ -49,6 +49,7 @@ type api struct {
 	*toolsAPI
 	*catalogAPI
 	*notificationsAPI
+	*secretsAPI
 }
 
 // fallback puts notImplemented's methods one embedding level below the
@@ -128,6 +129,7 @@ func apiMounts(app *App) Mounts {
 		toolsAPI:         &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
 		catalogAPI:       &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
 		notificationsAPI: &notificationsAPI{access: app.access},
+		secretsAPI:       &secretsAPI{secrets: app.secrets, cat: app.catalog, publicKey: app.devices.DevicePublicKey},
 	}
 	if impl.toolsAPI.version == "" {
 		impl.toolsAPI.version = buildinfo.Get().Version
