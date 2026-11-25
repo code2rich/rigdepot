@@ -72,6 +72,7 @@ var matrix = map[access.Action]string{
 	access.ActionResourceEnable:    "yyyyy .y.y. ...y. ...y. .....",
 	access.ActionResourceWaive:     "yyyy. ..... ..... ..... .....",
 	access.ActionResourcePrefer:    "y..y. yy.y. yy.y. y..y. .....",
+	access.ActionInstallsRead:      "yyyyy .y... ..... ..... .....",
 	access.ActionSourceManage:      "yyyyy ..... ..... ..... .....",
 	access.ActionSecretDefine:      "yyyyy ..... ..... ..... .....",
 	access.ActionFeedbackCreate:    "yyyyy yyyyy yyyyy yyyyy .....",

@@ -169,7 +169,7 @@ func overridable(fs []string) []httpapi.OverridableField {
 	return out
 }
 
-func delivery(d catalog.Delivery) *httpapi.Delivery {
+func mcpDelivery(d catalog.Delivery) *httpapi.Delivery {
 	if d == "" {
 		return nil
 	}
@@ -200,7 +200,7 @@ func (c *catalogAPI) managed(ctx context.Context, r catalog.Resource) httpapi.Ma
 		Audience: httpapi.Audience(r.Audience), Scope: string(r.Scope), Policy: httpapi.Policy(r.Policy),
 		Origin: httpapi.Origin(r.Origin), Status: httpapi.ResourceStatus(r.Status), HasDraft: r.HasDraft,
 		Checks: counts(r.Checks), UpdatedAt: r.UpdatedAt, When: optStr(r.Meta.When), Try: optStr(r.Meta.Try),
-		Delivery: delivery(r.Meta.Delivery), Maintainers: c.userRefs(ctx, r.Maintainers),
+		Delivery: mcpDelivery(r.Meta.Delivery), Maintainers: c.userRefs(ctx, r.Maintainers),
 		Overrides: overridable(r.Overrides), Secrets: strs(r.Meta.Secrets), References: c.refs(ctx, r.References),
 		DisabledReason: optStr(r.DisabledReason), CreatedAt: r.CreatedAt, Etag: r.ETag(),
 	}
@@ -840,7 +840,7 @@ func (c *catalogAPI) ListCatalog(ctx context.Context, req httpapi.ListCatalogReq
 			Code: r.Code, Kind: r.Kind, Name: r.Name, Summary: optStr(r.Summary), Stages: strs(r.Stages),
 			Audience: httpapi.Audience(r.Audience), Scope: string(r.Scope), Policy: httpapi.Policy(r.Policy),
 			Origin: httpapi.Origin(r.Origin), Version: r.Version, Enabled: enabled(r, p.prefs),
-			InstalledPeople: p.installed[r.ID], Secrets: p.secrets(r.Meta.Secrets), Delivery: delivery(r.Meta.Delivery),
+			InstalledPeople: p.installed[r.ID], Secrets: p.secrets(r.Meta.Secrets), Delivery: mcpDelivery(r.Meta.Delivery),
 		})
 	}
 	return out, nil
@@ -875,7 +875,7 @@ func (c *catalogAPI) GetCatalogResource(ctx context.Context, req httpapi.GetCata
 		Code: r.Code, Kind: r.Kind, Name: r.Name, Summary: optStr(r.Summary), Stages: strs(r.Stages),
 		Audience: httpapi.Audience(r.Audience), Scope: string(r.Scope), Policy: httpapi.Policy(r.Policy),
 		Origin: httpapi.Origin(r.Origin), Version: r.Version, Enabled: enabled(r, p.prefs),
-		InstalledPeople: p.installed[r.ID], Secrets: p.secrets(r.Meta.Secrets), Delivery: delivery(r.Meta.Delivery),
+		InstalledPeople: p.installed[r.ID], Secrets: p.secrets(r.Meta.Secrets), Delivery: mcpDelivery(r.Meta.Delivery),
 		When: optStr(r.Meta.When), Try: optStr(r.Meta.Try), Digest: string(v.Digest), PublishedAt: v.PublishedAt,
 		Files: filesOut(files), Definition: def, References: c.refs(ctx, r.References),
 		ReferencedBy: refsOut(referencedBy), MyInstalls: []httpapi.Install{},

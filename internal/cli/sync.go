@@ -86,7 +86,7 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 			return err
 		}
 	}
-	st, err := a.desiredState(ctx, l, f.src)
+	st, rem, err := a.resolveSource(ctx, l, f.src)
 	if errors.Is(err, errNoSource) {
 		return a.noSourceError(cmd.CommandPath())
 	}
@@ -103,7 +103,8 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 		Disabled:  l.cfg.List(localconfig.KeyToolsDisabled),
 		Overwrite: f.overwrite,
 	}
-	opt.MCPMode, opt.Launcher = a.mcpOptions(l.cfg)
+	rem.apply(&opt)
+	opt.MCPMode, opt.Launcher = a.mcpOptions(l.cfg, rem)
 	if f.plan {
 		return a.syncPlan(ctx, l, st, opt, f)
 	}
@@ -142,6 +143,7 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 			kept = &sync.Local{}
 		}
 	}
+	a.pullSecrets(ctx, l, rem)
 	doc := syncDoc{Plan: a.newPlanDoc(p, st, &prev), Done: []doneDoc{}, Deferred: []opDoc{}, Retry: []retryDoc{}, Manifest: a.showData(l, home.ManifestFile)}
 	if kept != nil {
 		doc.Plan.Knowledge = a.knowledgeDocs(l, kept)
@@ -163,6 +165,11 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 		failure.Err = applyErr
 		doc.Error = &errorField{Code: failure.Code, Message: failure.Message}
 	}
+	exit := syncExit(p, res, kept)
+	if rem != nil && !rem.state.Cached {
+		a.report(ctx, rem, st, p, res, failure != nil || exit != nil && cliout.ExitOf(exit) == cliout.ExitFailure, exit != nil)
+		a.newerHint(rem)
+	}
 	if err := a.out.Result(cliout.Schema("sync", 1), doc, func(w io.Writer) error {
 		return a.writeView(w, a.syncResultView(l, p, st, res, kept, f))
 	}); err != nil {
@@ -171,7 +178,7 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 	if failure != nil {
 		return failure
 	}
-	return syncExit(p, res, kept)
+	return exit
 }
 
 // knowledgeFetcher is the person's own git for the knowledge bases. Their addresses come from the

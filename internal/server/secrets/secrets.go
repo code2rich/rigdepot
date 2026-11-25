@@ -265,6 +265,19 @@ func (s *Service) Configured(ctx context.Context, userID string) (map[string]boo
 	return out, nil
 }
 
+// Versions returns, by name, the version of each value the person set.
+func (s *Service) Versions(ctx context.Context, userID string) (map[string]int, error) {
+	vs, err := s.Values(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]int, len(vs))
+	for n, v := range vs {
+		out[n] = v.Version
+	}
+	return out, nil
+}
+
 // Set stores the caller's value for name, replacing the one before. The value is encrypted at
 // once; expires is when it stops working, zero when unknown.
 func (s *Service) Set(ctx context.Context, a access.Actor, name string, value []byte, expires time.Time) (Value, error) {

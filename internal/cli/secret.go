@@ -367,3 +367,17 @@ func newSecretPullCmd(a *app) *cobra.Command {
 		},
 	}
 }
+
+// pullSecrets refreshes this computer's sealed copies of the person's secrets after a sync from
+// the server: new and replaced values arrive, deleted ones go. A server that cannot be reached
+// (a state kept from earlier) leaves the copies as they are; a failure is told and changes
+// nothing else of the sync.
+func (a *app) pullSecrets(ctx context.Context, l *local, rem *remote) {
+	if rem == nil || rem.state.Cached {
+		return
+	}
+	owner := localsecrets.Owner{Server: rem.creds.Server, UserID: rem.creds.UserID, DeviceID: rem.creds.DeviceID}
+	if _, err := localsecrets.New(l.data).Refresh(ctx, rem.client, owner, nil, time.Now()); err != nil {
+		a.out.Warn(a.p.T(msg.SyncSecretsFailed, i18n.V("detail", err.Error())))
+	}
+}

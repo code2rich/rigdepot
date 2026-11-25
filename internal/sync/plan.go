@@ -158,6 +158,10 @@ type Options struct {
 	// configuration in MCPLauncher and MCPSingleEntry: an absolute path or the program's name.
 	// Empty means the name.
 	Launcher string
+	// Keep leaves everything the desired state does not deliver as it is, instead of undoing
+	// it: the state is one kept from earlier because its source cannot be reached, and what
+	// the source would say now is unknown.
+	Keep bool
 }
 
 // Plan is what a run will do.
@@ -458,6 +462,11 @@ func (e *Engine) compare(ex Executor, tp *toolPlan, m *manifest.Manifest, st *de
 	for _, en := range m.Entries {
 		if en.Tool != id || planned[en.ID] || tp.held[en.Resource] {
 			continue
+		}
+		if opt.Keep {
+			if st == nil || !slices.ContainsFunc(st.Resources, func(r desired.Resource) bool { return r.Ref.Code == en.Resource }) {
+				continue
+			}
 		}
 		target := executor.TargetOfEntry(en)
 		obs := ex.Observe(target)

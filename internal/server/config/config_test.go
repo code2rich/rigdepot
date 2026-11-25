@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -65,7 +66,9 @@ func samples() map[string]sample {
 		"tls.key_file":    {"/srv/key.pem", `"/srv/key.pem"`, func(c *Config) string { return c.TLS.KeyFile }, "/srv/key.pem"},
 		"tls.acme_domains": {"hub.example.com, www.example.com", `["hub.example.com", "www.example.com"]`,
 			func(c *Config) string { return strings.Join(c.TLS.ACMEDomains, "|") }, "hub.example.com|www.example.com"},
-		"tls.acme_email":           {"ops@example.com", `"ops@example.com"`, func(c *Config) string { return c.TLS.ACMEEmail }, "ops@example.com"},
+		"tls.acme_email": {"ops@example.com", `"ops@example.com"`, func(c *Config) string { return c.TLS.ACMEEmail }, "ops@example.com"},
+		"tls.acme_directory_url": {"https://acme.example.com/directory", `"https://acme.example.com/directory"`,
+			func(c *Config) string { return c.TLS.ACMEDirectoryURL }, "https://acme.example.com/directory"},
 		"tls.http_redirect_listen": {":80", `":80"`, func(c *Config) string { return c.TLS.HTTPRedirectListen }, ":80"},
 		"trusted_proxies":          {"10.0.0.0/8,192.0.2.7", `["10.0.0.0/8", "192.0.2.7"]`, func(c *Config) string { return fmt.Sprint(c.TrustedProxies) }, "[10.0.0.0/8 192.0.2.7/32]"},
 		"insecure_http":            {"1", "", func(c *Config) string { return fmt.Sprint(c.InsecureHTTP) }, "true"},
@@ -90,7 +93,7 @@ func companions(key string) map[string]string {
 	switch key {
 	case "tls.cert_file", "tls.key_file", "tls.http_redirect_listen":
 		return map[string]string{"tls.cert_file": "/srv/cert.pem", "tls.key_file": "/srv/key.pem"}
-	case "tls.acme_email":
+	case "tls.acme_email", "tls.acme_directory_url":
 		return map[string]string{"tls.acme_domains": "hub.example.com"}
 	}
 	return nil
@@ -229,6 +232,19 @@ func TestDefaultsFollowTheDataDirectory(t *testing.T) {
 	if !strings.HasSuffix(c.DatabaseURL, "/srv/rd/"+defaultDBName) || c.MasterKeyFile != filepath.Join("/srv/rd", "master.key") {
 		t.Errorf("database %s, master key %s", c.DatabaseURL, c.MasterKeyFile)
 	}
+	// The command line is looked for in the data directory first, then where the packages
+	// and the image put it.
+	if want := []string{filepath.Join("/srv/rd", "cli"), defaultCLIDist}; !slices.Equal(c.CLIDistDirs, want) || c.CLIDistDir != defaultCLIDist {
+		t.Errorf("command-line directories %q (%s), want %q", c.CLIDistDirs, c.CLIDistDir, want)
+	}
+	// A configured directory is the only one.
+	c, err = Load(Options{LookupEnv: envOf(base, map[string]string{EnvName("CLI_DIST_DIR"): "/srv/cli"})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(c.CLIDistDirs, []string{"/srv/cli"}) {
+		t.Errorf("configured: %q", c.CLIDistDirs)
+	}
 }
 
 func TestPrecedence(t *testing.T) {
@@ -302,6 +318,11 @@ func TestRejections(t *testing.T) {
 			want: "not both"},
 		"cert without key":     {env: map[string]string{EnvName("TLS_CERT_FILE"): "/c"}, want: "go together"},
 		"cert and acme":        {env: map[string]string{EnvName("TLS_CERT_FILE"): "/c", EnvName("TLS_KEY_FILE"): "/k", EnvName("TLS_ACME_DOMAINS"): "hub.example.com"}, want: "exclude"},
+		"acme for an address":  {env: map[string]string{EnvName("TLS_ACME_DOMAINS"): "hub.example.com,192.0.2.7"}, want: `"192.0.2.7" is not a domain name`},
+		"acme wildcard":        {env: map[string]string{EnvName("TLS_ACME_DOMAINS"): "hub.example.com,*.example.com"}, want: "wildcards"},
+		"acme without base":    {env: map[string]string{EnvName("TLS_ACME_DOMAINS"): "www.example.com"}, want: "does not include hub.example.com"},
+		"acme http directory":  {env: map[string]string{EnvName("TLS_ACME_DOMAINS"): "hub.example.com", EnvName("TLS_ACME_DIRECTORY_URL"): "http://acme.example.com/dir"}, want: "only allowed for a test"},
+		"directory alone":      {env: map[string]string{EnvName("TLS_ACME_DIRECTORY_URL"): "https://acme.example.com/dir"}, want: "needs tls.acme_domains"},
 		"redirect without tls": {env: map[string]string{EnvName("HTTP_REDIRECT_LISTEN"): ":80"}, want: "needs tls"},
 		"bad proxy":            {env: map[string]string{EnvName("TRUSTED_PROXIES"): "10.0.0.0/8,proxy.example.com"}, want: "proxy.example.com"},
 		"bad bool":             {env: map[string]string{EnvName("AUTO_MIGRATE"): "maybe"}, want: "auto_migrate"},

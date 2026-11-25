@@ -95,14 +95,15 @@ export const NAV: readonly NavGroup[] = [
         path: '/products',
         label: 'nav.products',
         icon: 'users',
-        component: notBuilt('products'),
+        component: lazy(() => import('./products')),
       },
       {
         id: 'resources',
         path: '/manage/resources',
+        route: '/manage/resources/:code?',
         label: 'nav.resources',
         icon: 'layers',
-        component: notBuilt('resources'),
+        component: lazy(() => import('./resources')),
       },
     ],
   },
@@ -110,15 +111,33 @@ export const NAV: readonly NavGroup[] = [
     label: 'nav.group.system',
     roles: admins,
     pages: [
-      { id: 'users', path: '/admin/users', label: 'nav.users', icon: 'user', component: notBuilt('users') },
-      { id: 'tools', path: '/admin/tools', label: 'nav.tools', icon: 'wrench', component: notBuilt('tools') },
-      { id: 'audit', path: '/admin/audit', label: 'nav.audit', icon: 'shield', component: notBuilt('audit') },
+      {
+        id: 'users',
+        path: '/admin/users',
+        label: 'nav.users',
+        icon: 'user',
+        component: lazy(() => import('./users')),
+      },
+      {
+        id: 'tools',
+        path: '/admin/tools',
+        label: 'nav.tools',
+        icon: 'wrench',
+        component: lazy(() => import('./tools')),
+      },
+      {
+        id: 'audit',
+        path: '/admin/audit',
+        label: 'nav.audit',
+        icon: 'shield',
+        component: lazy(() => import('./audit')),
+      },
       {
         id: 'settings',
         path: '/admin/settings',
         label: 'nav.settings',
         icon: 'gear',
-        component: notBuilt('settings'),
+        component: lazy(() => import('./settings')),
       },
     ],
   },
@@ -134,10 +153,10 @@ export interface PublicPage {
 
 export const PUBLIC: readonly PublicPage[] = [
   { id: 'login', path: '/login', label: 'page.login', component: lazy(() => import('./login')) },
-  { id: 'apply', path: '/apply', label: 'page.apply', component: notBuilt('apply') },
-  { id: 'setup', path: '/setup', label: 'page.setup', component: notBuilt('setup') },
-  { id: 'device', path: '/device', label: 'page.device', component: notBuilt('device') },
-  { id: 'invite', path: '/invite/:token', label: 'page.invite', component: notBuilt('invite') },
+  { id: 'apply', path: '/apply', label: 'page.apply', component: lazy(() => import('./apply')) },
+  { id: 'setup', path: '/setup', label: 'page.setup', component: lazy(() => import('./setup')) },
+  { id: 'device', path: '/device', label: 'page.device', component: lazy(() => import('./device')) },
+  { id: 'invite', path: '/invite/:token', label: 'page.invite', component: lazy(() => import('./invite')) },
 ]
 
 /** visibleGroups are the navigation groups for a role and the enabled modules. */

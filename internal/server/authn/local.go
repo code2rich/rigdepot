@@ -125,6 +125,7 @@ const (
 	reasonLocked             = "locked"
 	reasonInvalidCredentials = "invalid_credentials"
 	reasonDisabled           = "disabled"
+	reasonMethodDisabled     = "method_disabled"
 )
 
 // Login signs in with an account name and a password and starts a session.
@@ -141,6 +142,13 @@ func (s *Service) Login(ctx context.Context, username, password string) (SignedI
 		label = "(not an account name)"
 	}
 	nobody := audit.Object{Kind: "user", Label: label}
+	on, err := s.localEnabled(ctx)
+	if err != nil {
+		return SignedIn{}, err
+	}
+	if !on {
+		return SignedIn{}, refused(ErrMethodDisabled, s.failedLogin(ctx, nobody, reasonMethodDisabled, nil))
+	}
 	if label != name || name == "" {
 		s.hasher.burn(ctx, "")
 		return SignedIn{}, refused(ErrInvalidCredentials, s.failedLogin(ctx, nobody, reasonUnknownAccount, nil))

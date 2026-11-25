@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+#
+# Caddy in front of rgd-server. Caddy gets and renews the certificate itself
+# when hub.example.com is a public name that reaches this machine on ports 80
+# and 443; on an internal network, give it your own certificate with
+# "tls <cert file> <key file>" in the site block.
+#
+# Caddy passes Host, X-Forwarded-For and X-Forwarded-Proto on its own.
+# rgd-server believes X-Forwarded-For only from RGD_TRUSTED_PROXIES: 127.0.0.1
+# when it runs on this machine without containers, the project's network
+# (RGD_SUBNET) with deploy/compose.yaml.
+
+hub.example.com {
+	encode gzip
+
+	# Resource bundles are at most RGD_MAX_BUNDLE_MB (5 MB by default).
+	request_body {
+		max_size 16MB
+	}
+
+	reverse_proxy 127.0.0.1:8080
+}

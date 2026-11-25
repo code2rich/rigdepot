@@ -63,6 +63,17 @@ device_codes
   last_polled_at bigint
   key_storage text not null
 
+device_syncs
+  device_id text not null pk
+  user_id text not null
+  cli_version text not null
+  os text not null
+  arch text not null
+  result text not null
+  tools text not null
+  finished_at bigint not null
+  reported_at bigint not null
+
 devices
   id text not null pk
   user_id text not null
@@ -116,6 +127,18 @@ identities
   created_at bigint not null
   last_login_at bigint
 
+identity_providers
+  id text not null pk
+  kind text not null
+  name text not null
+  enabled boolean not null
+  position integer not null
+  config text not null
+  client_secret text not null
+  revision integer not null
+  created_at bigint not null
+  updated_at bigint not null
+
 installs
   device_id text not null pk
   resource_id text not null pk
@@ -125,6 +148,7 @@ installs
   degraded boolean not null
   error_code text not null
   reported_at bigint not null
+  form text not null
 
 invite_products
   invite_id text not null pk

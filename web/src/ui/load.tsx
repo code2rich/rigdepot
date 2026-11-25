@@ -13,36 +13,42 @@ import { Empty } from './empty'
 export type Loaded<T> =
   | { state: 'loading'; data?: undefined; error?: undefined }
   | { state: 'ready'; data: T; error?: undefined }
-  | { state: 'failed'; data?: undefined; error: unknown }
+  /** A failed reload keeps the data it had, so a page can say what failed next to what it still shows. */
+  | { state: 'failed'; data?: T; error: unknown }
+
+/** What useLoad returns: the state, reload (resolves when it is done) and set (after a change came back). */
+export type Load<T> = Loaded<T> & { reload: () => Promise<void>; set: (data: T) => void }
 
 /**
- * useLoad runs load when the component mounts and whenever deps change, and returns its state and a reload
- * function. A reload keeps showing the previous data until the new data is there.
+ * useLoad runs load when the component mounts and whenever deps change, and returns its state, a reload
+ * function and a setter for data a change returned. A reload keeps showing the previous data until the new
+ * data is there; a newer load wins over an older one still on its way.
  */
-export function useLoad<T>(
-  load: () => Promise<T>,
-  deps: readonly unknown[] = [],
-): Loaded<T> & { reload: () => void } {
+export function useLoad<T>(load: () => Promise<T>, deps: readonly unknown[] = []): Load<T> {
   const [state, setState] = useState<Loaded<T>>({ state: 'loading' })
   const run = useRef(0)
   const fn = useRef(load)
   fn.current = load
   const reload = useCallback(() => {
     const n = ++run.current
-    fn.current().then(
+    return fn.current().then(
       (data) => {
         if (n === run.current) setState({ state: 'ready', data })
       },
       (error: unknown) => {
-        if (n === run.current) setState({ state: 'failed', error })
+        if (n === run.current) setState((prev) => ({ state: 'failed', error, data: prev.data }))
       },
     )
   }, deps)
+  const set = useCallback((data: T) => {
+    run.current++
+    setState({ state: 'ready', data })
+  }, [])
   useEffect(() => {
     setState({ state: 'loading' })
-    reload()
+    void reload()
   }, [reload])
-  return { ...state, reload }
+  return { ...state, reload, set }
 }
 
 /** status is the HTTP status of a failed call: 0 when the server could not be reached, -1 for other errors. */
@@ -50,20 +56,8 @@ export function status(error: unknown): number {
   return error instanceof ApiError ? error.status : -1
 }
 
-/**
- * errorText is one sentence for a failed action, for a toast or a callout: the server's own explanation
- * (already in the page's language) when there is one, otherwise what the status means.
- */
-export function errorText(error: unknown): string {
-  const s = status(error)
-  if (s === 0) return t('ui.error.network')
-  if (s === 403) return t('ui.error.denied')
-  if (error instanceof ApiError && error.problem?.detail) return error.problem.detail
-  return t('ui.error.server')
-}
-
 /** LoadError is the failed state of a page or a panel: why it failed and a retry button. */
-export function LoadError(props: { error: unknown; retry: () => void }) {
+export function LoadError(props: { error: unknown; retry?: () => void }) {
   const s = status(props.error)
   const title =
     s === 403 ? t('ui.load.denied.title') : s === 0 ? t('ui.load.offline.title') : t('ui.load.failed.title')
@@ -77,7 +71,7 @@ export function LoadError(props: { error: unknown; retry: () => void }) {
           : t('ui.load.failed.why')
   return (
     <Empty title={title} why={why}>
-      {s !== 403 && (
+      {s !== 403 && props.retry && (
         <button type="button" class="btn" onClick={props.retry}>
           {t('ui.retry')}
         </button>

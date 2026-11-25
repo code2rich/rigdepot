@@ -27,11 +27,13 @@ type candidate struct {
 	Report   Report
 }
 
-// referrer is what a kind's Spec implements to say which resources it uses (a workflow's
-// steps, an agent's bindings). TODO: becomes kind.Referrer in ext/kind once the workflow and
-// agent kinds exist; until then no built-in kind has references.
-type referrer interface {
-	References() []string
+// references returns the codes of the resources a parsed resource uses (a workflow's steps, an
+// agent's bindings), from its kind.Referrer; they come along when it is delivered.
+func references(spec kind.Spec) []string {
+	if ref, ok := spec.(kind.Referrer); ok {
+		return dedupe(ref.Refs())
+	}
+	return nil
 }
 
 // checkRepo checks every resource of a repository the way rgd check does (internal/cli,
@@ -68,9 +70,7 @@ func (s *Service) checkRepo(ctx context.Context, repo *repoformat.Repo, extra ex
 		}
 		rr, _ := repo.Lookup(l.Ref.Code)
 		meta := Meta{Meta: rr.Effective, Description: check.Description(l.Resource)}
-		if ref, ok := rr.Spec.(referrer); ok {
-			meta.References = dedupe(ref.References())
-		}
+		meta.References = references(rr.Spec)
 		items = append(items, &item{c: candidate{Path: l.Path, Ref: l.Ref, Resource: rr, Meta: meta}, res: l.Resource, findings: r.Findings})
 	}
 	for _, f := range repo.Failed {

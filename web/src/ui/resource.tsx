@@ -88,11 +88,19 @@ export function PolicyBadge(props: { policy: Schemas['Policy'] }) {
   return <span class={`badge ${POLICY[props.policy][2]}`.trim()}>{policyName(props.policy)}</span>
 }
 
-/** scopeName is who a resource is for: the whole organisation, only its author, or a product by name. */
-export function scopeName(scope: string): string {
+/**
+ * scopeName is who a resource is for: the whole organisation, only its author, or a product by name. The
+ * name comes from products when given (the management pages list every product), else from the signed-in
+ * person's memberships.
+ */
+export function scopeName(scope: string, products?: readonly Schemas['ProductRef'][]): string {
   if (scope === 'org') return t('res.scope.org')
   if (scope === 'me') return t('res.scope.me')
-  return me.value?.memberships.find((m) => m.product.code === scope)?.product.name ?? scope
+  return (
+    products?.find((p) => p.code === scope)?.name ??
+    me.value?.memberships.find((m) => m.product.code === scope)?.product.name ??
+    scope
+  )
 }
 
 /** slashName is how a workflow is called in an AI tool: /rgd-<code>. */

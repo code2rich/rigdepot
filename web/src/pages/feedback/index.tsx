@@ -19,7 +19,8 @@ import { initial } from '../../shell/user-menu'
 import { Empty } from '../../ui/empty'
 import { STATUSES, StatusBadge, fbNumber, originName, statusName, typeName } from '../../ui/feedback'
 import { Icon } from '../../ui/icons'
-import { LoadError, Loading, errorText, useLoad } from '../../ui/load'
+import { LoadError, Loading, useLoad } from '../../ui/load'
+import { failText } from '../../ui/fail'
 import { PageHeader } from '../../ui/page-header'
 import { toolName } from '../../ui/resource'
 import { AiTip } from '../../ui/say'
@@ -67,7 +68,7 @@ export default function FeedbackPage() {
       setMore((m) => [...m, ...page.items])
       setCursor(page.next_cursor)
     } catch (err) {
-      toast(errorText(err))
+      toast(failText(err))
     } finally {
       setLoadingMore(false)
     }
@@ -424,7 +425,7 @@ function Rating(props: { f: Feedback; mine: boolean; onRated: (f: Feedback) => v
       toast(score <= 2 ? t('feedback.rate.reopened') : t('feedback.rate.thanks'))
       props.onRated(next)
     } catch (err) {
-      toast(errorText(err))
+      toast(failText(err))
     } finally {
       setBusy(false)
     }
@@ -494,7 +495,7 @@ function Reply(props: { f: Feedback; mine: boolean; onChanged: (f: Feedback) => 
       setText('')
       if (next) props.onChanged(next)
     } catch (err) {
-      setError(errorText(err))
+      setError(failText(err))
     } finally {
       setBusy(false)
     }

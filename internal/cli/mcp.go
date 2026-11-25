@@ -44,17 +44,22 @@ func newMCPCmd(a *app) *cobra.Command {
 
 // mcpOptions are how sync and status write MCP servers into the tools. Without a server there
 // are no personal secrets to fill in, so the tools' own environment variable references are the
-// only way (decision D5); with one, mcp.mode decides: the single entry (rgd mcp serve) or one
-// entry per server started through rgd mcp run.
-func (a *app) mcpOptions(cfg *localconfig.Config) (adapter.MCPMode, string) {
-	if cfg.String(localconfig.KeyServer) == "" {
+// only way (decision D5). With one, mcp.mode decides: the single entry (rgd mcp serve) or one
+// entry per server started through rgd mcp run ("direct"). The mode set on this computer (file
+// or environment) wins over the server's organisation default, which wins over the built-in
+// default, single-entry.
+func (a *app) mcpOptions(cfg *localconfig.Config, rem *remote) (adapter.MCPMode, string) {
+	if rem == nil {
 		return adapter.MCPNativeEnv, ""
 	}
-	mode := adapter.MCPSingleEntry
-	if cfg.String(localconfig.KeyMCPMode) == "direct" {
-		mode = adapter.MCPLauncher
+	mode := rem.state.Org.MCPMode
+	if v := cfg.Get(localconfig.KeyMCPMode); v.Source != localconfig.SourceDefault || mode == "" {
+		mode = v.Str
 	}
-	return mode, a.launcher(cfg)
+	if mode == "direct" {
+		return adapter.MCPLauncher, a.launcher(cfg)
+	}
+	return adapter.MCPSingleEntry, a.launcher(cfg)
 }
 
 // launcher is the command written into the tools' configuration to start this program: its name
