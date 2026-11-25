@@ -186,8 +186,7 @@ func TestHelpListsEveryCommand(t *testing.T) {
 // TestOperationsCommandsSayTheyAreNotThereYet: the commands of task M1-42
 // exist so that they fail clearly instead of as unknown commands.
 func TestOperationsCommandsSayTheyAreNotThereYet(t *testing.T) {
-	for _, args := range [][]string{{"backup"}, {"restore", "--check", "x"}, {"reset-admin"},
-		{"setup", "--from", "x"}, {"config", "check"}, {"doctor"}} {
+	for _, args := range [][]string{{"reset-admin"}, {"setup", "--from", "x"}, {"config", "check"}, {"doctor"}} {
 		e, _, stderr := testEnv(t, nil)
 		if code := run(context.Background(), args, e); code != exitFailure || !strings.Contains(stderr.String(), "not implemented") {
 			t.Errorf("%v: exit code %d, stderr %q", args, code, stderr)

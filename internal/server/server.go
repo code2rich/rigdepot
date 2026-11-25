@@ -79,8 +79,8 @@ func commands() []command {
 		{"migrate", "only run the database migrations", runMigrate},
 		{"healthcheck", "check that the server on this machine answers, for container health checks", runHealthcheck},
 		{"version", "print the version", runVersion},
-		{"backup", "make a consistent snapshot of the database", notYet},
-		{"restore", "check a snapshot (--check)", notYet},
+		{"backup", "make a consistent snapshot of the database", runBackup},
+		{"restore", "check a snapshot (--check)", runRestore},
 		{"reset-admin", "reset the password of a local administrator", notYet},
 		{"keys rotate", "re-wrap every data key with a new master key", runKeysRotate},
 		{"audit verify", "verify the audit log's hash chain", runAuditVerify},
@@ -223,7 +223,7 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 	defer db.Close()
 
 	if cfg.AutoMigrate {
-		applied, err := migrations.Apply(ctx, db)
+		applied, err := migrate(ctx, cfg, db, log)
 		if err != nil {
 			return err
 		}
@@ -316,9 +316,6 @@ func serveMetrics(app *App, e *env) (func(), error) {
 // warnNotYet logs the settings this version reads but does not act on yet,
 // so that nobody thinks they are in effect.
 func warnNotYet(cfg *config.Config, log *slog.Logger) {
-	if cfg.BackupDir != "" {
-		log.Warn("the built-in daily backup is not implemented in this version yet; backup.dir is ignored")
-	}
 	if len(cfg.ModulesDisabled) > 0 {
 		log.Info("modules disabled by configuration", "modules", strings.Join(cfg.ModulesDisabled, ","))
 	}
@@ -336,7 +333,7 @@ func runMigrate(ctx context.Context, e *env, args []string) int {
 		return exitFailure
 	}
 	defer db.Close()
-	applied, err := migrations.Apply(ctx, db)
+	applied, err := migrate(ctx, cfg, db, log)
 	for _, m := range applied {
 		log.Info("migration applied", "name", m.Name)
 	}
