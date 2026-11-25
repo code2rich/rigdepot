@@ -74,8 +74,9 @@ type generated struct {
 	data []byte
 }
 
-// generate computes every generated file without touching the disk.
-func generate(root string) ([]generated, error) {
+// generate computes every generated file without touching the disk. env is
+// the environment of the code generators it runs; nil means this process's.
+func generate(root string, env []string) ([]generated, error) {
 	b, err := readBrand(root)
 	if err != nil {
 		return nil, err
@@ -89,7 +90,12 @@ func generate(root string) ([]generated, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(files, messages...), nil
+	files = append(files, messages...)
+	api, err := generateAPI(root, env)
+	if err != nil {
+		return nil, err
+	}
+	return append(files, api...), nil
 }
 
 func brandGo(b brandNames) ([]byte, error) {
@@ -115,7 +121,14 @@ func runGen(root string, args []string) error {
 			return fmt.Errorf("unknown argument %q (the only option is --check)", a)
 		}
 	}
-	files, err := generate(root)
+	return gen(root, nil, check)
+}
+
+// gen regenerates everything with the code generators running in env (nil:
+// this process's environment) and writes the result, or with check only
+// reports what is out of date.
+func gen(root string, env []string, check bool) error {
+	files, err := generate(root, env)
 	if err != nil {
 		return err
 	}

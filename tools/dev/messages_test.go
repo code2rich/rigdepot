@@ -296,7 +296,7 @@ func TestConstantNameClash(t *testing.T) {
 	files := messageTree()
 	files["brand.json"] = sampleBrand
 	files["locales/en/check.json"] = `{"a.b_c": "x", "a_b.c": "y", "check.structure.missing": "{{file}} is missing"}`
-	if _, err := generate(writeTree(t, files)); err == nil || !strings.Contains(err.Error(), "ABC") {
+	if _, err := generate(writeTree(t, files), nil); err == nil || !strings.Contains(err.Error(), "ABC") {
 		t.Errorf("err = %v, want the clash on ABC", err)
 	}
 }

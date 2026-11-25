@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+#
+# oapi-codegen configuration for the command line's client: the types and a
+# client with typed responses. Run through "go run ./tools/dev gen", which
+# writes the result to internal/apiclient/api.gen.go; there is deliberately no
+# "output" here.
+package: apiclient
+generate:
+  client: true
+  models: true
+output-options:
+  skip-prune: true
