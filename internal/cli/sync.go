@@ -15,7 +15,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/ext/kind"
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/cliout"
@@ -103,13 +102,9 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 		Tools:     f.tools,
 		Disabled:  l.cfg.List(localconfig.KeyToolsDisabled),
 		Overwrite: f.overwrite,
-		// Without a server, the only way to hand a tool an MCP server's secrets is the tool's
-		// own environment variable reference (decision D5).
-		// TODO(M1-28, M1-2A): with a server, mcp.mode (and the server's default below it) once
-		// the sealed secrets reach this computer and rgd mcp run can hand them over.
-		MCPMode: adapter.MCPNativeEnv,
 	}
 	rem.apply(&opt)
+	opt.MCPMode, opt.Launcher = a.mcpOptions(l.cfg, rem)
 	if f.plan {
 		return a.syncPlan(ctx, l, st, opt, f)
 	}
@@ -148,6 +143,7 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 			kept = &sync.Local{}
 		}
 	}
+	a.pullSecrets(ctx, l, rem)
 	doc := syncDoc{Plan: a.newPlanDoc(p, st, &prev), Done: []doneDoc{}, Deferred: []opDoc{}, Retry: []retryDoc{}, Manifest: a.showData(l, home.ManifestFile)}
 	if kept != nil {
 		doc.Plan.Knowledge = a.knowledgeDocs(l, kept)

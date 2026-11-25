@@ -226,10 +226,14 @@ func (f *apiFixture) do(t *testing.T, method, path, user, body string, header ma
 
 func TestUnimplementedOperationsAnswer501(t *testing.T) {
 	f := newAPI(t, false)
-	// Personal secrets are a later task's (M1-28).
-	rec, p := f.do(t, http.MethodGet, "/api/v1/me/secrets", testAdmin, "", nil)
-	if rec.Code != http.StatusNotImplemented || p.Code != httpapi.CodeNotImplemented || p.RequestId == nil || *p.RequestId != rec.Header().Get(RequestIDHeader) {
-		t.Errorf("GET /api/v1/me/secrets: %d %+v", rec.Code, p)
+	// Every operation of the contract has its domain now; the bottom layer still answers 501
+	// for one that would not.
+	rec := httptest.NewRecorder()
+	httpapi.NewHandler(notImplemented{}, http.NewServeMux()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/me/secrets", nil))
+	var p httpapi.Problem
+	json.Unmarshal(rec.Body.Bytes(), &p)
+	if rec.Code != http.StatusNotImplemented || p.Code != httpapi.CodeNotImplemented {
+		t.Errorf("GET /api/v1/me/secrets on the bottom layer: %d %s", rec.Code, rec.Body)
 	}
 	if rec, p := f.do(t, http.MethodGet, "/api/v1/no-such-thing", "", "", nil); rec.Code != http.StatusNotFound || p.Code != "not_found" {
 		t.Errorf("unknown path: %d %+v", rec.Code, p)
@@ -558,7 +562,7 @@ func TestKeysRotateAndAuditVerifyCommands(t *testing.T) {
 		t.Errorf("verify an empty log: %d %s %s", c, out, errOut)
 	}
 	e2, out, errOut := reenv()
-	if c := runBounded(e2, "keys", "rotate"); c != exitOK || !strings.Contains(out.String(), "Rewrapped 2 sealed records (identity_providers 0, settings 2, sources 0)") {
+	if c := runBounded(e2, "keys", "rotate"); c != exitOK || !strings.Contains(out.String(), "Rewrapped 2 sealed records (identity_providers 0, secrets 0, settings 2, sources 0)") {
 		t.Fatalf("rotate: %d %s %s", c, out, errOut)
 	}
 	e3, out, errOut := reenv()

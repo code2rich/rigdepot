@@ -49,6 +49,11 @@ type Options struct {
 	// PullNow asks for a run of the source-sync job (SourceSyncJob) right away, after a source
 	// was added, changed or asked to be pulled; nil leaves it to the job's next run.
 	PullNow func()
+	// DefineSecrets records the personal secrets a repository defines (the secrets of
+	// rigdepot.yaml, with their labels and where to get one) when ImportRepo reads it; the
+	// server's assembly points it at the secrets domain, which catalog may not import. Nil
+	// drops the definitions.
+	DefineSecrets func(ctx context.Context, defs map[string]repoformat.Secret) error
 	// AllowLocalSources accepts local paths and file:// addresses as sources. Only tests set
 	// it: otherwise an administrator could make the server read its own disk.
 	AllowLocalSources bool
@@ -57,16 +62,17 @@ type Options struct {
 // Service is the catalog: resources, drafts, versions, publishing, rollback, disabling,
 // references and impact, check results and waivers.
 type Service struct {
-	db        *dbx.DB
-	access    *access.Service
-	audit     Auditor
-	events    Events
-	kinds     repoformat.Kinds
-	engine    *check.Engine
-	engineErr error
-	rules     extcheck.Ruleset
-	ver       string
-	now       func() time.Time
+	db            *dbx.DB
+	defineSecrets func(ctx context.Context, defs map[string]repoformat.Secret) error
+	access        *access.Service
+	audit         Auditor
+	events        Events
+	kinds         repoformat.Kinds
+	engine        *check.Engine
+	engineErr     error
+	rules         extcheck.Ruleset
+	ver           string
+	now           func() time.Time
 
 	keys        *masterkey.Keyring
 	pullTrigger func()
@@ -86,7 +92,7 @@ func New(db *dbx.DB, acc *access.Service, o Options) (*Service, error) {
 		o.Now = time.Now
 	}
 	s := &Service{db: db, access: acc, audit: o.Auditor, events: o.Events, kinds: o.Kinds, rules: o.Rules, ver: o.Version, now: o.Now,
-		keys: o.Keys, pullTrigger: o.PullNow, allowLocal: o.AllowLocalSources}
+		keys: o.Keys, pullTrigger: o.PullNow, allowLocal: o.AllowLocalSources, defineSecrets: o.DefineSecrets}
 	// A program without a rule set (built without builtin/all) still serves what is
 	// published; it cannot take new content, because nothing could be checked.
 	s.engine, s.engineErr = check.New(o.Rules)

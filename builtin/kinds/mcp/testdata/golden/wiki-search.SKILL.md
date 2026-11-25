@@ -15,7 +15,7 @@ This MCP server is used on demand: it is not connected to this tool. Call one of
 acme mcp call wiki-search <tool> '<arguments as JSON>'
 ```
 
-The command prints what the tool returns. It connects to the server and supplies any personal secrets the server needs; never put a secret on the command line.
+Run `acme mcp call wiki-search` without a tool to see every tool with the arguments it takes. The command prints what the tool returns. It connects to the server and supplies any personal secrets the server needs; never put a secret on the command line.
 
 ## Tools
 

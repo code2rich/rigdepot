@@ -12,8 +12,11 @@ import (
 	"testing"
 
 	"github.com/code2rich/rigdepot/ext/resource"
+	"github.com/code2rich/rigdepot/internal/repoformat"
+	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/catalog"
+	"github.com/code2rich/rigdepot/internal/server/catalog/catalogtest"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/dbx/dbxtest"
 )
@@ -446,5 +449,30 @@ func TestFindingsKeepWhenTheyWereFirstSeen(t *testing.T) {
 	second, _ := f.svc.Draft(ctx, f.as("admin"), "unit-testing")
 	if len(first.Checks.Findings) != 1 || len(second.Checks.Findings) != 1 || second.Checks.Findings[0].FirstSeen != first.Checks.Findings[0].FirstSeen {
 		t.Errorf("first seen: %+v then %+v", first.Checks.Findings, second.Checks.Findings)
+	}
+}
+
+// Importing a repository hands the secrets its rigdepot.yaml defines, with their labels and
+// where to get one, to the secrets domain; one that fails to take them fails the import.
+func TestImportDefinesTheRepositorysSecrets(t *testing.T) {
+	f := newSQLite(t)
+	var got map[string]repoformat.Secret
+	svc, err := catalog.New(f.db, f.acc, catalog.Options{Auditor: f.log, Kinds: catalogtest.Kinds(), Rules: catalogtest.Rules(),
+		DefineSecrets: func(_ context.Context, defs map[string]repoformat.Secret) error { got = defs; return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := skill("unit-testing", "Steps.\n", "")
+	files["rigdepot.yaml"] = config + "  GITLAB_TOKEN: {label: GitLab token, howto: \"GitLab, Preferences, Access tokens\"}\n"
+	if _, err := svc.ImportRepo(context.Background(), access.System, catalog.ImportSource{SourceID: f.source, Commit: "c1"}, f.repo(files)); err != nil {
+		t.Fatal(err)
+	}
+	if got["JIRA_TOKEN"].Label != "Jira token" || got["GITLAB_TOKEN"].Howto != "GitLab, Preferences, Access tokens" || len(got) != 2 {
+		t.Errorf("defined: %+v", got)
+	}
+	failing, _ := catalog.New(f.db, f.acc, catalog.Options{Auditor: f.log, Kinds: catalogtest.Kinds(), Rules: catalogtest.Rules(),
+		DefineSecrets: func(context.Context, map[string]repoformat.Secret) error { return errors.New("database is locked") }})
+	if _, err := failing.ImportRepo(context.Background(), access.System, catalog.ImportSource{SourceID: f.source, Commit: "c2"}, f.repo(files)); err == nil {
+		t.Error("the import went on without the definitions")
 	}
 }

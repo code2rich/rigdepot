@@ -743,6 +743,19 @@ func (d *Devices) VerifyDeviceToken(ctx context.Context, token string) (string, 
 	return userID, id, nil
 }
 
+// DevicePublicKey returns the public key a live device of the user signed in with: the key
+// personal secrets are sealed to (package secrets). ErrNotFound for a device that is not the
+// user's or not signed in.
+func (d *Devices) DevicePublicKey(ctx context.Context, userID, deviceID string) (string, error) {
+	var key string
+	err := d.db.QueryRowContext(ctx, `SELECT public_key FROM devices WHERE id = ? AND user_id = ? AND `+liveDevices,
+		deviceID, userID, dbx.Millis(d.now().Add(-DeviceIdle))).Scan(&key)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return key, err
+}
+
 // DeviceName returns the name of a device for the audit log, signed out or
 // not; false when there is no such device.
 func (d *Devices) DeviceName(ctx context.Context, id string) (string, bool) {

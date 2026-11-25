@@ -154,6 +154,10 @@ type Options struct {
 	Overwrite []string
 	// MCPMode is how MCP servers are written; empty means adapter.MCPNativeEnv.
 	MCPMode adapter.MCPMode
+	// Launcher is the command that starts the command-line program, as written into the tools'
+	// configuration in MCPLauncher and MCPSingleEntry: an absolute path or the program's name.
+	// Empty means the name.
+	Launcher string
 	// Keep leaves everything the desired state does not deliver as it is, instead of undoing
 	// it: the state is one kept from earlier because its source cannot be reached, and what
 	// the source would say now is unknown.
@@ -297,7 +301,9 @@ func (e *Engine) Plan(ctx context.Context, st *desired.State, opt Options) (*Pla
 		for code := range failed {
 			tp.held[code] = true
 		}
-		r := render(st.Resources, t.a.Capabilities(t.det), e.renderOptions())
+		caps := t.a.Capabilities(t.det)
+		r := render(st.Resources, caps, e.renderOptions())
+		r.artifacts = launch(r.artifacts, caps, opt)
 		tp.info.Degraded = r.degraded
 		tp.info.Skips = append(tp.info.Skips, r.skips...)
 		for code, err := range r.failed {

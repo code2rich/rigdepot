@@ -438,6 +438,11 @@ func (s *Service) ImportRepo(ctx context.Context, a access.Actor, src ImportSour
 	if err := s.ensureStages(ctx, repo.Config.Stages); err != nil {
 		return res, err
 	}
+	if s.defineSecrets != nil && len(repo.Config.Secrets) > 0 {
+		if err := s.defineSecrets(ctx, repo.Config.Secrets); err != nil {
+			return res, fmt.Errorf("catalog: defining the repository's secrets: %w", err)
+		}
+	}
 	cs, err := s.checkRepo(ctx, repo, nil)
 	if err != nil {
 		return res, err

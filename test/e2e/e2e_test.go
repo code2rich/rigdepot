@@ -274,6 +274,12 @@ func TestSyncAndUninstallRestoreEveryByte(t *testing.T) {
 	w.must(exitOK, "sync", "--repo", w.repo, "--yes-global")
 	w.checkWritten(before)
 
+	// The sync kept how to reach the MCP servers: a call names the personal secret that is
+	// missing on a computer that is not signed in, instead of failing to start the server.
+	if r := w.must(exitPending, "mcp", "call", "jira", "search_issues", "{}"); !strings.Contains(r.stderr, "JIRA_API_TOKEN") || !strings.Contains(r.stderr, "login") {
+		t.Errorf("rgd mcp call without the secret:\n%s", r.stderr)
+	}
+
 	// Everything is as wanted now.
 	w.must(exitOK, "status", "--repo", w.repo)
 	w.must(exitOK, "sync", "--repo", w.repo, "--plan", "--exit-code")

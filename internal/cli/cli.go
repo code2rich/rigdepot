@@ -63,6 +63,9 @@ type Env struct {
 	NewExecutor func(executor.Roots, executor.State) (sync.Executor, error)
 	// Knowledge fetches the knowledge bases a sync delivers; nil means the person's own git.
 	Knowledge sync.Fetcher
+	// Executable returns this program's path, written into the tools' configuration to start
+	// it (mcp.command = path); nil is os.Executable.
+	Executable func() (string, error)
 	// Connect returns a client for the server this computer is signed in to, or an error
 	// wrapping ErrNotSignedIn (exit code 6). Nil means the device identity that rgd login keeps
 	// in the local data directory's keychain; tests put a client for a fake server here.

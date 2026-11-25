@@ -31,6 +31,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
 	"github.com/code2rich/rigdepot/internal/server/migrations"
+	"github.com/code2rich/rigdepot/internal/server/secrets"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
 
@@ -66,6 +67,7 @@ type App struct {
 	authnOps *authnapi.Ops  // the sign-in operations and middleware
 	settings *settings.Service
 	catalog  *catalog.Service
+	secrets  *secrets.Service
 	feedback *feedback.Service
 	delivery *delivery.Service
 	hooks    hooks

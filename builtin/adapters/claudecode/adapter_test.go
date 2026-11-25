@@ -233,3 +233,25 @@ func TestPlanNotInstalled(t *testing.T) {
 		t.Errorf("cancelled: %v", err)
 	}
 }
+
+// The single entry (MCPSingleEntry): the core hands one stdio server that starts the command
+// line's proxy, and it becomes one plain user-scope entry, in the shape of any stdio server
+// without secrets.
+func TestSingleEntry(t *testing.T) {
+	single := adapter.MCPServer{Resource: resource.Ref{Kind: resource.KindMCP, Code: "entry"}, EntryName: "entry",
+		Transport: adapter.Stdio, Command: "/opt/example/bin/tool", Args: []string{"mcp", "serve"}}
+	p := plan(t, fakeEnv(nil, nil), adapter.MCPSingleEntry, single)
+	if len(p.Skips) != 0 || len(p.Ops) != 1 {
+		t.Fatalf("plan: %+v", p)
+	}
+	k := p.Ops[0].(adapter.SetKey)
+	want := map[string]any{"type": "stdio", "command": "/opt/example/bin/tool", "args": []any{"mcp", "serve"}, "env": map[string]any{}}
+	if k.File != "~/.claude.json" || strings.Join(k.Path, ".") != "mcpServers.entry" || !reflect.DeepEqual(k.Value, want) {
+		t.Errorf("entry: %s %v %#v", k.File, k.Path, k.Value)
+	}
+	// A server that still needs a secret has no place in this mode.
+	secret := server("notes", adapter.MCPServer{Transport: adapter.Stdio, Command: "notes-mcp", Env: map[string]adapter.Value{"K": {Secret: "NOTES_KEY"}}})
+	if p := plan(t, fakeEnv(nil, nil), adapter.MCPSingleEntry, secret); len(p.Ops) != 0 || len(p.Skips) != 1 || p.Skips[0].Reason != adapter.NeedsSecretSupport {
+		t.Errorf("secret: %+v", p)
+	}
+}

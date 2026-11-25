@@ -208,8 +208,18 @@ func (d *deliveryAPI) GetDesiredState(ctx context.Context, req httpapi.GetDesire
 			return nil, err
 		}
 	}
+	versions := map[string]int{}
+	if f := d.hooks.secretVersions; f != nil && len(st.Secrets) > 0 {
+		if versions, err = f(ctx, a.UserID); err != nil {
+			return nil, err
+		}
+	}
 	for _, name := range st.Secrets {
-		doc.Secrets = append(doc.Secrets, httpapi.DesiredSecret{Name: name, Configured: configured[name]})
+		ds := httpapi.DesiredSecret{Name: name, Configured: configured[name]}
+		if v, ok := versions[name]; ok && configured[name] {
+			ds.Version = &v
+		}
+		doc.Secrets = append(doc.Secrets, ds)
 	}
 	etag, err := desiredETag(doc)
 	if err != nil {
