@@ -53,12 +53,7 @@ func checkSteps() []step {
 			return "regenerated and compared", runGen(s.root, []string{"--check"})
 		}},
 		{"structure rules", stepStructure},
-		{"messages", func(s *sandbox) (string, error) {
-			if !isDir(filepath.Join(s.root, "locales")) {
-				return "", errNotRun{"there is no locales/ directory yet"}
-			}
-			return "", errors.New("locales/ exists but the message check is not implemented in tools/dev")
-		}},
+		{"messages", stepMessages},
 		{"tests", func(s *sandbox) (string, error) {
 			return "go test -count=1 ./...", s.command(nil, "go", "test", "-count=1", "./...").Run()
 		}},

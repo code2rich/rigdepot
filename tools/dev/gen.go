@@ -84,7 +84,12 @@ func generate(root string) ([]generated, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []generated{{path: "internal/brand/brand_gen.go", data: src}}, nil
+	files := []generated{{path: "internal/brand/brand_gen.go", data: src}}
+	messages, err := generateMessages(root)
+	if err != nil {
+		return nil, err
+	}
+	return append(files, messages...), nil
 }
 
 func brandGo(b brandNames) ([]byte, error) {
