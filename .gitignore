@@ -1,3 +1,14 @@
-dist/
 .DS_Store
-deploy/config.local.sh
+dist/
+
+# 不属于开源软件本身的内容放在本地私有仓库 ../rigdepot-private，不进这个仓库
+/docs/
+/prototype/
+/site/
+/brand/
+/deploy/
+/services/feedback/
+/AGENTS.md
+/CLAUDE.md
+/LESSONS.md
+/CONTRIBUTING.md

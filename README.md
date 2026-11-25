@@ -2,13 +2,11 @@
 
 **团队 AI 编码资源的中台：把好用的 Skill、MCP、工作流和环境资源统一登记，按研发环节下发到每个人手里的任何 AI 编码工具，再把用得好不好带回来。**
 
-> 状态：**设计阶段。** 仓库里是设计文档、可点击原型和产品站；服务端和命令行还没有实现。
-
-![落地页](docs/screenshots/site-landing-light.png)
+> 状态：**设计阶段。** 服务端和命令行（Go）还没有开始实现，这个仓库会随实现逐步填充。
 
 ## 为什么
 
-团队用上 Claude Code、Codex、OpenCode 这些工具之后，会碰到同样的事：每个工具各配各的；好用的 Skill 散在个人电脑里沉淀不下来；团队的规范 AI 不知道；令牌明文贴得到处都是；推了一批资源不知道好不好用；换一个工具一切重来。详见 [docs/positioning.md](docs/positioning.md)。
+团队用上 Claude Code、Codex、OpenCode 这些工具之后，会碰到同样的事：每个工具各配各的；好用的 Skill 散在个人电脑里沉淀不下来；团队的规范 AI 不知道；令牌明文贴得到处都是；推了一批资源不知道好不好用；换一个工具一切重来。
 
 ## 只做四件事
 
@@ -39,37 +37,11 @@ $ rgd sync --plan
 
 ## 看一看
 
-- **在线演示**：浏览器打开 [`prototype/index.html`](prototype/README.md)，顶部可以切换三种身份（平台管理员 / 产品负责人 / 成员）和三种场景（已接入 / 新成员未接入 / 刚部署没有资源）。演示数据全部虚构。
-- **产品站**：打开 [`site/index.html`](site/README.md)；完整预览（含文档页）运行 `sh site/build.sh && cd dist && python3 -m http.server`。演示站 `https://rigdepot.code2rich.com`。
-- **截图**：[docs/screenshots/](docs/screenshots/)。
-
-## 设计文档
-
-| | |
-| --- | --- |
-| [定位](docs/positioning.md) | 困境、目标用户、和现有方案的差异 |
-| [总体设计](docs/design.md) | 非目标、架构、部署、核心与可选模块、MVP 与路线图、待决定的问题 |
-| [子系统](docs/subsystems/README.md) | 资源目录、同步命令行、工具适配器、Skill 检查与评分、密钥、反馈与摩擦、使用洞察、审计与确认、权限与角色、环境资源 |
-| [扩展点](docs/extensibility.md) | 工具适配器、资源类型、身份源、密钥后端、审批流、审计与洞察导出、资源源、策略引擎 |
-| [协议](docs/licensing.md) | 全仓库 Apache-2.0，贡献用 DCO；商标政策、常问的问题 |
-| [参考与借鉴](docs/prior-art.md) | 学了什么、刻意不同在哪 |
-
-## 这个仓库怎么维护
-
-代码由编码 Agent 编写、评审、合并和发版，人负责产品方向、UI/UX 和拍板。Agent 从 [AGENTS.md](AGENTS.md) 开始读；标准在 [docs/code-standards.md](docs/code-standards.md)；教训在 [LESSONS.md](LESSONS.md)；开发循环的设计在 [docs/dev-loops.md](docs/dev-loops.md)。参与贡献见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-```
-├── AGENTS.md  CLAUDE.md  LESSONS.md  CONTRIBUTING.md
-├── LICENSE  NOTICE  DCO         # Apache-2.0；贡献用 DCO
-├── docs/                        # 设计文档与截图
-├── prototype/                   # 可点击原型（零构建）
-└── site/                        # 产品站：落地页、文档页、反馈页
-```
+- **演示站**：<https://rigdepot.code2rich.com>，有在线原型（可切换三种身份和三种场景，演示数据全部虚构）和问题反馈入口。
 
 ## 协议
 
 完全开源，整个仓库采用 [Apache-2.0](LICENSE)：可以商用、修改、内部部署、fork、托管，带专利授权。没有企业版，没有收费功能。
 
-- 贡献不需要签协议，提交时带 `Signed-off-by` 即可（DCO），见 [CONTRIBUTING.md](CONTRIBUTING.md#开发者原创声明dco)。
-- 「Rigdepot」名称和标志不随协议授权，对外分发的 fork 需要改名，见[商标政策](docs/licensing.md#商标政策)。
-- 为什么这样选、常问的问题：[docs/licensing.md](docs/licensing.md)。
+- 贡献不需要签协议，提交时用 `git commit -s` 带上 `Signed-off-by` 即可，表示你同意 [DCO](DCO)。
+- 「Rigdepot」名称和标志不随协议授权：可以说明你的项目基于 Rigdepot，但对外分发的 fork 需要换一个名字和标志。
