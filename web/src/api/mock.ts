@@ -6,14 +6,16 @@
 // the examples in api/openapi.yaml; pages add their own endpoints here while they are being built.
 //
 // ?mock=admin (default), ?mock=owner, ?mock=member pick who is signed in; ?mock=signed-out has nobody.
+// mock-auth.ts adds more for the sign-in, setup and users pages (?mock=pending, ?mock=setup, ?mockfail=…).
 
 import type { Schemas } from './client'
+import { authMock, patchMeta } from './mock-auth'
 
-type Who = 'admin' | 'owner' | 'member' | 'signed-out'
+type Who = 'admin' | 'owner' | 'member' | 'pending' | 'signed-out'
 
 function who(): Who {
   const v = new URLSearchParams(location.search).get('mock') ?? sessionStorage.getItem('mock')
-  const w: Who = v === 'owner' || v === 'member' || v === 'signed-out' ? v : 'admin'
+  const w: Who = v === 'owner' || v === 'member' || v === 'pending' || v === 'signed-out' ? v : 'admin'
   sessionStorage.setItem('mock', w)
   return w
 }
@@ -31,7 +33,7 @@ const meta: Schemas['ServerMeta'] = {
   limits: { max_bundle_bytes: 5242880 },
 }
 
-const people: Record<Exclude<Who, 'signed-out'>, Schemas['Me']> = {
+const people: Record<string, Schemas['Me']> = {
   admin: {
     id: '0193a4b2-6c1e-7a00-8000-000000000001',
     username: 'admin',
@@ -84,20 +86,32 @@ const problem = (status: number, code: string) =>
 
 /** mockServer answers the console's requests in memory. */
 export function mockServer(): (request: Request) => Promise<Response> {
-  let current = who()
+  let current: string = who()
+  const auth = authMock({
+    get: () => current,
+    set: (w) => {
+      current = w
+      sessionStorage.setItem('mock', w)
+    },
+    people,
+  })
   return async (request) => {
     const path = new URL(request.url).pathname.replace(/^.*\/api\//, '/api/')
     const route = `${request.method} ${path}`
+    const failed = auth.first(route)
+    if (failed) return failed
     switch (route) {
       case 'GET /api/v1/meta':
-        return json(200, meta)
-      case 'GET /api/v1/me':
-        return current === 'signed-out' ? problem(401, 'auth.required') : json(200, people[current])
+        return json(200, patchMeta(meta))
+      case 'GET /api/v1/me': {
+        const person = people[current]
+        return person ? json(200, person) : problem(401, 'auth.required')
+      }
       case 'POST /api/v1/auth/logout':
         current = 'signed-out'
         sessionStorage.setItem('mock', current)
         return new Response(null, { status: 204 })
     }
-    return problem(404, 'mock.not_implemented')
+    return (await auth.last(request, route)) ?? problem(404, 'mock.not_implemented')
   }
 }

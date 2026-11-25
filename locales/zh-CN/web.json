@@ -53,5 +53,12 @@
   "shell.side.label": "侧栏",
   "shell.skip": "跳到正文",
   "shell.theme.to_dark": "切换到深色",
-  "shell.theme.to_light": "切换到浅色"
+  "shell.theme.to_light": "切换到浅色",
+  "ui.dialog.close": "关闭",
+  "ui.fail.forbidden": "你没有权限做这件事。确实需要的话，请找平台管理员。",
+  "ui.fail.network": "连不上服务端。检查网络后重试。",
+  "ui.fail.rate_limited": "尝试次数太多。稍等一会儿再试。",
+  "ui.fail.retry": "重试",
+  "ui.fail.server": "服务端没能完成这件事（HTTP {{status}}）。稍后重试；一直这样，请告诉平台管理员。",
+  "ui.fail.unknown": "出了点问题，请重试。"
 }

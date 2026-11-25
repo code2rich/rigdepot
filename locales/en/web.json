@@ -53,5 +53,12 @@
   "shell.side.label": "Sidebar",
   "shell.skip": "Skip to content",
   "shell.theme.to_dark": "Switch to the dark theme",
-  "shell.theme.to_light": "Switch to the light theme"
+  "shell.theme.to_light": "Switch to the light theme",
+  "ui.dialog.close": "Close",
+  "ui.fail.forbidden": "You are not allowed to do this. If you need to, ask a platform administrator.",
+  "ui.fail.network": "Cannot reach the server. Check the network and try again.",
+  "ui.fail.rate_limited": "Too many attempts. Wait a moment and try again.",
+  "ui.fail.retry": "Try again",
+  "ui.fail.server": "The server could not do this (HTTP {{status}}). Try again shortly; if it keeps happening, tell your platform administrator.",
+  "ui.fail.unknown": "Something went wrong. Try again."
 }
