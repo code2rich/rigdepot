@@ -7,16 +7,20 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/server/access"
+	"github.com/code2rich/rigdepot/internal/server/authn"
+	"github.com/code2rich/rigdepot/internal/server/catalog/catalogtest"
+	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/httpapi"
 )
 
-const testApplicant = "0193a4b2-6c1e-7a00-8000-000000000021"
+const testApplicant = "0193a4b2-6c1e-7a00-8000-000000000031"
 
 // drain waits until the event handlers have handled everything published so far.
 func drain(t *testing.T, f *apiFixture) {
@@ -168,5 +172,41 @@ func TestInvitationsAreMailed(t *testing.T) {
 	if len(got) != 1 || got[0].To.Address != "second@example.com" || !strings.HasPrefix(got[0].Link, "http://127.0.0.1:8080/invite/") ||
 		!strings.Contains(got[0].Text, got[0].Link) {
 		t.Errorf("mailed %+v", got)
+	}
+}
+
+// TestCatalogNotifications: a draft and its publication reach the resource's maintainer through
+// the catalog's events; the administrator who uploaded and published hears of neither.
+func TestCatalogNotifications(t *testing.T) {
+	f := newAPIWith(t, fixtureOptions{background: true, setup: func(app *App) {
+		app.catalogOptions.Kinds, app.catalogOptions.Rules = catalogtest.Kinds(), catalogtest.Rules()
+	}})
+	ctx := context.Background()
+	if _, err := f.app.db.ExecContext(ctx, `INSERT INTO users (id, username, display_name, status, is_admin, created_at, updated_at)
+		VALUES (?, 'maint', 'Name of maint', 'active', FALSE, 1, 1)`, testMaintainer); err != nil {
+		t.Fatal(err)
+	}
+	now := dbx.Millis(time.Now())
+	if _, err := f.app.db.ExecContext(ctx, `INSERT INTO sessions (id, user_id, token_digest, created_at, last_seen_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		dbx.NewID(), testMaintainer, authn.TokenDigest(testSession(testMaintainer)), now, now, now+dbx.Millis(time.Unix(0, 0).Add(authn.SessionMax))); err != nil {
+		t.Fatal(err)
+	}
+	cf := &catalogFixture{apiFixture: f, t: t}
+	rec := cf.call("PUT", "/api/v1/resources/unit-testing/draft/bundle?kind=skill", testAdmin, skillZip(t, "Steps.\n"),
+		map[string]string{"Content-Type": "application/octet-stream"}, http.StatusCreated)
+	cf.call("POST", "/api/v1/resources/unit-testing/publish", testAdmin, []byte(`{}`), map[string]string{"If-Match": rec.Header().Get("ETag")}, http.StatusCreated)
+	drain(t, f)
+
+	page := myNotifications(t, f, testMaintainer, "")
+	var kinds, titles []string
+	for _, it := range page.Items {
+		kinds, titles = append(kinds, it.Kind), append(titles, it.Title)
+	}
+	if !slices.Equal(kinds, []string{"catalog.published", "catalog.draft_updated"}) ||
+		titles[0] != "Unit testing v1 is published" || titles[1] != "New resource Unit testing is waiting to be published" {
+		t.Errorf("the maintainer's notifications: %v %v", kinds, titles)
+	}
+	if p := myNotifications(t, f, testAdmin, ""); len(p.Items) != 0 {
+		t.Errorf("the administrator who acted was told: %+v", p.Items)
 	}
 }
