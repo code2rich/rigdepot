@@ -30,8 +30,9 @@ var tasks = map[string]task{
 	"check-linux":      {"run check inside a local Linux container (needs Docker)", runCheckLinux},
 	"release-snapshot": {"build all release artifacts into dist/ without publishing, twice, and compare", runReleaseSnapshot},
 	"release-files":    {"write the completions and third-party notices the release archives carry", runReleaseFiles},
-	"web-deps":         {"install the web console's dependencies (needs Node, pnpm and the network)", runWebDeps},
+	"web-deps":         {"install the web console's dependencies (needs Node, pnpm and the network); --browsers adds the test browsers", runWebDeps},
 	"web":              {"build the web console into web/dist for go build -tags webdist", runWeb},
+	"e2e-web":          {"browser tests of the console: e2e-web [mock|real] [--shots] [--out DIR] [-- playwright args]", runE2EWeb},
 }
 
 func main() {

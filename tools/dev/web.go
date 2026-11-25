@@ -76,6 +76,8 @@ func stepWeb(s *sandbox) (string, error) {
 		{"prettier", []string{"exec", "prettier", "--check", "."}},
 		{"eslint", []string{"exec", "eslint", "."}},
 		{"tsc", []string{"exec", "tsc", "--noEmit"}},
+		// The browser tests are only run by e2e-web, but they are type checked here.
+		{"tsc e2e", []string{"exec", "tsc", "--noEmit", "-p", "e2e"}},
 		{"vitest", []string{"exec", "vitest", "run"}},
 		{"build", []string{"exec", "vite", "build", "--outDir", out, "--emptyOutDir"}},
 	}
@@ -100,16 +102,29 @@ func stepWeb(s *sandbox) (string, error) {
 }
 
 // runWebDeps installs the console's dependencies from the lock file. Like
-// deps, it is a separate step because it needs the network.
+// deps, it is a separate step because it needs the network. With --browsers
+// it also downloads the Chromium and WebKit builds that the browser tests
+// (e2e-web) run in, into Playwright's cache for this user.
 func runWebDeps(root string, args []string) error {
-	if len(args) != 0 {
-		return errors.New("web-deps takes no arguments")
+	browsers := false
+	for _, a := range args {
+		if a != "--browsers" {
+			return fmt.Errorf("unknown argument %q (the only option is --browsers)", a)
+		}
+		browsers = true
 	}
 	if err := webToolchain(root, false); err != nil {
 		return err
 	}
 	fmt.Println("==> pnpm --dir web install --frozen-lockfile")
-	return pnpm(root, nil, "install", "--frozen-lockfile").Run()
+	if err := pnpm(root, nil, "install", "--frozen-lockfile").Run(); err != nil {
+		return err
+	}
+	if !browsers {
+		return nil
+	}
+	fmt.Println("==> pnpm --dir web exec playwright install chromium webkit")
+	return pnpm(root, nil, "exec", "playwright", "install", "chromium", "webkit").Run()
 }
 
 // runWeb builds the console into web/dist, ready to be embedded with
