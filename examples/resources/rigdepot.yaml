@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+schema: 1
+name: 示例科技的 AI 资源
+locale: zh-CN
+
+defaults:
+  scope: org
+  policy: recommended
+  audience: rd
+
+products:
+  - { code: shop, name: 商城 }
+  - { code: pay, name: 支付 }
+
+secrets:
+  JIRA_API_TOKEN:
+    label: Jira API 令牌
+    howto: Jira → 个人设置 → 安全 → API 令牌
+  GITLAB_TOKEN:
+    label: GitLab 个人访问令牌
+    howto: GitLab → 偏好设置 → 访问令牌，勾选 read_api
+  SHOP_TEST_API_TOKEN:
+    label: 商城测试环境的接口令牌
+    howto: 测试平台 → 我的令牌 → 新建

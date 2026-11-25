@@ -17,6 +17,7 @@ node_modules/
 !.env.example
 # Samples for the check rule that reports exactly these files.
 !/builtin/checks/bundledenv/testdata/**/.env*
+!/examples/resources-broken/bundledenv/**/.env
 /deploy/secrets/*
 !/deploy/secrets/README.md
 

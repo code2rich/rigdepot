@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+name: 提交前自查
+stages: [develop]
+when: 提交合并请求之前
+try: 帮我自查一下这次改动能不能提交
