@@ -68,7 +68,7 @@ export const NAV: readonly NavGroup[] = [
         route: '/feedback/:number?',
         label: 'nav.feedback',
         icon: 'chat',
-        component: notBuilt('feedback'),
+        component: lazy(() => import('./feedback')),
       },
     ],
   },
