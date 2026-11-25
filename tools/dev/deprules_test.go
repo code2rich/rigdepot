@@ -189,6 +189,21 @@ func TestDependencyRules(t *testing.T) {
 			pkgs: []pkg{{Path: "internal/keyring", Imports: []string{"C"}}},
 			want: []string{"cgo: internal/keyring -> C"},
 		},
+		{
+			name: "no-testing: a program links the testing package",
+			pkgs: []pkg{
+				{Path: "cmd/depot", Imports: local("internal/keyring")},
+				{Path: "internal/keyring", Imports: []string{"os", "testing"}},
+				{Path: "cmd/depot-server", Imports: local("internal/server")},
+				{Path: "internal/server", Imports: []string{"testing/fstest"}},
+				// Tests may import it.
+				{Path: "internal/doctor", Imports: []string{"os"}, TestImports: []string{"testing"}},
+			},
+			want: []string{
+				"no-testing: cmd/depot -> testing",
+				"no-testing: cmd/depot-server -> testing/fstest",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

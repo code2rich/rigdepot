@@ -105,6 +105,10 @@ var cliForbidden = []string{
 	"github.com/coreos/go-oidc",
 }
 
+// programForbidden are standard packages that must not be linked into either program: test
+// code has no place in what is shipped.
+var programForbidden = []string{"testing"}
+
 // cliForbiddenLocal are the packages of this module that must not appear in
 // the dependency closure of the command-line program.
 var cliForbiddenLocal = []string{serverRoot, "builtin/identity", "builtin/notifiers"}
