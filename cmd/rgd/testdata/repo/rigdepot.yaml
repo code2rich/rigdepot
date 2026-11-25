@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://rigdepot.code2rich.com/schema/repo/v1/rigdepot.schema.json
+schema: 1
+name: 示例科技的 AI 资源
+locale: zh-CN
+secrets:
+  JIRA_API_TOKEN:
+    label: Jira API 令牌
+    howto: Jira → 个人设置 → 安全 → API 令牌
+  GITLAB_TOKEN:
+    label: GitLab 个人访问令牌
+    howto: GitLab → 偏好设置 → 访问令牌，勾选 read_api

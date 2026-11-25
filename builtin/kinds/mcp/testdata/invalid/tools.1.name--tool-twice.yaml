@@ -1,0 +1,5 @@
+meta: {name: x}
+server: {type: http, url: "https://wiki.example.com/mcp"}
+tools:
+  - {name: search}
+  - {name: search}

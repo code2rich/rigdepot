@@ -1,0 +1,3 @@
+{
+  "mcp.as_skill": "This tool cannot connect to the MCP server directly, so it gets a skill that calls the server through {{cli}} mcp call"
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rigdepot.code2rich.com/schema/repo/v1/kinds/mcp.schema.json",
+  "title": "MCP server",
+  "description": "mcp/<code>.yaml: one MCP server, how it is delivered and which tools it offers. A personal secret is written ${secret:NAME}, only in the values of server.env and server.headers, and NAME is defined under secrets in rigdepot.yaml.",
+  "type": "object",
+  "required": ["meta", "server"],
+  "properties": {
+    "meta": { "$ref": "../meta.schema.json" },
+    "server": {
+      "description": "One standard mcpServers entry: the same structure as the JSON filled in when a server is registered on the web.",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "description": "stdio: a local process; http: a Streamable HTTP endpoint; sse: an endpoint of the older HTTP with Server-Sent Events transport.",
+          "enum": ["stdio", "http", "sse"]
+        },
+        "command": {
+          "description": "stdio: the program to start. Pin the version of a package it runs.",
+          "type": "string",
+          "minLength": 1
+        },
+        "args": {
+          "description": "stdio: the program's arguments.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "env": {
+          "description": "stdio: environment variables for the process. A value may end with a ${secret:NAME}.",
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+          "additionalProperties": { "type": "string" }
+        },
+        "url": {
+          "description": "http and sse: the endpoint.",
+          "type": "string",
+          "pattern": "^https?://[^\\s/?#]+"
+        },
+        "headers": {
+          "description": "http and sse: request headers. A value may end with a ${secret:NAME}, such as \"Bearer ${secret:JIRA_API_TOKEN}\".",
+          "type": "object",
+          "propertyNames": { "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$" },
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "stdio" } } }, "then": { "required": ["command"] } },
+        { "if": { "properties": { "type": { "enum": ["http", "sse"] } } }, "then": { "required": ["url"] } }
+      ]
+    },
+    "delivery": {
+      "description": "native: into the tool's MCP configuration; on-demand: as a skill that calls the server through the command line when it is needed.",
+      "enum": ["native", "on-demand"],
+      "default": "native"
+    },
+    "tools": {
+      "description": "The server's tools, for the catalogue and for the skill of on-demand delivery, which needs them.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "summary": { "type": "string" },
+          "writes": { "description": "The tool changes data.", "type": "boolean" }
+        }
+      }
+    }
+  }
+}

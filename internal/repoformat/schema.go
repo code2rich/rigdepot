@@ -66,6 +66,14 @@ var embedded = sync.OnceValues(func() (map[string]*jsonschema.Schema, error) {
 	return out, nil
 })
 
+// CheckKindSchema reports whether the schema a kind returns is JSON and compiles the way Read
+// compiles it: as draft 2020-12, with references to the embedded schemas resolved by their $id
+// and nothing fetched. An empty schema is not an error here; Read then validates nothing.
+func CheckKindSchema(k kind.Kind) error {
+	_, err := compileKind(k)
+	return err
+}
+
 // compileKind compiles the schema a kind returns. It may refer to the embedded schemas by their
 // $id; the metadata of a single-file kind usually does.
 func compileKind(k kind.Kind) (*jsonschema.Schema, error) {

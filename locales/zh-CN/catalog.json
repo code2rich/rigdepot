@@ -1,0 +1,3 @@
+{
+  "mcp.as_skill": "这个工具不能直接接入这个 MCP，以 Skill 下发，调用经 {{cli}} mcp call"
+}
