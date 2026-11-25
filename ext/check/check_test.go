@@ -5,6 +5,7 @@ package check
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"path"
@@ -103,6 +104,32 @@ func TestSeverity(t *testing.T) {
 	}
 	if Advisory.String() != "advisory" || MustFix.String() != "must_fix" {
 		t.Errorf("Severity names are %q and %q; they appear in machine-readable output and must not change", Advisory, MustFix)
+	}
+}
+
+// A finding is stored and sent as JSON; its level is written by name and read back only by name.
+func TestSeverityInJSON(t *testing.T) {
+	data, err := json.Marshal(Finding{Rule: "secrets", Severity: MustFix, Message: "check.secrets.token_like"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"Severity":"must_fix"`) {
+		t.Errorf("a must-fix finding is written as %s", data)
+	}
+	for name, want := range map[string]Severity{`"advisory"`: Advisory, `"must_fix"`: MustFix} {
+		var got Severity
+		if err := json.Unmarshal([]byte(name), &got); err != nil || got != want {
+			t.Errorf("reading %s: %v, %v; want %v", name, got, err, want)
+		}
+	}
+	for _, bad := range []string{`"should_fix"`, `"MustFix"`, `""`, `1`} {
+		got := MustFix
+		if err := json.Unmarshal([]byte(bad), &got); err == nil {
+			t.Errorf("reading %s gave %v and no error", bad, got)
+		}
+	}
+	if _, err := json.Marshal(Severity(7)); err == nil {
+		t.Error("an undefined severity was written without an error")
 	}
 }
 

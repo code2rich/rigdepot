@@ -713,16 +713,16 @@ func (e ServerMetaApi) Valid() bool {
 
 // Defines values for Severity.
 const (
-	MustFix   Severity = "must_fix"
-	ShouldFix Severity = "should_fix"
+	Advisory Severity = "advisory"
+	MustFix  Severity = "must_fix"
 )
 
 // Valid indicates whether the value is a known member of the Severity enum.
 func (e Severity) Valid() bool {
 	switch e {
-	case MustFix:
+	case Advisory:
 		return true
-	case ShouldFix:
+	case MustFix:
 		return true
 	default:
 		return false
@@ -1212,11 +1212,13 @@ type CheckReport struct {
 
 // CheckRule defines model for CheckRule.
 type CheckRule struct {
-	Description string   `json:"description"`
-	Id          string   `json:"id"`
-	Name        string   `json:"name"`
-	Severity    Severity `json:"severity"`
-	Waivable    *bool    `json:"waivable,omitempty"`
+	Description string `json:"description"`
+	Id          string `json:"id"`
+	Name        string `json:"name"`
+
+	// Severity must_fix blocks publishing; advisory never blocks. The same names as rgd check --json and the check rules (ext/check.Severity).
+	Severity Severity `json:"severity"`
+	Waivable *bool    `json:"waivable,omitempty"`
 }
 
 // CommentRequest defines model for CommentRequest.
@@ -1747,8 +1749,10 @@ type Finding struct {
 	Line *int   `json:"line,omitempty"`
 
 	// Message Translated.
-	Message  string   `json:"message"`
-	Rule     string   `json:"rule"`
+	Message string `json:"message"`
+	Rule    string `json:"rule"`
+
+	// Severity must_fix blocks publishing; advisory never blocks. The same names as rgd check --json and the check rules (ext/check.Severity).
 	Severity Severity `json:"severity"`
 	Waiver   *Waiver  `json:"waiver,omitempty"`
 }
@@ -2636,7 +2640,7 @@ type SetupStatus struct {
 	SetupTokenRequired bool `json:"setup_token_required"`
 }
 
-// Severity defines model for Severity.
+// Severity must_fix blocks publishing; advisory never blocks. The same names as rgd check --json and the check rules (ext/check.Severity).
 type Severity string
 
 // Source defines model for Source.

@@ -7,6 +7,162 @@ const (
 	AdapterDetectLookpathFailed = "adapter.detect.lookpath_failed"
 	// AdapterDetectUnreadable (cli.json): A file or directory it needs is there but cannot be read.
 	AdapterDetectUnreadable = "adapter.detect.unreadable"
+	// CheckBundledenvFound (check.json): {{file}} holds real configuration values and would be handed to everyo…
+	CheckBundledenvFound = "check.bundledenv.found"
+	// CheckCLIBlockedHint (cli.json): A resource with a problem that must be fixed cannot be published.
+	CheckCLIBlockedHint = "check.cli.blocked_hint"
+	// CheckCLIConfigInvalid (cli.json): {{file}} cannot be used, so nothing in the repository was checked:
+	CheckCLIConfigInvalid = "check.cli.config_invalid"
+	// CheckCLIFlagBranch (cli.json): With --repo: the branch, tag or commit (default: the repository's defa…
+	CheckCLIFlagBranch = "check.cli.flag.branch"
+	// CheckCLIFlagDir (cli.json): With --repo: the directory in the repository that holds the resources
+	CheckCLIFlagDir = "check.cli.flag.dir"
+	// CheckCLIFlagRepo (cli.json): Check a resource repository by its address instead of a local director…
+	CheckCLIFlagRepo = "check.cli.flag.repo"
+	// CheckCLIFlagRules (cli.json): Run only these rules, by ID, separated by commas
+	CheckCLIFlagRules = "check.cli.flag.rules"
+	// CheckCLIFlagStrict (cli.json): Also exit with 4 when only advisory problems are found
+	CheckCLIFlagStrict = "check.cli.flag.strict"
+	// CheckCLIHeader (cli.json): Checked {{count}} resources in {{source}} against rule set v{{ruleset}…
+	CheckCLIHeader = "check.cli.header"
+	// CheckCLIIncompatible (cli.json): This repository needs a newer {{cli}}: {{detail}}
+	CheckCLIIncompatible = "check.cli.incompatible"
+	// CheckCLILong (cli.json): PATH is a resource repository, a directory in one, or one resource; th…
+	CheckCLILong = "check.cli.long"
+	// CheckCLINoResource (cli.json): There is no resource at {{path}}.
+	CheckCLINoResource = "check.cli.no_resource"
+	// CheckCLINoRules (cli.json): This build of {{cli}} has no check rules.
+	CheckCLINoRules = "check.cli.no_rules"
+	// CheckCLINotARepository (cli.json): {{path}} is not in a resource repository: there is no {{file}} there o…
+	CheckCLINotARepository = "check.cli.not_a_repository"
+	// CheckCLINotices (cli.json): About the repository:
+	CheckCLINotices = "check.cli.notices"
+	// CheckCLIPassed (cli.json): Nothing to fix.
+	CheckCLIPassed = "check.cli.passed"
+	// CheckCLIRepoAndPath (cli.json): Give either a path or --repo, not both.
+	CheckCLIRepoAndPath = "check.cli.repo_and_path"
+	// CheckCLIRepoFailed (cli.json): Cannot read the repository {{repo}}: {{detail}}
+	CheckCLIRepoFailed = "check.cli.repo_failed"
+	// CheckCLIRepoOnly (cli.json): {{flag}} only works together with --repo.
+	CheckCLIRepoOnly = "check.cli.repo_only"
+	// CheckCLIShort (cli.json): Check resources before they are published, with the rules the server u…
+	CheckCLIShort = "check.cli.short"
+	// CheckCLISummary (cli.json): {{blocking}} must fix · {{advisory}} advisory
+	CheckCLISummary = "check.cli.summary"
+	// CheckCLIUnknownRule (cli.json): There is no rule "{{rule}}". The rules are: {{rules}}.
+	CheckCLIUnknownRule = "check.cli.unknown_rule"
+	// CheckCLIUnreadable (cli.json): Cannot read {{path}}: {{detail}}
+	CheckCLIUnreadable = "check.cli.unreadable"
+	// CheckDangerousDeleteRoot (check.json): Deletes the root or the home directory (rm -rf on /, ~ or $HOME).
+	CheckDangerousDeleteRoot = "check.dangerous.delete_root"
+	// CheckDangerousPipeToShell (check.json): Runs a downloaded script straight in a shell. Download it, look at it,…
+	CheckDangerousPipeToShell = "check.dangerous.pipe_to_shell"
+	// CheckDangerousShellStartup (check.json): Writes to a shell startup file (~/.bashrc, ~/.zshrc, ~/.profile or the…
+	CheckDangerousShellStartup = "check.dangerous.shell_startup"
+	// CheckDangerousTlsDisabled (check.json): Switches off TLS certificate checks.
+	CheckDangerousTlsDisabled = "check.dangerous.tls_disabled"
+	// CheckDangerousWorldWritable (check.json): Makes files writable by everyone (chmod 777, a+rwx or o+w).
+	CheckDangerousWorldWritable = "check.dangerous.world_writable"
+	// CheckDescriptionNoWhen (check.json): The description says what the skill does but not when to use it. Add a…
+	CheckDescriptionNoWhen = "check.description.no_when"
+	// CheckDescriptionTooShort (check.json): The description has {{length}} characters; an AI tool needs at least {…
+	CheckDescriptionTooShort = "check.description.too_short"
+	// CheckEngineRuleFailed (check.json): The rule {{rule}} could not finish, so this resource counts as not hav…
+	CheckEngineRuleFailed = "check.engine.rule_failed"
+	// CheckInjectionExfiltrate (check.json): Asks to send credentials or key files somewhere.
+	CheckInjectionExfiltrate = "check.injection.exfiltrate"
+	// CheckInjectionHiddenChar (check.json): Contains the invisible character {{codepoint}}, which hides text from …
+	CheckInjectionHiddenChar = "check.injection.hidden_char"
+	// CheckInjectionIgnoreInstructions (check.json): Asks the AI to ignore or override its earlier instructions.
+	CheckInjectionIgnoreInstructions = "check.injection.ignore_instructions"
+	// CheckOverlapSimilar (check.json): The description is {{similarity}}% the same as that of {{peer}}; one r…
+	CheckOverlapSimilar = "check.overlap.similar"
+	// CheckPersonalpathHomeDir (check.json): A home directory with an account name in it ({{system}}) only exists o…
+	CheckPersonalpathHomeDir = "check.personalpath.home_dir"
+	// CheckPersonalpathLocalPort (check.json): A service on localhost:{{port}} only exists on one computer. Make the …
+	CheckPersonalpathLocalPort = "check.personalpath.local_port"
+	// CheckSecretsAssignment (check.json): The setting {{key}} holds what looks like a credential ({{length}} cha…
+	CheckSecretsAssignment = "check.secrets.assignment"
+	// CheckSecretsHighEntropy (check.json): A random-looking string of {{length}} characters may be a credential. …
+	CheckSecretsHighEntropy = "check.secrets.high_entropy"
+	// CheckSecretsTokenLike (check.json): Looks like a {{kind}} ({{masked}}, {{length}} characters). Remove it, …
+	CheckSecretsTokenLike = "check.secrets.token_like"
+	// CheckStructureCaseClash (check.json): Differs from {{other}} only in case; macOS and Windows would make them…
+	CheckStructureCaseClash = "check.structure.case_clash"
+	// CheckStructureCodeInvalid (check.json): "{{code}}" is not a valid resource code: 2 to 48 lower-case letters, d…
+	CheckStructureCodeInvalid = "check.structure.code_invalid"
+	// CheckStructureDeliveryInvalid (check.json): delivery is "{{delivery}}"; use native or on-demand.
+	CheckStructureDeliveryInvalid = "check.structure.delivery_invalid"
+	// CheckStructureDescriptionMissing (check.json): The front matter has no description. An AI tool reads it to decide whe…
+	CheckStructureDescriptionMissing = "check.structure.description_missing"
+	// CheckStructureFileMissing (check.json): The resource has no {{file}}.
+	CheckStructureFileMissing = "check.structure.file_missing"
+	// CheckStructureFrontMatterInvalid (check.json): The front matter is not a YAML mapping.
+	CheckStructureFrontMatterInvalid = "check.structure.front_matter_invalid"
+	// CheckStructureFrontMatterMissing (check.json): SKILL.md does not start with front matter (a line "---").
+	CheckStructureFrontMatterMissing = "check.structure.front_matter_missing"
+	// CheckStructureFrontMatterUnterminated (check.json): The front matter has no closing line "---".
+	CheckStructureFrontMatterUnterminated = "check.structure.front_matter_unterminated"
+	// CheckStructureMetaMissing (check.json): There is no meta mapping with the resource's name.
+	CheckStructureMetaMissing = "check.structure.meta_missing"
+	// CheckStructureMetaNameMissing (check.json): meta has no name.
+	CheckStructureMetaNameMissing = "check.structure.meta_name_missing"
+	// CheckStructureNameMismatch (check.json): The name in the front matter is "{{name}}", but the resource is "{{cod…
+	CheckStructureNameMismatch = "check.structure.name_mismatch"
+	// CheckStructureNameMissing (check.json): The front matter has no name.
+	CheckStructureNameMissing = "check.structure.name_missing"
+	// CheckStructurePathTooDeep (check.json): The path has {{depth}} levels; at most {{limit}} are allowed.
+	CheckStructurePathTooDeep = "check.structure.path_too_deep"
+	// CheckStructurePathTooLong (check.json): The path is {{bytes}} bytes long; at most {{limit}} are allowed.
+	CheckStructurePathTooLong = "check.structure.path_too_long"
+	// CheckStructureRepoDuplicate (check.json): Listed twice: {{detail}}
+	CheckStructureRepoDuplicate = "check.structure.repo.duplicate"
+	// CheckStructureRepoDuplicateCode (check.json): Another resource has the same code: {{detail}}
+	CheckStructureRepoDuplicateCode = "check.structure.repo.duplicate_code"
+	// CheckStructureRepoIgnored (check.json): Not a resource, skipped: {{detail}}
+	CheckStructureRepoIgnored = "check.structure.repo.ignored"
+	// CheckStructureRepoInvalidCode (check.json): The name is not a valid resource code: {{detail}}
+	CheckStructureRepoInvalidCode = "check.structure.repo.invalid_code"
+	// CheckStructureRepoMissingMeta (check.json): The metadata is missing: {{detail}}
+	CheckStructureRepoMissingMeta = "check.structure.repo.missing_meta"
+	// CheckStructureRepoOther (check.json): {{code}}: {{detail}}
+	CheckStructureRepoOther = "check.structure.repo.other"
+	// CheckStructureRepoParse (check.json): The resource cannot be read as its kind: {{detail}}
+	CheckStructureRepoParse = "check.structure.repo.parse"
+	// CheckStructureRepoRead (check.json): The files cannot be read: {{detail}}
+	CheckStructureRepoRead = "check.structure.repo.read"
+	// CheckStructureRepoSchema (check.json): Does not match the format: {{detail}}
+	CheckStructureRepoSchema = "check.structure.repo.schema"
+	// CheckStructureRepoUndefinedSecret (check.json): Refers to a secret the repository does not define: {{detail}}
+	CheckStructureRepoUndefinedSecret = "check.structure.repo.undefined_secret"
+	// CheckStructureRepoUndefinedStage (check.json): Names a stage the repository does not have: {{detail}}
+	CheckStructureRepoUndefinedStage = "check.structure.repo.undefined_stage"
+	// CheckStructureRepoUnknownDir (check.json): A directory no resource kind uses, skipped: {{detail}}
+	CheckStructureRepoUnknownDir = "check.structure.repo.unknown_dir"
+	// CheckStructureRepoUnknownField (check.json): A field the format does not have, perhaps misspelt: {{detail}}
+	CheckStructureRepoUnknownField = "check.structure.repo.unknown_field"
+	// CheckStructureRepoUnknownProduct (check.json): The scope is not among the repository's products: {{detail}}
+	CheckStructureRepoUnknownProduct = "check.structure.repo.unknown_product"
+	// CheckStructureRepoUnsafePath (check.json): Unsafe path ({{rule}}): {{detail}}
+	CheckStructureRepoUnsafePath = "check.structure.repo.unsafe_path"
+	// CheckStructureRepoYaml (check.json): Not valid YAML: {{detail}}
+	CheckStructureRepoYaml = "check.structure.repo.yaml"
+	// CheckStructureSecretNotAllowed (check.json): ${secret:…} is only allowed in env and headers, not in {{field}}: that…
+	CheckStructureSecretNotAllowed = "check.structure.secret_not_allowed"
+	// CheckStructureServerCommandMissing (check.json): A stdio server needs a command.
+	CheckStructureServerCommandMissing = "check.structure.server_command_missing"
+	// CheckStructureServerMissing (check.json): There is no server mapping.
+	CheckStructureServerMissing = "check.structure.server_missing"
+	// CheckStructureServerTypeInvalid (check.json): server.type is "{{type}}"; use stdio, http or sse.
+	CheckStructureServerTypeInvalid = "check.structure.server_type_invalid"
+	// CheckStructureServerURLMissing (check.json): An http or sse server needs a url.
+	CheckStructureServerURLMissing = "check.structure.server_url_missing"
+	// CheckStructureSkillMdMissing (check.json): The skill has no SKILL.md.
+	CheckStructureSkillMdMissing = "check.structure.skill_md_missing"
+	// CheckStructureTooLarge (check.json): The resource has {{bytes}} bytes; at most {{limit}} are allowed.
+	CheckStructureTooLarge = "check.structure.too_large"
+	// CheckStructureTooManyFiles (check.json): The resource has {{count}} files; at most {{limit}} are allowed.
+	CheckStructureTooManyFiles = "check.structure.too_many_files"
 	// CompletionLong (cli.json): Load it in the current shell:
 	CompletionLong = "completion.long"
 	// CompletionShort (cli.json): Print the completion script for bash, zsh, fish or powershell
