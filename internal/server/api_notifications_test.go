@@ -18,6 +18,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/catalog/catalogtest"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
 	"github.com/code2rich/rigdepot/internal/server/httpapi"
+	"github.com/code2rich/rigdepot/internal/server/jobs"
 )
 
 const testApplicant = "0193a4b2-6c1e-7a00-8000-000000000031"
@@ -115,6 +116,23 @@ func TestNotificationsWithoutBackgroundAre501(t *testing.T) {
 func TestBrokenAuditChainNotifiesAdministrators(t *testing.T) {
 	f := newAPIWith(t, fixtureOptions{background: true})
 	ctx := context.Background()
+	// The scheduled check runs once at start. Let it finish first: run between the product's
+	// entry and the tampering, it would mark that entry as checked, and the check below would
+	// not look at it again.
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		sts, err := f.app.bg.Jobs.Statuses(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if slices.ContainsFunc(sts, func(s jobs.Status) bool { return s.Name == auditCheckJob && s.LastResult != "" }) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the audit check did not run at start")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 	admin := access.Actor{UserID: testAdmin, Origin: access.OriginWeb}
 	if _, err := f.app.access.CreateProduct(ctx, admin, access.NewProduct{Code: "shop", Name: "Shop"}); err != nil {
 		t.Fatal(err)
