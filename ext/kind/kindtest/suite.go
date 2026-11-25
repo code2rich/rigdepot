@@ -34,8 +34,8 @@ const fieldSep = "--"
 // The options every resource is rendered with. Rendering with two different prefixes shows
 // that a kind takes the prefix from the options and spells out no prefix of its own.
 var (
-	optA = kind.RenderOptions{Prefix: "acme-", CLI: "acme"}
-	optB = kind.RenderOptions{Prefix: "zz-", CLI: "zz"}
+	optA = kind.RenderOptions{Prefix: "acme-", CLI: "acme", Data: "~/.acme"}
+	optB = kind.RenderOptions{Prefix: "zz-", CLI: "zz", Data: "~/.zz"}
 )
 
 // tools are the tools every valid resource is rendered for, from one that takes everything to
@@ -185,7 +185,7 @@ func readFixture(r reporter, k kind.Kind, cfg []byte, src, code string) *repofor
 			r.fatal(checkFixtures, "%s: %v", src, err)
 		}
 	}
-	repo, err := repoformat.Read(fsys, repoformat.Options{Kinds: only{k}})
+	repo, err := repoformat.Read(fsys, repoformat.Options{Kinds: only{k}, Alone: true})
 	if err != nil {
 		r.fatal(checkFixtures, "the fixture repository cannot be read at all: %v", err)
 	}
@@ -301,12 +301,15 @@ func checkDelivery(r reporter, res repoformat.Resource, forms []kind.Form, caps 
 	if len(a.artifacts) == 1 && a.artifacts[0].Name() != optA.Prefix+res.Ref.Code {
 		r.fail(checkNames, "the one artifact is named %q, want the prefix followed by the code, %q", a.artifacts[0].Name(), optA.Prefix+res.Ref.Code)
 	}
+	// Artifacts of different shapes land in different places (a sub-agent and the skill
+	// directory with its files may share a name); two of the same shape may not.
 	var names []string
 	for _, art := range a.artifacts {
-		if slices.Contains(names, art.Name()) {
-			r.fail(checkArtifacts, "two artifacts are named %q", art.Name())
+		key := fmt.Sprintf("%T %s", art, art.Name())
+		if slices.Contains(names, key) {
+			r.fail(checkArtifacts, "two artifacts of the same shape are named %q", art.Name())
 		}
-		names = append(names, art.Name())
+		names = append(names, key)
 	}
 
 	// The same with another prefix: the names change by the prefix and nothing else.
@@ -358,6 +361,16 @@ func checkArtifact(r reporter, ref resource.Ref, form kind.Form, caps adapter.Ca
 		}
 		if !slices.Contains(paths, "SKILL.md") {
 			r.fail(checkArtifacts, "skill directory %q has no SKILL.md: %v", name, paths)
+		}
+		var local []string
+		for _, l := range a.Local {
+			if !fs.ValidPath(l) || l == "." || strings.Contains(l, `\`) || path.Clean(l) != l {
+				r.fail(checkArtifacts, "skill directory %q: the local directory %q is not a relative path with forward slashes", name, l)
+			}
+			if slices.Contains(paths, l) || slices.Contains(local, l) || l == "SKILL.md" {
+				r.fail(checkArtifacts, "skill directory %q: the local directory %q is listed twice or is a file", name, l)
+			}
+			local = append(local, l)
 		}
 	case adapter.MCPServer:
 		switch a.Transport {

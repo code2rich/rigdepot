@@ -133,6 +133,8 @@ const (
 	CheckStructureRepoRead = "check.structure.repo.read"
 	// CheckStructureRepoSchema (check.json): Does not match the format: {{detail}}
 	CheckStructureRepoSchema = "check.structure.repo.schema"
+	// CheckStructureRepoUndefinedRef (check.json): Refers to a resource the repository does not have, or one that cannot …
+	CheckStructureRepoUndefinedRef = "check.structure.repo.undefined_ref"
 	// CheckStructureRepoUndefinedSecret (check.json): Refers to a secret the repository does not define: {{detail}}
 	CheckStructureRepoUndefinedSecret = "check.structure.repo.undefined_secret"
 	// CheckStructureRepoUndefinedStage (check.json): Names a stage the repository does not have: {{detail}}

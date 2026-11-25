@@ -51,6 +51,7 @@ export type MessageKey =
   | "check.structure.repo.parse"
   | "check.structure.repo.read"
   | "check.structure.repo.schema"
+  | "check.structure.repo.undefined_ref"
   | "check.structure.repo.undefined_secret"
   | "check.structure.repo.undefined_stage"
   | "check.structure.repo.unknown_dir"
