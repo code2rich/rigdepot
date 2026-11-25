@@ -2,14 +2,9 @@ Rigdepot
 Copyright 2026 The Rigdepot Authors
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE),
-except for the contents of the ee/ directory, which are licensed separately
-(see ee/LICENSE).
+except for the contents of the ee/ directory, which are licensed under the
+Rigdepot Enterprise Edition License (see ee/LICENSE).
 
-The product name is provisional and may change. Names and logos are not
-licensed under the Apache License; see docs/licensing.md.
-
-Third-party components
-----------------------
-None yet. When third-party code is added, list each component here with its
-name, version or commit, license, and copyright notice, as required by its
-license.
+"Rigdepot" and the Rigdepot logo are marks of the Rigdepot project. No
+trademark rights are granted by either license; see the trademark policy in
+docs/licensing.md.
