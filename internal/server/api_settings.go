@@ -19,8 +19,7 @@ import (
 
 // settingsAPI implements the operations tagged settings: the platform
 // settings and the test mail. Listing and switching modules (listModules,
-// updateModule) belong to the module host (M1-17), which keeps the switches
-// with settings.Service.SetModuleEnabled.
+// updateModule) are modulesAPI's (api_modules.go).
 type settingsAPI struct {
 	settings *settings.Service
 	hooks    *hooks

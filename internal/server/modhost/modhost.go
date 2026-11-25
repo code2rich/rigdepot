@@ -33,6 +33,8 @@ const EnabledKey = "modules.enabled"
 var (
 	ErrUnknown = errors.New("modhost: this module is not in this build")
 	ErrLocked  = errors.New("modhost: the deployment disabled this module")
+	// ErrStart wraps the error of a module's Start (or its panic): the module stays off.
+	ErrStart = errors.New("modhost: the module did not start")
 )
 
 // SettingsStore is the part of the settings domain the host needs: JSON values by key. A read
@@ -292,7 +294,7 @@ func (h *Host) start(ctx context.Context, m module.Module) error {
 	if err != nil {
 		h.teardown(ctx, inst)
 		h.log.Error("module did not start", "module", id, "err", err)
-		return fmt.Errorf("modhost: module %s did not start: %w", id, err)
+		return fmt.Errorf("%w: %s: %w", ErrStart, id, err)
 	}
 	h.mu.Lock()
 	h.running[id] = inst

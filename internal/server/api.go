@@ -6,13 +6,16 @@ package server
 import (
 	"context"
 	"net/http"
+	"strings"
 
+	"github.com/code2rich/rigdepot/internal/buildinfo"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/authn"
 	"github.com/code2rich/rigdepot/internal/server/httpapi"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/accessapi"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
+	"github.com/code2rich/rigdepot/internal/server/modhost"
 	"github.com/code2rich/rigdepot/internal/server/settings"
 )
 
@@ -40,6 +43,8 @@ type api struct {
 	*settingsAPI
 	*setupAPI
 	*auditAPI
+	*modulesAPI
+	*toolsAPI
 }
 
 // fallback puts notImplemented's methods one embedding level below the
@@ -72,6 +77,11 @@ type hooks struct {
 	// sendTestMail sends a test message with the given mail server
 	// (notify, M1-18). Nil: sendTestMail answers 501.
 	sendTestMail func(ctx context.Context, server settings.MailConfig, to string) error
+	// toolUsage counts people by tool and by command-line version, from
+	// the devices (authn, M1-20) and the install reports (delivery). Nil:
+	// the tool adapters page shows no counts (0 people, an empty
+	// distribution).
+	toolUsage toolUsage
 }
 
 // apiMounts builds the handlers that serve mounts: the API under /api/ and
@@ -93,12 +103,33 @@ func apiMounts(app *App) Mounts {
 		settingsAPI: &settingsAPI{settings: app.settings, hooks: &app.hooks},
 		setupAPI:    &setupAPI{settings: app.settings, hooks: &app.hooks},
 		auditAPI:    &auditAPI{log: app.audit, hooks: &app.hooks},
+		modulesAPI:  &modulesAPI{settings: app.settings},
+		toolsAPI:    &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
+	}
+	if impl.toolsAPI.version == "" {
+		impl.toolsAPI.version = buildinfo.Get().Version
+	}
+	// The routes of the optional modules that are on, under /api/v1/x/<id>/;
+	// they log their own route templates.
+	var modules http.Handler
+	if bg := app.bg; bg != nil && bg.Modules != nil {
+		impl.modulesAPI.host = bg.Modules
+		impl.modulesAPI.text = bg.text
+		modules = bg.Modules.Handler(http.HandlerFunc(notFound))
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", notFound) // paths the contract does not have
-	// The middleware logs the pattern of the operation (GET
+	h := httpapi.NewHandler(impl, mux)
+	// Module routes sit behind the same sign-in middleware as the contract's
+	// operations. The middleware logs the pattern of the operation (GET
 	// /api/v1/settings) instead of the real path.
-	return Mounts{API: app.authnOps.Middleware(httpapi.NewHandler(impl, mux))}
+	return Mounts{API: app.authnOps.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if modules != nil && strings.HasPrefix(r.URL.Path, modhost.RoutePrefix) {
+			modules.ServeHTTP(w, r)
+			return
+		}
+		h.ServeHTTP(w, r)
+	}))}
 }
 
 // callerFrom returns who sends the request, as the audit log records it;

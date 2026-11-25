@@ -15,6 +15,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/ext/module"
+	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/authn"
@@ -44,6 +47,7 @@ type App struct {
 	db     *dbx.DB
 	mounts Mounts
 	// bg runs events, jobs, the mail outbox and modules; nil outside serve.
+	// It exists before openServices, which hands its bus to the services.
 	bg *Background
 
 	// The domain services (openServices) and what other packages provide
@@ -56,8 +60,23 @@ type App struct {
 	settings *settings.Service
 	hooks    hooks
 
+	// mailChannels finds a notification channel by ID; nil means the
+	// registry (ext/notify). Tests put a fake channel here.
+	mailChannels func(id string) (extnotify.Channel, bool)
+	// modules are the optional modules compiled in; nil means the registry
+	// (ext/module). Tests put fake modules here.
+	modules []module.Module
+	// adapters are the tool adapters compiled in; nil means the registry
+	// (ext/adapter). Tests put adapters made from profiles here.
+	adapters []adapter.Adapter
+	// version is this server's version; "" means the build's (buildinfo).
+	version string
+
 	checks   []ReadyCheck
 	draining atomic.Bool
+
+	// requests counts the requests for the metrics (M1-41).
+	requests *requestMetrics
 }
 
 // ReadyCheck is one item of /readyz. A failing critical check makes the
@@ -73,7 +92,7 @@ type ReadyCheck struct {
 
 // NewApp assembles the server around an open, migrated database.
 func NewApp(cfg *config.Config, log *slog.Logger, db *dbx.DB, mounts Mounts) *App {
-	a := &App{cfg: cfg, log: log, db: db, mounts: mounts}
+	a := &App{cfg: cfg, log: log, db: db, mounts: mounts, requests: newRequestMetrics()}
 	a.AddReadyCheck(ReadyCheck{Name: "database", Critical: true, Check: db.Ping})
 	a.AddReadyCheck(ReadyCheck{Name: "migrations", Critical: true, Check: func(ctx context.Context) error {
 		pending, err := migrations.Pending(ctx, db)

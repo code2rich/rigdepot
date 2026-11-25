@@ -201,10 +201,11 @@ type Env struct {
 	// Home (package keyring), which inside tests never reaches the system keychain.
 	Keyring func() keyring.Status
 
-	// Adapters are the tool adapters this program contains, and AdapterEnv is what they see of
-	// the computer.
+	// Adapters are the tool adapters this program contains, and AdapterEnv gives what the
+	// adapter with a profile sees of the computer: the sync engine's Env (sync.System.AdapterEnv),
+	// so that doctor sees a tool the way sync does. Nil gives the zero Env.
 	Adapters   []adapter.Adapter
-	AdapterEnv adapter.Env
+	AdapterEnv func(adapter.Profile) adapter.Env
 
 	// ShowPath shortens a path for people (~/… on macOS and Linux). Nil shows paths unchanged.
 	ShowPath func(string) string
@@ -273,7 +274,11 @@ func (e *Env) Detections(ctx context.Context) []Detected {
 			if slices.Contains(e.DisabledTools, a.ID()) {
 				d.Disabled = true
 			} else {
-				d.Detection, d.Err = a.Detect(ctx, e.AdapterEnv)
+				var env adapter.Env
+				if e.AdapterEnv != nil {
+					env = e.AdapterEnv(a.Profile())
+				}
+				d.Detection, d.Err = a.Detect(ctx, env)
 				if d.Err != nil {
 					d.Detection.Status = adapter.Unknown
 				}

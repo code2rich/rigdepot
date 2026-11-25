@@ -19,6 +19,7 @@ type fakeAdapter struct {
 	detection adapter.Detection
 	err       error
 	calls     int
+	env       adapter.Env // the Env Detect was given
 }
 
 func (a *fakeAdapter) ID() string { return a.id }
@@ -31,8 +32,9 @@ func (a *fakeAdapter) Profile() adapter.Profile {
 	return p
 }
 
-func (a *fakeAdapter) Detect(context.Context, adapter.Env) (adapter.Detection, error) {
+func (a *fakeAdapter) Detect(_ context.Context, env adapter.Env) (adapter.Detection, error) {
 	a.calls++
+	a.env = env
 	return a.detection, a.err
 }
 
@@ -68,6 +70,19 @@ func TestToolsDetected(t *testing.T) {
 	}
 	if rs[2].Facts["status"] != "disabled" || env.Adapters[2].(*fakeAdapter).calls != 0 {
 		t.Errorf("a switched-off tool is not detected: %+v", rs[2])
+	}
+}
+
+// TestToolsDetectWithTheirOwnEnv: each adapter detects with the Env made for its profile, the
+// way the sync engine gives it (sync.System.AdapterEnv).
+func TestToolsDetectWithTheirOwnEnv(t *testing.T) {
+	env := newTestEnv(t)
+	a, b := &fakeAdapter{id: "fake-a", verified: "1.0", detection: installed("1.0")}, &fakeAdapter{id: "fake-b", verified: "1.0", detection: installed("1.0")}
+	env.Adapters = []adapter.Adapter{a, b}
+	env.AdapterEnv = func(p adapter.Profile) adapter.Env { return adapter.Env{Home: "/home/" + p.ID} }
+	run(t, toolsCheck{}, env)
+	if a.env.Home != "/home/fake-a" || b.env.Home != "/home/fake-b" {
+		t.Errorf("detected with %q and %q", a.env.Home, b.env.Home)
 	}
 }
 

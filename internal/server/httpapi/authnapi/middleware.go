@@ -72,8 +72,13 @@ func (h *Ops) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pattern, op, ok := h.ops.find(r)
 		if !ok {
-			next.ServeHTTP(w, r)
-			return
+			prefix, protected := h.protectedPrefix(r.URL.Path)
+			if !protected {
+				next.ServeHTTP(w, r)
+				return
+			}
+			pattern = r.Method + " " + prefix + "…"
+			op = security{id: "protected:" + prefix, session: true, device: true, token: true, scope: access.TokenRead}
 		}
 		// The request log names the route, also for requests refused here,
 		// before the router sees them.
@@ -206,4 +211,15 @@ func (h *Ops) refuse(w http.ResponseWriter, r *http.Request, p httpapi.Problem, 
 func (h *Ops) tooMany(w http.ResponseWriter, r *http.Request, wait time.Duration) {
 	w.Header().Set("Retry-After", retryAfter(wait))
 	h.refuse(w, r, newProblem(r.Context(), http.StatusTooManyRequests, "rate.limited"), "")
+}
+
+// protectedPrefix returns the prefix in Options.Protected that path falls
+// under, if any.
+func (h *Ops) protectedPrefix(path string) (string, bool) {
+	for _, p := range h.protected {
+		if strings.HasPrefix(path, p) {
+			return p, true
+		}
+	}
+	return "", false
 }

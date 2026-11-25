@@ -17,6 +17,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/code2rich/rigdepot/ext/adapter"
+	"github.com/code2rich/rigdepot/ext/module"
+	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/brand"
 	"github.com/code2rich/rigdepot/internal/logging"
 	"github.com/code2rich/rigdepot/internal/server/access"
@@ -87,6 +90,29 @@ type apiFixture struct {
 // administrator.
 func newAPI(t *testing.T, withHooks bool) *apiFixture {
 	t.Helper()
+	return newAPIWith(t, fixtureOptions{hooks: withHooks})
+}
+
+// fixtureOptions choose what newAPIWith assembles besides the API.
+type fixtureOptions struct {
+	hooks bool // the stand-in for creating the first administrator
+	// background makes and starts the event bus, the jobs, the outbox and
+	// the module host the way serve does; they stop when the test ends.
+	background bool
+	// channels stands in for the notification channel registry.
+	channels func(id string) (extnotify.Channel, bool)
+	// modules stand in for the modules compiled in; locked are the ones
+	// the deployment disabled.
+	modules []module.Module
+	locked  []string
+	// adapters stand in for the tool adapters compiled in; version for the
+	// server's version.
+	adapters []adapter.Adapter
+	version  string
+}
+
+func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
+	t.Helper()
 	dir := t.TempDir()
 	cfg, err := config.Load(config.Options{LookupEnv: func(k string) (string, bool) {
 		switch k {
@@ -122,13 +148,25 @@ func newAPI(t *testing.T, withHooks bool) *apiFixture {
 		}
 	}
 	app := NewApp(cfg, logging.Discard(), db, Mounts{})
-	if withHooks {
+	if o.hooks {
 		app.hooks.firstAdmin = fakeFirstAdmin{}
 	}
 	devices := testDevices{token: authn.NewToken(authn.DeviceTokenPrefix)}
 	app.hooks.devices = devices
+	app.mailChannels, app.modules, app.adapters, app.version = o.channels, o.modules, o.adapters, o.version
+	cfg.ModulesDisabled = o.locked
+	if o.background {
+		app.bg = newBackground(app)
+	}
 	if err := app.openServices(ctx); err != nil {
 		t.Fatal(err)
+	}
+	if o.background {
+		stop, err := startBackground(ctx, app)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(stop)
 	}
 	app.mounts = apiMounts(app)
 	api := app.mounts.API

@@ -56,17 +56,24 @@ type Options struct {
 	Now func() time.Time
 	// Log receives faults while authenticating; nil discards them.
 	Log *slog.Logger
+	// Protected are path prefixes outside the contract (the optional
+	// modules' routes, /api/v1/x/) whose requests are authenticated like an
+	// operation that accepts a session, a device token or an access token
+	// with at least the read scope. Other paths outside the contract pass
+	// through without a caller.
+	Protected []string
 }
 
 // Ops answers the operations of package authn and authenticates every
 // request (Middleware).
 type Ops struct {
-	svc    *authn.Service
-	log    *slog.Logger
-	ops    *operations
-	cop    *http.CrossOriginProtection
-	secure bool
-	path   string
+	protected []string
+	svc       *authn.Service
+	log       *slog.Logger
+	ops       *operations
+	cop       *http.CrossOriginProtection
+	secure    bool
+	path      string
 
 	trusted []netip.Prefix
 	signIn  *limiter
@@ -94,7 +101,8 @@ func New(svc *authn.Service, o Options) (*Ops, error) {
 		o.UserRate = DefaultUserRate
 	}
 	h := &Ops{
-		svc: svc, log: o.Log, ops: ops, cop: http.NewCrossOriginProtection(), path: "/", trusted: o.TrustedProxies,
+		protected: o.Protected,
+		svc:       svc, log: o.Log, ops: ops, cop: http.NewCrossOriginProtection(), path: "/", trusted: o.TrustedProxies,
 		signIn: newLimiter(o.SignInRate, o.Now), invite: newLimiter(o.SignInRate, o.Now), user: newLimiter(o.UserRate, o.Now),
 	}
 	if b := o.BaseURL; b != nil {

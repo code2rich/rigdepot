@@ -60,14 +60,16 @@ func (a accessAuditor) Append(ctx context.Context, tx *dbx.Tx, e access.AuditEnt
 
 // accessAuthorizer answers hooks.authorize with access's rules. The actions
 // of settings and the audit page map onto access's: everything about
-// settings, the wizard and modules is settings.manage on the platform;
+// settings, the wizard, modules, the tool switches and the minimum
+// command-line version is settings.manage on the platform;
 // reading the whole audit log is audit.read on the platform.
 func accessAuthorizer(svc *access.Service) func(ctx context.Context, a audit.Actor, action string, object audit.Object) (bool, error) {
 	return func(ctx context.Context, a audit.Actor, action string, object audit.Object) (bool, error) {
 		var act access.Action
 		switch action {
 		case settings.ActionSettingsRead, settings.ActionSettingsUpdate, settings.ActionSetupComplete,
-			settings.ActionModuleEnable, settings.ActionModuleDisable:
+			settings.ActionModuleEnable, settings.ActionModuleDisable,
+			settings.ActionAdapterEnable, settings.ActionAdapterDisable, settings.ActionCLIPolicyUpdate:
 			act = access.ActionSettingsManage
 		case actionAuditRead:
 			if object != (audit.Object{}) {
