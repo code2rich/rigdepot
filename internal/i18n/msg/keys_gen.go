@@ -7,6 +7,8 @@ const (
 	AdapterDetectLookpathFailed = "adapter.detect.lookpath_failed"
 	// AdapterDetectUnreadable (cli.json): A file or directory it needs is there but cannot be read.
 	AdapterDetectUnreadable = "adapter.detect.unreadable"
+	// AgentAsSkill (catalog.json): This tool has no sub-agents, so the agent arrives as a skill of the sa…
+	AgentAsSkill = "agent.as_skill"
 	// CheckBundledenvFound (check.json): {{file}} holds real configuration values and would be handed to everyo…
 	CheckBundledenvFound = "check.bundledenv.found"
 	// CheckCLIBlockedHint (cli.json): A resource with a problem that must be fixed cannot be published.
@@ -133,6 +135,8 @@ const (
 	CheckStructureRepoRead = "check.structure.repo.read"
 	// CheckStructureRepoSchema (check.json): Does not match the format: {{detail}}
 	CheckStructureRepoSchema = "check.structure.repo.schema"
+	// CheckStructureRepoUndefinedRef (check.json): Refers to a resource the repository does not have, or one that cannot …
+	CheckStructureRepoUndefinedRef = "check.structure.repo.undefined_ref"
 	// CheckStructureRepoUndefinedSecret (check.json): Refers to a secret the repository does not define: {{detail}}
 	CheckStructureRepoUndefinedSecret = "check.structure.repo.undefined_secret"
 	// CheckStructureRepoUndefinedStage (check.json): Names a stage the repository does not have: {{detail}}
@@ -461,6 +465,14 @@ const (
 	FlagDir = "flag.dir"
 	// FlagExitCode (cli.json): With --plan: exit with 5 when there is something to change
 	FlagExitCode = "flag.exit_code"
+	// FlagFlowConfirmed (cli.json): The person confirmed their checks and agreed to go on, in this convers…
+	FlagFlowConfirmed = "flag.flow.confirmed"
+	// FlagFlowDir (cli.json): The project's directory: where the run belongs and the checks that are…
+	FlagFlowDir = "flag.flow.dir"
+	// FlagFlowEvidence (cli.json): Your evidence for the checks you make (the AI's own checks): what show…
+	FlagFlowEvidence = "flag.flow.evidence"
+	// FlagFlowRestart (cli.json): Throw away the run under way in this directory and start with the firs…
+	FlagFlowRestart = "flag.flow.restart"
 	// FlagHelp (cli.json): Show help
 	FlagHelp = "flag.help"
 	// FlagHome (cli.json): Local data directory (default ~/{{home}})
@@ -501,6 +513,74 @@ const (
 	FlagVersion = "flag.version"
 	// FlagYesGlobal (cli.json): Agree to every change of global configuration in this sync, without be…
 	FlagYesGlobal = "flag.yes_global"
+	// FlowBadCode (cli.json): "{{workflow}}" is not the code of a workflow: lower-case letters, digi…
+	FlowBadCode = "flow.bad_code"
+	// FlowBadDir (cli.json): {{dir}} is not a directory.
+	FlowBadDir = "flow.bad_dir"
+	// FlowByAi (cli.json): you check it: state your evidence
+	FlowByAi = "flow.by.ai"
+	// FlowByCommand (cli.json): {{cli}} runs: {{run}}
+	FlowByCommand = "flow.by.command"
+	// FlowByHuman (cli.json): the person confirms it
+	FlowByHuman = "flow.by.human"
+	// FlowChanged (cli.json): The workflow {{workflow}} changed since this run started: a sync updat…
+	FlowChanged = "flow.changed"
+	// FlowCheckedHead (cli.json): {{workflow}} · checks of step {{step}} of {{total}}
+	FlowCheckedHead = "flow.checked_head"
+	// FlowDone (cli.json): {{workflow}}: all {{total}} steps are done. Tell the person.
+	FlowDone = "flow.done"
+	// FlowFailed (cli.json): Not every check passed, so the next step is not handed out. Put it rig…
+	FlowFailed = "flow.failed"
+	// FlowNextShort (cli.json): Check the step handed out last and hand out the next one; without a ru…
+	FlowNextShort = "flow.next.short"
+	// FlowReasonConfirmation (cli.json): Not confirmed: ask the person, and once they agree, run "{{command}}".
+	FlowReasonConfirmation = "flow.reason.confirmation"
+	// FlowReasonError (cli.json): The check could not be made.
+	FlowReasonError = "flow.reason.error"
+	// FlowReasonEvidence (cli.json): No evidence given: run "{{command}}" with what shows it holds.
+	FlowReasonEvidence = "flow.reason.evidence"
+	// FlowReasonExit (cli.json): The command exited with {{code}}.
+	FlowReasonExit = "flow.reason.exit"
+	// FlowReasonNotRun (cli.json): Not run yet: the other checks have to pass first.
+	FlowReasonNotRun = "flow.reason.not_run"
+	// FlowRefAgent (cli.json): the agent {{name}} ({{title}}): hand the step to it
+	FlowRefAgent = "flow.ref.agent"
+	// FlowRefKnowledge (cli.json): the knowledge base {{name}} ({{title}})
+	FlowRefKnowledge = "flow.ref.knowledge"
+	// FlowRefMCP (cli.json): the MCP server {{name}} ({{title}})
+	FlowRefMCP = "flow.ref.mcp"
+	// FlowRefMissing (cli.json): {{name}}, which the resource repository does not have
+	FlowRefMissing = "flow.ref.missing"
+	// FlowRefNotHere (cli.json): — not installed on this computer: ask the person to run "{{command}}" …
+	FlowRefNotHere = "flow.ref.not_here"
+	// FlowRefOther (cli.json): {{name}} ({{title}})
+	FlowRefOther = "flow.ref.other"
+	// FlowRefSkill (cli.json): the skill {{name}} ({{title}})
+	FlowRefSkill = "flow.ref.skill"
+	// FlowShort (cli.json): Workflows synced to this computer: their steps, one at a time
+	FlowShort = "flow.short"
+	// FlowStepChecks (cli.json): Checks at the end of this step:
+	FlowStepChecks = "flow.step.checks"
+	// FlowStepConfirm (cli.json): After the checks, this step waits for the person to say to go on.
+	FlowStepConfirm = "flow.step.confirm"
+	// FlowStepForbid (cli.json): Do not: {{what}}
+	FlowStepForbid = "flow.step.forbid"
+	// FlowStepHead (cli.json): {{workflow}} · step {{step}} of {{total}}
+	FlowStepHead = "flow.step.head"
+	// FlowStepNext (cli.json): Do this step, and only this step. When it is done, run "{{command}}".
+	FlowStepNext = "flow.step.next"
+	// FlowStepUse (cli.json): Do it with {{what}}
+	FlowStepUse = "flow.step.use"
+	// FlowStepWith (cli.json): Also use {{what}}
+	FlowStepWith = "flow.step.with"
+	// FlowUnknown (cli.json): There is no workflow {{workflow}} on this computer.
+	FlowUnknown = "flow.unknown"
+	// FlowUnknownHint (cli.json): Workflows arrive with "{{command}}"; if it is optional, turn it on fir…
+	FlowUnknownHint = "flow.unknown_hint"
+	// FlowUnreadable (cli.json): The run cannot be read, so it is not known which step it is at: {{deta…
+	FlowUnreadable = "flow.unreadable"
+	// FlowWaiting (cli.json): The checks passed. This step waits for the person: ask them whether to…
+	FlowWaiting = "flow.waiting"
 	// HelpCommands (cli.json): Commands:
 	HelpCommands = "help.commands"
 	// HelpFlags (cli.json): Options:
@@ -801,10 +881,18 @@ const (
 	SyncExitCodeNeedsPlan = "sync.exit_code_needs_plan"
 	// SyncGroupDeferred (cli.json): Waiting for your consent: not changed
 	SyncGroupDeferred = "sync.group.deferred"
+	// SyncGroupKnowledge (cli.json): Knowledge bases (fetched with your own git, straight from their reposi…
+	SyncGroupKnowledge = "sync.group.knowledge"
 	// SyncGroupRetry (cli.json): Changed by another program while syncing: not written
 	SyncGroupRetry = "sync.group.retry"
 	// SyncKept (cli.json): Your changed versions are kept in {{path}}
 	SyncKept = "sync.kept"
+	// SyncKnowledgeFailed (cli.json): could not be fetched, the copy from before stays: {{detail}}
+	SyncKnowledgeFailed = "sync.knowledge.failed"
+	// SyncKnowledgeFetched (cli.json): {{count}} files · commit {{commit}}
+	SyncKnowledgeFetched = "sync.knowledge.fetched"
+	// SyncKnowledgeFrom (cli.json): from {{repo}}
+	SyncKnowledgeFrom = "sync.knowledge.from"
 	// SyncNothing (cli.json): Nothing to change: everything is as wanted
 	SyncNothing = "sync.nothing"
 	// SyncOverwriteUnknown (cli.json): --overwrite {{resource}}: the repository has no such resource.
@@ -863,4 +951,6 @@ const (
 	UninstallUntouched = "uninstall.untouched"
 	// VersionShort (cli.json): Show the version, commit, build time and platform
 	VersionShort = "version.short"
+	// WorkflowAsSkill (catalog.json): This tool has no slash commands, so the workflow arrives as a skill of…
+	WorkflowAsSkill = "workflow.as_skill"
 )

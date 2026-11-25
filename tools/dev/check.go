@@ -198,7 +198,7 @@ func runCheck(root string, args []string) error {
 		envStatus, envDetail, failed = "FAIL", "could not remove the temporary home: "+err.Error(), true
 	}
 	results = append([]result{{name: "environment", status: envStatus, detail: envDetail}}, results...)
-	printResults(results)
+	printResults("check results", results)
 	if failed {
 		return errors.New("failed")
 	}
@@ -210,9 +210,9 @@ func firstLine(s string) string {
 	return line
 }
 
-func printResults(results []result) {
+func printResults(title string, results []result) {
 	goVersion, _ := output("", nil, "go", "env", "GOVERSION", "GOOS", "GOARCH")
-	fmt.Printf("\ncheck results (%s)\n\n", strings.Join(strings.Fields(goVersion), " "))
+	fmt.Printf("\n%s (%s)\n\n", title, strings.Join(strings.Fields(goVersion), " "))
 	fmt.Printf("| %-16s | %-7s | %-6s | %s\n", "step", "result", "time", "detail")
 	fmt.Printf("| %s | %s | %s | %s\n", strings.Repeat("-", 16), strings.Repeat("-", 7), strings.Repeat("-", 6), strings.Repeat("-", 6))
 	for _, r := range results {

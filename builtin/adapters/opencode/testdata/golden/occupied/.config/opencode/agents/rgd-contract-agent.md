@@ -1,7 +1,6 @@
 ---
-name: "rgd-contract-agent"
-description: "Reviews changes against the contract"
+description: My own reviewer that happens to have this name
 mode: subagent
 ---
 
-You review changes. Say what breaks the contract and why.
+Review the way I like it.

@@ -92,7 +92,8 @@ func TestResourcesPassEveryRule(t *testing.T) {
 	for _, r := range all {
 		codes = append(codes, r.Ref.String())
 	}
-	want := []string{"skill/code-review", "mcp/gitlab", "mcp/jira", "skill/release-notes", "skill/unit-testing"} // by code
+	want := []string{"agent/backend-developer", "workflow/change-to-merge", "skill/code-review", "knowledge/eng-handbook",
+		"mcp/gitlab", "mcp/jira", "skill/release-notes", "skill/unit-testing"} // by code
 	if !slices.Equal(codes, want) {
 		t.Errorf("resources = %v, want %v", codes, want)
 	}
@@ -162,6 +163,7 @@ func TestBrokenHitsExactlyTheRuleInItsName(t *testing.T) {
 // the meta of every single-file resource.
 func TestExamplesMatchTheSchemas(t *testing.T) {
 	repo, meta := compile(t, schema.Repo), compile(t, schema.Meta)
+	agent := compileKind(t, "agent")
 	checked := 0
 	for _, root := range []string{"resources", "resources-broken"} {
 		// A skill without meta.yaml is refused when the repository is read, before any rule sees
@@ -187,7 +189,9 @@ func TestExamplesMatchTheSchemas(t *testing.T) {
 				sch = repo
 			case path.Base(p) == "meta.yaml":
 				sch = meta
-			case strings.HasPrefix(p, "mcp/") || strings.Contains(p, "/mcp/"):
+			case path.Base(p) == "agent.yaml":
+				sch = agent
+			case hasTop(p, "mcp", "workflows", "knowledge"):
 				obj, _ := doc.(map[string]any)
 				doc, sch = obj["meta"], meta
 			default:
@@ -207,6 +211,41 @@ func TestExamplesMatchTheSchemas(t *testing.T) {
 	if checked < 10 {
 		t.Errorf("only %d files were validated", checked)
 	}
+}
+
+// hasTop reports whether p is in one of the given top-level directories of a repository, which
+// may itself be one directory down (resources-broken/<rule>/…).
+func hasTop(p string, dirs ...string) bool {
+	for _, d := range dirs {
+		if strings.HasPrefix(p, d+"/") || strings.Contains(p, "/"+d+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// compileKind compiles the published schema of a directory-shaped kind's own file, which refers
+// to nothing else.
+func compileKind(t *testing.T, kind string) *jsonschema.Schema {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "schema", "repo", "v1", "kinds", kind+".schema.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	url, _ := doc.(map[string]any)["$id"].(string)
+	c := jsonschema.NewCompiler()
+	if err := c.AddResource(url, doc); err != nil {
+		t.Fatal(err)
+	}
+	sch, err := c.Compile(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sch
 }
 
 func compile(t *testing.T, name string) *jsonschema.Schema {
@@ -316,7 +355,7 @@ func TestRgdCheck(t *testing.T) {
 	if rules, lines := findingsOf(doc); code != 0 || len(rules) != 0 {
 		t.Errorf("rgd check resources: exit code %d, findings:\n%s", code, strings.Join(lines, "\n"))
 	}
-	if s := doc["summary"].(map[string]any); s["resources"] != 5.0 || s["passed"] != true || s["notices"] != 0.0 {
+	if s := doc["summary"].(map[string]any); s["resources"] != 8.0 || s["passed"] != true || s["notices"] != 0.0 {
 		t.Errorf("summary %v", s)
 	}
 	if !strings.Contains(text, "Nothing to fix.") {

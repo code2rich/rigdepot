@@ -269,6 +269,11 @@ resources
   overrides text not null
   created_at bigint not null
   updated_at bigint not null
+  revision bigint not null
+  meta text not null
+  override_base text not null
+  source_path text not null
+  disabled_reason text not null
 
 schema_migrations
   namespace text not null pk

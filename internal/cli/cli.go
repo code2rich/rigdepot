@@ -51,6 +51,8 @@ type Env struct {
 	Kinds repoformat.Kinds
 	// NewExecutor makes the executors of the sync engine; nil means the real one.
 	NewExecutor func(executor.Roots, executor.State) (sync.Executor, error)
+	// Knowledge fetches the knowledge bases a sync delivers; nil means the person's own git.
+	Knowledge sync.Fetcher
 }
 
 // Main runs the command-line program with the given arguments (without the

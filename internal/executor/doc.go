@@ -37,6 +37,11 @@
 // A directory gets a marker file (MarkerFile) saying who put it there; it is not part of the
 // directory's digest.
 //
+// A directory may have local directories (adapter.WriteTree.Local, an agent's memory): their
+// content belongs to the person's computer. They do not count towards the digest, so what a
+// tool writes into them is not a change; replacing the directory carries what is in them over
+// into the new content; undoing the entry keeps a copy in kept/ first when anything is in them.
+//
 // # Undoing
 //
 // Revert removes what a manifest entry records. A target that was changed since it was written

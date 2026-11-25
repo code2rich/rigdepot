@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://rigdepot.code2rich.com/schema/repo/v1/kinds/knowledge.schema.json
+meta:
+  name: 研发规范手册
+  summary: 后端的编码、接口和数据库规范
+  stages: [develop, test]
+  when: 写后端代码、设计接口或者改表结构时
+source:
+  type: git
+  repo: https://gitlab.example.com/platform/handbook.git
+  branch: main
+  dir: rules/backend
+  category: 研发规范

@@ -68,6 +68,9 @@ type Entry struct {
 	// form as Path. Undoing the entry removes them again if they are empty. For a key, it also
 	// lists the configuration file itself when the file did not exist before.
 	Created []string `json:"created,omitempty"`
+	// Local lists directories inside a tree, relative to it, whose content belongs to the
+	// person's computer (an agent's memory): they do not count towards Digest. Only for a tree.
+	Local []string `json:"local,omitempty"`
 	// Edit is how to take a key out of its file again byte for byte. Only for a key that was
 	// added; see KeyEdit.
 	Edit *KeyEdit  `json:"edit,omitempty"`

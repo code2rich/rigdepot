@@ -37,6 +37,7 @@ type target struct {
 	path   string // in the package form of ext/adapter: "~/…" or absolute, forward slashes
 	key    []string
 	format adapter.Format
+	local  []string // a tree's local directories (adapter.WriteTree.Local)
 }
 
 func (t target) String() string {
@@ -59,7 +60,7 @@ func (t target) id() string {
 func targetOf(op adapter.Op) target {
 	switch o := op.(type) {
 	case adapter.WriteTree:
-		return target{kind: "tree", path: o.Dir}
+		return target{kind: "tree", path: o.Dir, local: o.Local}
 	case adapter.WriteFile:
 		return target{kind: "file", path: o.Path}
 	case adapter.SetKey:
@@ -180,7 +181,7 @@ func (c *coreExecutor) Close() error { return c.ex.Close() }
 func execTarget(t target) coreexec.Target {
 	switch t.kind {
 	case "tree":
-		return coreexec.Target{Op: coremanifest.OpTree, Path: t.path}
+		return coreexec.Target{Op: coremanifest.OpTree, Path: t.path, Local: t.local}
 	case "file":
 		return coreexec.Target{Op: coremanifest.OpFile, Path: t.path}
 	case "key":
@@ -214,7 +215,7 @@ func toExec(o observed) coreexec.Observed {
 }
 
 // Expect computes the digest the executor records for op: the content digest of a tree
-// (package bundle, which leaves the marker file out), the sha256 of a file, and for a key the
+// (package bundle, which leaves the marker file and the local directories out), the sha256 of a file, and for a key the
 // digest of its value; for a key it asks executor.Expect, which is what reading the key back
 // gives.
 func (c *coreExecutor) Expect(op adapter.Op) (string, error) {
@@ -224,7 +225,7 @@ func (c *coreExecutor) Expect(op adapter.Op) (string, error) {
 		for _, f := range o.Files {
 			fsys[f.Path] = &fstest.MapFile{Data: f.Data}
 		}
-		d, err := bundle.Digest(fsys)
+		d, err := bundle.Digest(fsys, o.Local...)
 		return string(d), err
 	case adapter.WriteFile:
 		sum := sha256.Sum256(o.Data)

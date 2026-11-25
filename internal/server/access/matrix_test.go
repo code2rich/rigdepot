@@ -70,7 +70,7 @@ var matrix = map[access.Action]string{
 	access.ActionResourceRollback:  "yyyy. .y.y. ...y. ...y. .....",
 	access.ActionResourceDisable:   "yyyyy .y.y. ...y. ...y. .....",
 	access.ActionResourceEnable:    "yyyyy .y.y. ...y. ...y. .....",
-	access.ActionResourceWaive:     "yyyy. .y.y. ...y. ...y. .....",
+	access.ActionResourceWaive:     "yyyy. ..... ..... ..... .....",
 	access.ActionResourcePrefer:    "y..y. yy.y. yy.y. y..y. .....",
 	access.ActionSourceManage:      "yyyyy ..... ..... ..... .....",
 	access.ActionSecretDefine:      "yyyyy ..... ..... ..... .....",
@@ -212,7 +212,7 @@ func TestMaintainersPublishWithoutBeingOwners(t *testing.T) {
 		access.ActionResourceDraftRead: true,
 		access.ActionResourceEdit:      true,
 		access.ActionResourcePublish:   true,
-		access.ActionResourceWaive:     true,
+		access.ActionResourceWaive:     false, // false positives are the administrators' call
 		access.ActionFeedbackManage:    true,
 		access.ActionResourceConfigure: false, // scope and policy are the owners'
 		access.ActionResourceRollback:  false, // owners roll back what maintainers publish

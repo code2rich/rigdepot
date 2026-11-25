@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/code2rich/rigdepot/internal/buildinfo"
+	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
 	"github.com/code2rich/rigdepot/internal/server/authn"
@@ -17,6 +18,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/modhost"
 	"github.com/code2rich/rigdepot/internal/server/settings"
+	"github.com/code2rich/rigdepot/locales"
 )
 
 // api is the whole contract, httpapi.StrictServerInterface, assembled from
@@ -45,6 +47,7 @@ type api struct {
 	*auditAPI
 	*modulesAPI
 	*toolsAPI
+	*catalogAPI
 	*notificationsAPI
 }
 
@@ -83,6 +86,12 @@ type hooks struct {
 	// the tool adapters page shows no counts (0 people, an empty
 	// distribution).
 	toolUsage toolUsage
+	// delivery tells the catalog pages what people turned on or off and where resources are
+	// installed (delivery, M1-27). Nil: everything is on by its policy and installed nowhere.
+	delivery catalogDelivery
+	// secretsConfigured returns, by secret name, which secrets a person has set (secrets,
+	// M1-28). Nil: none.
+	secretsConfigured func(ctx context.Context, userID string) (map[string]bool, error)
 }
 
 // apiMounts builds the handlers that serve mounts: the API under /api/ and
@@ -95,9 +104,14 @@ type hooks struct {
 // checks the credential each operation's security list asks for and puts
 // the caller into the context with access.WithActor.
 func apiMounts(app *App) Mounts {
+	texts, err := i18n.Load(locales.FS, "check")
+	if err != nil {
+		panic(err) // the catalogues are embedded and checked by tools/dev check
+	}
 	accessOpts := accessapi.Options{
-		BaseURL: app.cfg.BaseURL,
-		SignIns: authnapi.SignIns(app.authn),
+		BaseURL:        app.cfg.BaseURL,
+		SignIns:        authnapi.SignIns(app.authn),
+		ResourceCounts: app.catalog.ResourceCounts,
 	}
 	if bg := app.bg; bg != nil && bg.Notify != nil {
 		// Invitations go out by mail once mail is set up; until then the
@@ -112,6 +126,7 @@ func apiMounts(app *App) Mounts {
 		auditAPI:         &auditAPI{log: app.audit, hooks: &app.hooks},
 		modulesAPI:       &modulesAPI{settings: app.settings},
 		toolsAPI:         &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
+		catalogAPI:       &catalogAPI{cat: app.catalog, hooks: &app.hooks, texts: texts, defaultLocale: app.cfg.DefaultLocale},
 		notificationsAPI: &notificationsAPI{access: app.access},
 	}
 	if impl.toolsAPI.version == "" {
@@ -128,6 +143,7 @@ func apiMounts(app *App) Mounts {
 	if bg := app.bg; bg != nil && bg.Notify != nil {
 		impl.notificationsAPI.notify = bg.Notify
 	}
+	uploadLimit := int64(app.cfg.MaxBundleMB) << 20
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", notFound) // paths the contract does not have
 	h := httpapi.NewHandler(impl, mux)
@@ -139,7 +155,11 @@ func apiMounts(app *App) Mounts {
 			modules.ServeHTTP(w, r)
 			return
 		}
-		h.ServeHTTP(w, r)
+		// An upload over the limit is refused before its body is read.
+		if !limitUpload(w, r, uploadLimit) {
+			return
+		}
+		h.ServeHTTP(w, withAcceptLanguage(r))
 	}))}
 }
 
