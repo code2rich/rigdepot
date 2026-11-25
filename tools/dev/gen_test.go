@@ -108,3 +108,38 @@ func TestGenRefusesOutputsWithoutTheirContract(t *testing.T) {
 		t.Errorf("generate with an orphaned %s: err = %v, want it to name %s", apiTargets[1].output, err, apiSpec)
 	}
 }
+
+func TestGenCollectsTheKindSchemas(t *testing.T) {
+	root := writeBrand(t, sampleBrand)
+	schema := `{"$id": "https://example.com/schema/repo/v1/kinds/note.schema.json", "type": "object"}` + "\n"
+	dir := filepath.Join(root, "builtin", "kinds", "note")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "schema.json"), []byte(schema), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runGen(root, nil); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(root, "schema", "repo", "v1", "kinds", "note.schema.json"))
+	if err != nil || string(got) != schema {
+		t.Fatalf("the copy is %q, %v; want the schema byte for byte", got, err)
+	}
+
+	// The original changes and the copy does not: --check says which file is stale.
+	if err := os.WriteFile(filepath.Join(dir, "schema.json"), []byte(strings.Replace(schema, "object", "array", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runGen(root, []string{"--check"}); err == nil || !strings.Contains(err.Error(), "schema/repo/v1/kinds/note.schema.json") {
+		t.Errorf("gen --check after the schema changed: %v", err)
+	}
+
+	// A schema whose $id is not where it is published.
+	if err := os.WriteFile(filepath.Join(dir, "schema.json"), []byte(`{"$id": "https://example.com/note.json"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runGen(root, nil); err == nil || !strings.Contains(err.Error(), "$id") {
+		t.Errorf("gen with a misplaced $id: %v", err)
+	}
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rigdepot.code2rich.com/schema/repo/v1/kinds/skill.schema.json",
+  "title": "Skill front matter",
+  "description": "The front matter of SKILL.md in skills/<code>/, as the Agent Skills convention has it. Other fields of the convention, and fields of a tool's own, are allowed and delivered as they are.",
+  "type": "object",
+  "required": ["name", "description"],
+  "properties": {
+    "name": {
+      "description": "The skill's name. It equals the name of its directory, which is the resource's code.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "minLength": 2,
+      "maxLength": 48
+    },
+    "description": {
+      "description": "What the skill does and when to use it. The AI reads it to decide when to load the skill.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    }
+  }
+}

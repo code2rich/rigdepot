@@ -91,6 +91,11 @@ func generate(root string, env []string) ([]generated, error) {
 		return nil, err
 	}
 	files = append(files, messages...)
+	kinds, err := generateKindSchemas(root)
+	if err != nil {
+		return nil, err
+	}
+	files = append(files, kinds...)
 	api, err := generateAPI(root, env)
 	if err != nil {
 		return nil, err
@@ -165,4 +170,42 @@ func staleFiles(root string, files []generated) []string {
 		}
 	}
 	return stale
+}
+
+// kindSchemaDir is where the schema of every built-in resource kind is
+// collected for publishing, next to the other schemas of the repository
+// format. The original is builtin/kinds/<kind>/schema.json, which the kind
+// embeds and returns from Schema().
+const kindSchemaDir = "schema/repo/v1/kinds"
+
+// generateKindSchemas copies each kind's schema to
+// schema/repo/v1/kinds/<kind>.schema.json, byte for byte. The schema's $id has
+// to be the address of that copy, so that what a resource author's editor
+// fetches is the schema the programs validate with.
+func generateKindSchemas(root string) ([]generated, error) {
+	sources, err := filepath.Glob(filepath.Join(root, "builtin", "kinds", "*", "schema.json"))
+	if err != nil {
+		return nil, err
+	}
+	var out []generated
+	for _, src := range sources {
+		data, err := os.ReadFile(src)
+		if err != nil {
+			return nil, err
+		}
+		name := filepath.Base(filepath.Dir(src))
+		rel := kindSchemaDir + "/" + name + ".schema.json"
+		var doc struct {
+			ID string `json:"$id"`
+		}
+		if err := json.Unmarshal(data, &doc); err != nil {
+			return nil, fmt.Errorf("builtin/kinds/%s/schema.json: %w", name, err)
+		}
+		if !strings.HasSuffix(doc.ID, "/"+strings.TrimPrefix(rel, "schema/")) {
+			return nil, fmt.Errorf("builtin/kinds/%s/schema.json: $id is %q; it has to end with /%s, where the schema is published",
+				name, doc.ID, strings.TrimPrefix(rel, "schema/"))
+		}
+		out = append(out, generated{path: rel, data: data})
+	}
+	return out, nil
 }
