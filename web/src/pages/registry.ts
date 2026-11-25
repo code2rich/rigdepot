@@ -111,7 +111,7 @@ export const NAV: readonly NavGroup[] = [
         path: '/admin/settings',
         label: 'nav.settings',
         icon: 'gear',
-        component: notBuilt('settings'),
+        component: lazy(() => import('./settings')),
       },
     ],
   },
