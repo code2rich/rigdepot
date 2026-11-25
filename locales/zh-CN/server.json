@@ -1,0 +1,9 @@
+{
+  "mail.digest.intro": "这一小时发给你的邮件已经到了上限（{{limit}} 封），其余的通知合并在这一封里：",
+  "mail.digest.subject_one": "还有 {{count}} 条通知",
+  "mail.digest.subject_other": "还有 {{count}} 条通知",
+  "mail.footer": "这封邮件由 {{product}} 自动发送，回复不会有人看到。",
+  "mail.link": "详情：{{link}}",
+  "mail.test.body": "这是一封测试邮件。能看到它，说明 {{product}} 用现在的设置可以发信。",
+  "mail.test.subject": "{{product}} 的测试邮件"
+}
