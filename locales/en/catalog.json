@@ -1,3 +1,4 @@
 {
-  "mcp.as_skill": "This tool cannot connect to the MCP server directly, so it gets a skill that calls the server through {{cli}} mcp call"
+  "mcp.as_skill": "This tool cannot connect to the MCP server directly, so it gets a skill that calls the server through {{cli}} mcp call",
+  "workflow.as_skill": "This tool has no slash commands, so the workflow arrives as a skill of the same name"
 }

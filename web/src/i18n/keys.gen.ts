@@ -119,3 +119,4 @@ export type MessageKey =
   | "shell.skip"
   | "shell.theme.to_dark"
   | "shell.theme.to_light"
+  | "workflow.as_skill"

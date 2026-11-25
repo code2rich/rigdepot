@@ -1,0 +1,5 @@
+meta: { name: x }
+steps:
+  - use: code-review
+    checks:
+      - { text: compiles, by: robot }

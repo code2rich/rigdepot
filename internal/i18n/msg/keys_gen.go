@@ -781,4 +781,6 @@ const (
 	UninstallUntouched = "uninstall.untouched"
 	// VersionShort (cli.json): Show the version, commit, build time and platform
 	VersionShort = "version.short"
+	// WorkflowAsSkill (catalog.json): This tool has no slash commands, so the workflow arrives as a skill of…
+	WorkflowAsSkill = "workflow.as_skill"
 )
