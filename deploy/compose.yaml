@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+#
+# rgd-server with Docker Compose. Copy .env.example to .env and set
+# RGD_BASE_URL first.
+#
+#   SQLite (the default; one container, one volume):
+#     docker compose up -d
+#
+#   PostgreSQL (adds a database container through the "postgres" profile):
+#     see README.md in this directory for the two secret files it needs, then
+#     set COMPOSE_PROFILES=postgres in .env and run the same command.
+#
+# The server only listens on this machine. Put a reverse proxy that
+# terminates HTTPS in front of it.
+
+name: rigdepot
+
+services:
+  rigdepot:
+    # Pin the full version in production, for example RGD_VERSION=0.4.0.
+    image: ghcr.io/code2rich/rigdepot-server:${RGD_VERSION:-latest}
+    # Until an image is published, build it from this checkout:
+    #   docker compose build
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${RGD_PORT:-8080}:8080"
+    environment:
+      RGD_BASE_URL: ${RGD_BASE_URL:?set RGD_BASE_URL in .env to the public address of this server, such as https://hub.example.com}
+      # Empty means SQLite in the data volume. With the postgres profile it
+      # points at the file that holds the connection URL.
+      RGD_DATABASE_URL_FILE: ${RGD_DATABASE_URL_FILE:-}
+      # The address ranges of your reverse proxy, so that X-Forwarded-* is
+      # trusted from there and nowhere else.
+      RGD_TRUSTED_PROXIES: ${RGD_TRUSTED_PROXIES:-}
+    volumes:
+      # Everything that needs a backup is in here: the SQLite database and the
+      # master key. With PostgreSQL the master key and the repository cache
+      # are still here; do not drop this volume.
+      - rigdepot-data:/var/lib/rigdepot
+      - ./secrets:/run/rigdepot/secrets:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+
+  postgres:
+    profiles: [postgres]
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rigdepot
+      POSTGRES_DB: rigdepot
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rigdepot"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  rigdepot-data:
+  postgres-data:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password

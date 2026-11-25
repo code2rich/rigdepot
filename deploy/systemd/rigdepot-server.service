@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+#
+# systemd unit for rgd-server. Install as
+# /etc/systemd/system/rigdepot-server.service; see deploy/README.md.
+
+[Unit]
+Description=Rigdepot server
+Documentation=https://github.com/code2rich/rigdepot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=rigdepot
+Group=rigdepot
+# Startup configuration as environment variables. At least RGD_BASE_URL.
+EnvironmentFile=/etc/rigdepot/server.env
+ExecStart=/usr/bin/rgd-server serve
+Restart=on-failure
+RestartSec=3
+
+# Tightened permissions: only the data directory is writable.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/var/lib/rigdepot
+CapabilityBoundingSet=
+
+# For a small machine: a target for the Go garbage collector and a hard limit
+# for the process. Starting points; adjust to what you measure.
+Environment=GOMEMLIMIT=384MiB
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

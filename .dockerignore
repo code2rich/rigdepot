@@ -1,0 +1,11 @@
+# Keep the build context to the source. The Git metadata stays out: version
+# information is passed in as build arguments.
+.git
+.github
+.dev
+dist
+web/node_modules
+web/dist
+deploy
+**/*.md
+**/.DS_Store
