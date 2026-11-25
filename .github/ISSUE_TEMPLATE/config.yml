@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and discussion / 提问与讨论
+    url: https://discord.gg/feGwwqs7x
+    about: General questions, ideas and help with setup are better on Discord. 一般的问题、想法、怎么配，请到 Discord。
+  - name: Security vulnerability / 安全漏洞
+    url: https://github.com/code2rich/rigdepot/blob/main/SECURITY.md
+    about: Please report vulnerabilities privately by email, not in an issue. 请发邮件私下报告，不要开 issue。

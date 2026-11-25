@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+name: Feature request / 功能建议
+description: Suggest something Rigdepot should do, or do differently. 建议 Rigdepot 该做的事，或者该换个做法的事。
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English and Chinese are both fine. 中文英文都可以。
+
+        Rigdepot does four things: one place for resources, standard workflows delivered, a feedback loop, and independence from any single agent tool. A suggestion outside these four is still welcome, but it helps to know that from the start.
+        Rigdepot 只做四件事：资源统一管理、标准流程下发、使用反馈闭环、与 Agent 工具无关。不在这四件事里的建议同样欢迎，只是先知道这一点会有帮助。
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve? / 你想解决什么问题？
+      description: Describe the situation, not the solution. Who runs into it, and how often? 讲现场，不讲方案。谁会碰到、多常碰到？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen? / 你希望怎么样？
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today instead? / 你现在是怎么凑合的？
+      description: Workarounds and alternatives you have considered. 现在的变通办法，以及考虑过的其他方案。
+  - type: dropdown
+    id: role
+    attributes:
+      label: Who are you in this? / 你是哪种角色？
+      options:
+        - A developer using the resources / 使用资源的开发者
+        - Someone who maintains resources for a team / 为团队维护资源的人
+        - A platform or engineering-productivity team / 平台或研发效能团队
+        - Security or compliance / 安全或合规
+        - Something else / 其他
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Would you like to work on it? / 你愿意动手做吗？
+      options:
+        - label: I would like to contribute this myself. / 我愿意自己来贡献。

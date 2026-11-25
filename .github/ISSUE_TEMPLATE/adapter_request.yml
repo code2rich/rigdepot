@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+name: New tool adapter / 新工具适配
+description: Ask for support of an AI coding tool, or report that a tool changed where it keeps its configuration. 请求支持一个 AI 编码工具，或者报告某个工具换了配置的位置或格式。
+labels: [adapter]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English and Chinese are both fine. 中文英文都可以。
+
+        An adapter is only as good as what we know about the tool. Facts from the tool itself, obtained in a temporary home directory, are worth far more than a link to an article. Nothing here needs your real configuration:
+        适配器的质量取决于我们对这个工具了解多少。在临时主目录里从工具本身得到的事实，比一篇文章的链接有用得多。下面这些都不需要动你真实的配置：
+
+        ```sh
+        tmp="$(mktemp -d)"
+        HOME="$tmp" USERPROFILE="$tmp" XDG_CONFIG_HOME="$tmp/.config" <tool> mcp add probe -- echo hi
+        find "$tmp" -type f
+        ```
+  - type: input
+    id: tool
+    attributes:
+      label: Tool / 工具
+      description: Name and a link to its homepage or repository. 名字，以及主页或仓库的链接。
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version you looked at / 你核对的版本
+    validations:
+      required: true
+  - type: checkboxes
+    id: os
+    attributes:
+      label: Operating systems you can verify on / 你能在哪些系统上核对
+      options:
+        - label: macOS
+        - label: Linux
+        - label: Windows
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is this? / 这是哪种情况？
+      options:
+        - A tool that is not supported yet / 一个还不支持的工具
+        - A supported tool changed its configuration / 一个已支持的工具换了配置
+    validations:
+      required: true
+  - type: textarea
+    id: locations
+    attributes:
+      label: Where it keeps things / 它把东西放在哪
+      description: |
+        As far as you know: the configuration root and the environment variable that moves it; where skills, MCP servers, slash commands and sub-agents go, and in which format (JSON, JSONC, TOML, a directory); which files hold credentials.
+        尽你所知：配置根目录，以及能改变它的环境变量；技能、MCP、斜杠命令、子 Agent 各放在哪、什么格式（JSON、JSONC、TOML、目录）；哪些文件里是凭据。
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How you know / 依据是什么
+      description: |
+        The output of the commands above, a link to the official documentation, or a pointer into the source. Remove account details and tokens from anything you paste.
+        上面那几条命令的输出、官方文档的链接，或者源码里的位置。粘贴之前去掉账号信息和令牌。
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Would you like to work on it? / 你愿意动手做吗？
+      options:
+        - label: I would like to write this adapter, or provide fixtures for it. / 我愿意写这个适配器，或者为它提供夹具。

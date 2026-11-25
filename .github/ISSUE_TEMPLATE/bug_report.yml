@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+name: Bug report / 缺陷报告
+description: Something does not work as it should. 有东西没有按应有的方式工作。
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the report. English and Chinese are both fine. 感谢报告，中文英文都可以。
+
+        **Before you paste anything:** remove tokens, passwords, internal addresses and real names from commands, output and config files.
+        **粘贴之前：**请去掉命令、输出和配置文件里的令牌、密码、内部地址和真实人名。
+
+        Security problems do not belong here; see [SECURITY.md](https://github.com/code2rich/rigdepot/blob/main/SECURITY.md).
+        安全问题请不要提在这里，见 [SECURITY.zh-CN.md](https://github.com/code2rich/rigdepot/blob/main/SECURITY.zh-CN.md)。
+  - type: dropdown
+    id: component
+    attributes:
+      label: Which part? / 哪一部分？
+      options:
+        - rgd (command line / 命令行)
+        - rgd-server (server / 服务端)
+        - Web console / 网页控制台
+        - Install scripts or packages / 安装脚本或安装包
+        - Development tooling (tools/dev) / 开发工具
+        - Documentation / 文档
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened? / 发生了什么？
+      description: What you did, what you expected and what happened instead. 你做了什么、期望什么、实际发生了什么。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      description: The exact commands, starting from a state we can recreate. 确切的命令，从一个我们能重建的状态开始。
+      placeholder: |
+        1. rgd sync --repo ... --plan
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output / 输出
+      description: The full output, with secrets removed. This field is shown as code, no backticks needed. 完整的输出，去掉密钥。这一栏会按代码显示，不用加反引号。
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version / 版本
+      description: The output of `rgd --version` or `rgd-server --version`. `rgd --version` 或 `rgd-server --version` 的输出。
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and architecture / 操作系统与架构
+      placeholder: macOS 15 arm64 · Ubuntu 24.04 amd64 · Windows 11 amd64
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: AI coding tool and its version / AI 编码工具及版本
+      description: If the problem involves one. 问题和某个工具有关时填写。
+      placeholder: Claude Code 2.1.330
+  - type: checkboxes
+    id: your-files
+    attributes:
+      label: Did it touch something of yours? / 它动了你自己的东西吗？
+      description: These are the reports we care about most. 这是我们最在意的一类报告。
+      options:
+        - label: It changed, overwrote or deleted a file or config entry that I created myself. / 它改了、覆盖了或删了我自己建的文件或配置项。
