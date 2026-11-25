@@ -145,6 +145,7 @@ const (
 	CodeMissingMeta     = "missing-meta"     // no meta.yaml, or no "meta" key
 	CodeUndefinedStage  = "undefined-stage"  // the resource names a stage the repository does not have
 	CodeUndefinedSecret = "undefined-secret" // the resource names a secret rigdepot.yaml does not define
+	CodeUndefinedRef    = "undefined-ref"    // the resource refers to a resource the repository does not have, or one that cannot be used
 	CodeUnsafePath      = "unsafe-path"      // breaks a path safety rule; Field holds the rule
 	CodeParse           = "parse"            // the kind refused the resource
 	CodeRead            = "read"             // the files could not be read

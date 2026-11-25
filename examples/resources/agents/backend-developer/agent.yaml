@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Rigdepot Authors
+
+# yaml-language-server: $schema=https://rigdepot.code2rich.com/schema/repo/v1/kinds/agent.schema.json
+id: backend-developer
+entry: AGENT.md
+skills: [api-development]              # 自带技能：本目录 skills/ 下的名字
+binds: [unit-testing, eng-handbook]    # 绑定的资源，随它安装
+mcp: [gitlab]                          # 依赖的 MCP
+local: [memory/, workspace/]           # 只留在本机：更新时不覆盖，不算进内容摘要

@@ -33,6 +33,11 @@ type SkillDir struct {
 	// else delivered as a skill because the tool has no native form for it, and this is the
 	// message key of the explanation, such as "workflow.as_skill".
 	Degraded string
+	// Local lists directories of the skill, relative to it with forward slashes, that belong to
+	// the person's computer once they are there, such as the memory of an agent. An update
+	// leaves what is in them as it is, and they do not count towards the directory's digest.
+	// Files of Files below one of them are written only when the directory is new.
+	Local []string
 }
 
 // MCPServer is one connection to an MCP server.

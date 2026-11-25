@@ -1,4 +1,5 @@
 op write-tree ~/dotfiles/config/opencode/skills/rgd-contract-skill (skill/contract-skill@3): SKILL.md, scripts/check.sh*
+op write-tree ~/dotfiles/config/opencode/skills/rgd-contract-agent (agent/contract-agent@1): SKILL.md, memory/README.md, skills/review/SKILL.md local memory, workspace
 op write-file ~/dotfiles/config/opencode/commands/rgd-contract-command.md (workflow/contract-command@1)
 op write-file ~/dotfiles/config/opencode/agents/rgd-contract-agent.md (agent/contract-agent@1)
 op set-key ~/dotfiles/config/opencode/opencode.json jsonc ["mcp","servers","rgd-contract-stdio"] (mcp/contract-stdio@2) = {"command":["contract-mcp","--stdio","--log-level","info"],"environment":{"CONTRACT_MODE":"read-only"},"type":"local"}
@@ -6,6 +7,7 @@ op set-key ~/dotfiles/config/opencode/opencode.json jsonc ["mcp","servers","rgd-
 op set-key ~/dotfiles/config/opencode/opencode.json jsonc ["mcp","servers","rgd-contract-secret"] (mcp/contract-secret@1) = {"headers":{"Authorization":"Bearer {env:CONTRACT_TOKEN}"},"type":"remote","url":"https://secret.example.com/mcp"}
 core:
   + tree ~/dotfiles/config/opencode/skills/rgd-contract-skill
+  + tree ~/dotfiles/config/opencode/skills/rgd-contract-agent
   + file ~/dotfiles/config/opencode/commands/rgd-contract-command.md
   + file ~/dotfiles/config/opencode/agents/rgd-contract-agent.md
   + key ~/dotfiles/config/opencode/opencode.json mcp.servers.rgd-contract-stdio

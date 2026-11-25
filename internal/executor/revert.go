@@ -22,7 +22,8 @@ type Outcome string
 const (
 	// Removed: the target was as written and is gone now.
 	Removed Outcome = "removed"
-	// RemovedKept: the target had been changed; a copy is in kept/ and the target is gone.
+	// RemovedKept: the target had been changed, or had something in its local directories; a
+	// copy is in kept/ and the target is gone.
 	RemovedKept Outcome = "removed_kept"
 	// AlreadyGone: nothing was at the target any more; only the entry was dropped.
 	AlreadyGone Outcome = "already_gone"
@@ -58,15 +59,21 @@ func (e *Executor) Revert(ctx context.Context, en manifest.Entry) (Reverted, err
 	if !prefixed(t.rel) {
 		return Reverted{}, fmt.Errorf("entry %s: %s does not carry the prefix; refusing to remove it", en.ID, en.Path)
 	}
-	cur := observe(t, en.Op)
+	cur := observe(t, en.Op, en.Local...)
 	if cur.State == Unknown {
 		return Reverted{}, fmt.Errorf("%s: %w: %v", t.display, ErrUnreadable, cur.Err)
+	}
+	holds, err := holdsLocal(t, en)
+	if err != nil {
+		return Reverted{}, fmt.Errorf("%s: %w: %v", t.display, ErrUnreadable, err)
 	}
 	var res Reverted
 	switch {
 	case cur.State == Absent:
 		res.Outcome = AlreadyGone
-	case cur.Digest != en.Digest:
+	case cur.Digest != en.Digest || holds:
+		// Changed, or with something in its local directories, which is the person's (an
+		// agent's memory) whether or not it was changed.
 		res.Outcome = RemovedKept
 		if res.Kept, err = e.keep(t); err != nil {
 			return Reverted{}, fmt.Errorf("keeping the changed %s: %w", t.display, err)
@@ -100,6 +107,29 @@ func (e *Executor) Revert(ctx context.Context, en manifest.Entry) (Reverted, err
 		return Reverted{}, err
 	}
 	return res, nil
+}
+
+// holdsLocal reports whether one of the local directories of a tree entry has anything in it.
+func holdsLocal(t target, en manifest.Entry) (bool, error) {
+	if en.Op != manifest.OpTree {
+		return false, nil
+	}
+	for _, l := range en.Local {
+		entries, err := fs.ReadDir(t.root.FS(), t.rel+"/"+l)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+		case err != nil:
+			// Not a directory (something else is there), or unreadable: keeping it is the
+			// safe side.
+			if _, statErr := t.root.Lstat(filepath.FromSlash(t.rel + "/" + l)); statErr != nil {
+				return false, statErr
+			}
+			return true, nil
+		case len(entries) > 0:
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (e *Executor) forget(in manifest.Intent, cause error) error {
@@ -194,7 +224,7 @@ func (e *Executor) Settle(in manifest.Intent) manifest.Observation {
 		}
 	} else {
 		removeAllIn(t.root, sibling(t.rel, "tmp", in.ID))
-		cur := observe(t, en.Op)
+		cur := observe(t, en.Op, en.Local...)
 		switch {
 		case hasOld && cur.State == Absent:
 			if err := renameIn(t.root, old, t.rel); err != nil {
@@ -204,7 +234,7 @@ func (e *Executor) Settle(in manifest.Intent) manifest.Observation {
 			removeAllIn(t.root, old)
 		}
 	}
-	cur := observe(t, en.Op)
+	cur := observe(t, en.Op, en.Local...)
 	switch cur.State {
 	case Unknown:
 		return manifest.Observation{Err: cur.Err}

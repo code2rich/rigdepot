@@ -47,7 +47,8 @@ func newBackground(app *App) *Background {
 // function stops them.
 //
 // The outbox takes the mail server from the platform settings (mailSettings) and adds the
-// readiness item "mail"; the settings page's test mail goes through notify too. The module host
+// readiness item "mail"; the settings page's test mail goes through notify too. notify
+// subscribes its rules to the bus and finds the recipients in access. The module host
 // keeps its switches and the modules' settings in the settings package, writes the modules'
 // audit entries into the audit log and asks access for their permissions (modules.go); apiMounts
 // mounts its routes under /api/v1/x/. The daily check of the audit chain is a job too
@@ -59,10 +60,12 @@ func startBackground(ctx context.Context, app *App) (func(), error) {
 		return nil, err
 	}
 	b.Notify, err = notify.New(notify.Options{DB: app.db, Jobs: b.Jobs, Config: mailSettings{app.settings}, Channels: app.mailChannels,
-		Catalog: cat, DefaultLocale: app.cfg.DefaultLocale, Log: app.log})
+		Catalog: cat, DefaultLocale: app.cfg.DefaultLocale, Log: app.log, People: app.access, BaseURL: app.cfg.BaseURL})
 	if err != nil {
 		return nil, err
 	}
+	// The rules from events to notifications: in-app and by mail (M1-2F).
+	b.Notify.Subscribe(b.Events)
 	// Mail that does not work degrades the server; it still serves.
 	app.AddReadyCheck(ReadyCheck{Name: "mail", Check: b.Notify.Check})
 	if app.hooks.sendTestMail == nil {

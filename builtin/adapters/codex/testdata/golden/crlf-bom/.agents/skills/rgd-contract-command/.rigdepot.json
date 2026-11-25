@@ -1,0 +1,6 @@
+{
+  "digest": "sha256:5d334c130eb84efb47f3f7a4cff6f1124c2e68d44f3ef4a356068f82bba675ed",
+  "note": "managed-by: Rigdepot",
+  "resource": "workflow/contract-command@1",
+  "tool": "codex"
+}

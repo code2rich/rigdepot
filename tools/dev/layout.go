@@ -34,6 +34,7 @@ var cliPackages = []string{
 	"internal/sandbox",
 	"internal/desired",
 	"internal/sync",
+	"internal/flow",
 	"internal/apiclient",
 	"internal/keyring",
 	"internal/device",

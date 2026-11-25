@@ -77,6 +77,12 @@ type planned struct {
 
 func (s *suite) detectAndPlan(r reporter, home string, c fixtureCase, pure bool) (planned, bool) {
 	r.Helper()
+	return s.detectAndPlanWith(r, home, c, pure, standardArtifacts)
+}
+
+// detectAndPlanWith is detectAndPlan with other artifacts.
+func (s *suite) detectAndPlanWith(r reporter, home string, c fixtureCase, pure bool, artifacts func(adapter.Capabilities) []adapter.Artifact) (planned, bool) {
+	r.Helper()
 	ctx := context.Background()
 	env := newToolEnv(home, c.spec, s.a.Profile())
 	d, err := s.a.Detect(ctx, env.env)
@@ -91,7 +97,7 @@ func (s *suite) detectAndPlan(r reporter, home string, c fixtureCase, pure bool)
 	req := adapter.PlanRequest{
 		Env:       env.env,
 		Detection: d,
-		Artifacts: standardArtifacts(s.a.Capabilities(d)),
+		Artifacts: artifacts(s.a.Capabilities(d)),
 		Options:   adapter.Options{MCPMode: adapter.MCPNativeEnv},
 	}
 
@@ -219,12 +225,23 @@ func (s *suite) apply(r reporter, ex executor, p planned, m *manifest) syncResul
 			// as wanted
 		case st.obs.digest == st.want:
 			m.entries[i].digest = st.want // someone made it what we want: only the record changes
-		case st.obs.digest == m.entries[i].digest:
+		case st.obs.digest == m.entries[i].digest && st.t.kind == "key":
+			// A key is undone and set again, so that its entry records the bytes it added.
 			if _, err := ex.Revert(m.entries[i]); err != nil {
 				r.fail(checkCore, "update %s: %v", st.t, err)
 				continue
 			}
 			e, err := ex.Apply(st.op, ex.Observe(st.t))
+			if err != nil {
+				r.fail(checkCore, "update %s: %v", st.t, err)
+				continue
+			}
+			m.entries[i] = e
+			res.writes++
+			res.lines = append(res.lines, "~ "+st.t.String())
+		case st.obs.digest == m.entries[i].digest:
+			// A tree or a file is replaced in place, as the sync engine does.
+			e, err := ex.Apply(st.op, st.obs)
 			if err != nil {
 				r.fail(checkCore, "update %s: %v", st.t, err)
 				continue
@@ -330,6 +347,7 @@ func (s *suite) runCase(r reporter, c fixtureCase) {
 	}
 
 	s.checkDrift(r, c, ex, m, work)
+	s.checkLocal(r, c, ex, m, work)
 
 	// Uninstall: undo every entry, newest first.
 	for i := len(m.entries) - 1; i >= 0; i-- {
@@ -561,6 +579,61 @@ func (s *suite) checkUnreadable(r reporter, ex executor, p planned, res syncResu
 	}
 	if len(changes) > 0 || res.writes > 0 {
 		r.fail(checkUnreadable, "with a configuration file that does not parse, the sync wrote:\n%s", describeChanges(changes))
+	}
+}
+
+// checkLocal writes into the local directories of every tree that has them, the way an agent
+// keeps its memory, then syncs again (nothing to do, nothing reported) and syncs a new version
+// (what was written into them is still there).
+func (s *suite) checkLocal(r reporter, c fixtureCase, ex executor, m *manifest, work string) {
+	r.Helper()
+	written := map[string]string{} // file -> content
+	for _, e := range m.entries {
+		if e.target.kind != "tree" || len(e.target.local) == 0 {
+			continue
+		}
+		if o := ex.Observe(e.target); o.state != present || o.digest != e.digest {
+			continue // changed by hand before (the drift check): reported anyway
+		}
+		dir := filepath.Join(work, filepath.FromSlash(strings.TrimPrefix(e.target.path, "~/")))
+		for _, l := range e.target.local {
+			file := filepath.Join(dir, filepath.FromSlash(l), "written-here.md")
+			content := "written into " + l + " on this computer\n"
+			if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+				r.fatal(checkLocal, "%v", err)
+			}
+			if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
+				r.fatal(checkLocal, "%v", err)
+			}
+			written[file] = content
+		}
+	}
+	if len(written) == 0 {
+		return
+	}
+	again, ok := s.detectAndPlan(r, work, c, false)
+	if !ok {
+		return
+	}
+	before := mustSnapshot(r, work)
+	res := s.apply(r, ex, again, m)
+	for _, t := range res.drifted {
+		if len(t.local) > 0 {
+			r.fail(checkLocal, "what was written into the local directories of %s was reported as a change by hand", t)
+		}
+	}
+	if cs := diff(before, mustSnapshot(r, work)); len(cs) > 0 {
+		r.fail(checkLocal, "a sync after writing into local directories wrote something:\n%s", describeChanges(cs))
+	}
+	next, ok := s.detectAndPlanWith(r, work, c, false, func(caps adapter.Capabilities) []adapter.Artifact { return artifactsAt(caps, " (version 2)") })
+	if !ok {
+		return
+	}
+	s.apply(r, ex, next, m)
+	for file, content := range written {
+		if got, err := os.ReadFile(file); err != nil || string(got) != content {
+			r.fail(checkLocal, "after an update %s is %q, %v; what was written into a local directory has to stay", file, got, err)
+		}
 	}
 }
 

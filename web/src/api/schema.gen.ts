@@ -2215,6 +2215,8 @@ export interface components {
         NotificationPage: {
             items: components["schemas"]["Notification"][];
             next_cursor?: string;
+            /** @description How many of my notifications are unread, over all pages: the number on the bell. */
+            unread: number;
         };
         /** @description Either `ids`, or `all` to mark everything read. */
         MarkNotificationsReadRequest: {
@@ -4291,7 +4293,8 @@ export interface operations {
                      *           "created_at": "2026-11-25T09:51:00Z"
                      *         }
                      *       ],
-                     *       "next_cursor": "eyJiIjoiMDE5M2E0YjIifQ"
+                     *       "next_cursor": "eyJiIjoiMDE5M2E0YjIifQ",
+                     *       "unread": 3
                      *     }
                      */
                     "application/json": components["schemas"]["NotificationPage"];
@@ -4320,7 +4323,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Marked. */
+            /** @description Marked. Ids that are not mine, or not notifications, are ignored. */
             204: {
                 headers: {
                     [name: string]: unknown;

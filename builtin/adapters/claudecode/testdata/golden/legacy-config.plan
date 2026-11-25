@@ -1,4 +1,5 @@
 op write-tree ~/.claude/skills/rgd-contract-skill (skill/contract-skill@3): SKILL.md, scripts/check.sh*
+op write-tree ~/.claude/skills/rgd-contract-agent (agent/contract-agent@1): SKILL.md, memory/README.md, skills/review/SKILL.md local memory, workspace
 op write-file ~/.claude/commands/rgd-contract-command.md (workflow/contract-command@1)
 op write-file ~/.claude/agents/rgd-contract-agent.md (agent/contract-agent@1)
 op set-key ~/.claude/.config.json json ["mcpServers","rgd-contract-stdio"] (mcp/contract-stdio@2) = {"args":["--stdio","--log-level","info"],"command":"contract-mcp","env":{"CONTRACT_MODE":"read-only"},"type":"stdio"}
@@ -6,6 +7,7 @@ op set-key ~/.claude/.config.json json ["mcpServers","rgd-contract-http"] (mcp/c
 op set-key ~/.claude/.config.json json ["mcpServers","rgd-contract-secret"] (mcp/contract-secret@1) = {"headers":{"Authorization":"Bearer ${CONTRACT_TOKEN}"},"type":"http","url":"https://secret.example.com/mcp"}
 core:
   + tree ~/.claude/skills/rgd-contract-skill
+  + tree ~/.claude/skills/rgd-contract-agent
   + file ~/.claude/commands/rgd-contract-command.md
   + file ~/.claude/agents/rgd-contract-agent.md
   + key ~/.claude/.config.json mcpServers.rgd-contract-stdio

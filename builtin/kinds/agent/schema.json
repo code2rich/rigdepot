@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rigdepot.code2rich.com/schema/repo/v1/kinds/agent.schema.json",
+  "title": "Agent",
+  "description": "agent.yaml in agents/<code>/: a role with fixed duties, its own skills, the resources it binds and the directories that stay on each person's computer. The role's instructions are in the entry file (AGENT.md); the metadata is in meta.yaml.",
+  "type": "object",
+  "required": ["id"],
+  "properties": {
+    "id": {
+      "description": "The agent's code. It equals the name of its directory.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "minLength": 2,
+      "maxLength": 48
+    },
+    "entry": {
+      "description": "The file with the role's instructions, for the AI.",
+      "type": "string",
+      "minLength": 1,
+      "default": "AGENT.md"
+    },
+    "skills": {
+      "description": "The agent's own skills: names of directories under skills/, each with a SKILL.md.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/code" },
+      "uniqueItems": true
+    },
+    "binds": {
+      "description": "Codes of resources of the repository the agent works with; they are installed along with it.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/code" },
+      "uniqueItems": true
+    },
+    "mcp": {
+      "description": "Codes of the MCP servers the agent depends on.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/code" },
+      "uniqueItems": true
+    },
+    "local": {
+      "description": "Directories that stay on each person's computer, such as memory/: an update does not overwrite them and they do not count towards the content digest.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "code": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "minLength": 2,
+      "maxLength": 48
+    }
+  }
+}
