@@ -97,12 +97,27 @@ func (l *readLog) add(p string) {
 	}
 }
 
-// envFor is the Env of one adapter. ReadFile and Stat reach the home directory and the absolute
-// roots the profile resolves to, and nothing else.
-func (e *Engine) envFor(p adapter.Profile, log *readLog) adapter.Env {
-	sys := e.sys
-	env := adapter.Env{GOOS: sys.GOOS, Home: sys.Home, Getenv: sys.Getenv, LookPath: sys.LookPath, Version: sys.Version}
-	allowed := []string{sys.Home}
+// envFor is the Env of one adapter in a run of the engine, recording what it reads in log.
+func (e *Engine) envFor(p adapter.Profile, log *readLog) adapter.Env { return e.sys.adapterEnv(p, log) }
+
+// AdapterEnv is what the adapter with profile p sees of this computer: ReadFile and Stat reach
+// the home directory and the absolute roots the profile resolves to, and nothing else; tools
+// are found on PATH and asked for their version with RunVersion. The sync engine detects and
+// plans with this Env, and rgd doctor detects with it too, so that both see a tool the same
+// way.
+func (s System) AdapterEnv(p adapter.Profile) adapter.Env { return s.withDefaults().adapterEnv(p, nil) }
+
+// adapterEnv is AdapterEnv on a System with its defaults filled in. log, when not nil,
+// records the paths read.
+func (s System) adapterEnv(p adapter.Profile, log *readLog) adapter.Env {
+	env := adapter.Env{GOOS: s.GOOS, Home: s.Home, Getenv: s.Getenv, LookPath: s.LookPath, Version: s.Version}
+	// A home directory that is not known (or not absolute) is not the current directory:
+	// nothing under "~" can be read then, which detection reports as unknown.
+	homeKnown := filepath.IsAbs(s.Home)
+	var allowed []string
+	if homeKnown {
+		allowed = append(allowed, s.Home)
+	}
 	if roots, err := adapter.ResolveRoots(p.Roots, env); err == nil {
 		for _, r := range roots {
 			if r != "~" && !strings.HasPrefix(r, "~/") {
@@ -115,11 +130,14 @@ func (e *Engine) envFor(p adapter.Profile, log *readLog) adapter.Env {
 			return "", &fs.PathError{Op: "read", Path: p, Err: fmt.Errorf("%w: %s", fs.ErrPermission, why)}
 		}
 		if p == "~" || strings.HasPrefix(p, "~/") {
+			if !homeKnown {
+				return refuse("the home directory is unknown")
+			}
 			rel := path.Clean(strings.TrimPrefix(strings.TrimPrefix(p, "~"), "/"))
 			if rel == ".." || strings.HasPrefix(rel, "../") || strings.Contains(rel, `\`) {
 				return refuse("outside the home directory")
 			}
-			return filepath.Join(sys.Home, filepath.FromSlash(rel)), nil
+			return filepath.Join(s.Home, filepath.FromSlash(rel)), nil
 		}
 		native := filepath.Clean(filepath.FromSlash(p))
 		if !filepath.IsAbs(native) {

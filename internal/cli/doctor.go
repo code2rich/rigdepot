@@ -17,6 +17,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/i18n"
 	"github.com/code2rich/rigdepot/internal/i18n/msg"
 	"github.com/code2rich/rigdepot/internal/localconfig"
+	"github.com/code2rich/rigdepot/internal/sync"
 )
 
 func init() { register("", newDoctorCmd) }
@@ -65,7 +66,7 @@ func (a *app) doctorEnv() *doctor.Env {
 	if h, err := a.env.HomeDir(); err == nil {
 		env.UserHome = h
 	}
-	env.AdapterEnv = doctor.HostAdapterEnv(a.env.GOOS, env.UserHome, a.env.Getenv)
+	env.AdapterEnv = sync.System{GOOS: a.env.GOOS, Home: env.UserHome, Getenv: a.env.Getenv}.AdapterEnv
 	return env
 }
 
