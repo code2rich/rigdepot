@@ -10,7 +10,9 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
@@ -137,7 +139,13 @@ func newFixture(t *testing.T, db *dbx.DB) *fixture {
 			t.Fatal(err)
 		}
 	}
-	f.svc, err = feedback.New(db, acc, rs, feedback.Options{Auditor: log, Events: f.events})
+	// A clock that moves a second at every reading, so that the order of changes does not
+	// depend on two of them falling into the same millisecond.
+	var tick atomic.Int64
+	now := func() time.Time {
+		return time.Date(2026, 11, 25, 10, 0, 0, 0, time.UTC).Add(time.Duration(tick.Add(1)) * time.Second)
+	}
+	f.svc, err = feedback.New(db, acc, rs, feedback.Options{Auditor: log, Events: f.events, Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
