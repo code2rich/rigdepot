@@ -296,7 +296,96 @@ func TestConstantNameClash(t *testing.T) {
 	files := messageTree()
 	files["brand.json"] = sampleBrand
 	files["locales/en/check.json"] = `{"a.b_c": "x", "a_b.c": "y", "check.structure.missing": "{{file}} is missing"}`
-	if _, err := generate(writeTree(t, files), nil); err == nil || !strings.Contains(err.Error(), "ABC") {
+	if _, _, err := generate(writeTree(t, files), nil); err == nil || !strings.Contains(err.Error(), "ABC") {
 		t.Errorf("err = %v, want the clash on ABC", err)
+	}
+}
+
+// webMessageTree adds the console: its own catalogue and TypeScript that
+// uses every key, written out in full.
+func webMessageTree() map[string]string {
+	files := messageTree()
+	files["locales/en/web.json"] = `{"items.count_one": "{{count}} item", "items.count_other": "{{count}} items", "nav.home": "Home"}` + "\n"
+	files["locales/zh-CN/web.json"] = `{"items.count_one": "{{count}} 项", "items.count_other": "{{count}} 项", "nav.home": "工作台"}` + "\n"
+	files["web/src/shell.tsx"] = "const label = t('nav.home')\nconst n = t(\"items.count\", { count: 2 })\n"
+	return files
+}
+
+func TestMessageCheckSeesTheConsole(t *testing.T) {
+	detail, err := runMessageCheck(t, webMessageTree())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(detail, "2 console keys, each used in web/src") {
+		t.Errorf("detail = %q", detail)
+	}
+}
+
+func TestMessageCheckFindsUnusedConsoleKeys(t *testing.T) {
+	tests := map[string]func(map[string]string){
+		"not used at all": func(f map[string]string) {
+			f["web/src/shell.tsx"] = "const n = t('items.count', { count: 2 })\n"
+		},
+		"used only by a test": func(f map[string]string) {
+			f["web/src/shell.tsx"] = "const n = t('items.count', { count: 2 })\n"
+			f["web/src/shell.test.tsx"] = "expect(t('nav.home')).toBe('Home')\n"
+		},
+		"used only by a generated file": func(f map[string]string) {
+			f["web/src/shell.tsx"] = "const n = t('items.count', { count: 2 })\n"
+			f["web/src/i18n/keys.gen.ts"] = "export type MessageKey = \"nav.home\"\n"
+		},
+		"assembled from parts": func(f map[string]string) {
+			f["web/src/shell.tsx"] = "const n = t('items.count', { count: 2 })\nconst page = 'home'\nconst label = t(`nav.${page}`)\n"
+		},
+		"no console sources": func(f map[string]string) {
+			delete(f, "web/src/shell.tsx")
+		},
+	}
+	for name, change := range tests {
+		t.Run(name, func(t *testing.T) {
+			files := webMessageTree()
+			change(files)
+			_, err := runMessageCheck(t, files)
+			if err == nil || !strings.Contains(err.Error(), `key "nav.home" is not used anywhere in web/src`) {
+				t.Errorf("err = %v", err)
+			}
+		})
+	}
+}
+
+// A key of a shared catalogue may be used by the console alone.
+func TestSharedKeysUsedByTheConsoleCount(t *testing.T) {
+	files := webMessageTree()
+	delete(files, "builtin/checks/structure/structure.go")
+	if _, err := runMessageCheck(t, files); err == nil {
+		t.Fatal("check.structure.missing is used by nobody, but the check passed")
+	}
+	files["web/src/checks.tsx"] = "const text = t('check.structure.missing', { file: 'x' })\n"
+	if _, err := runMessageCheck(t, files); err != nil {
+		t.Errorf("used by the console only: %v", err)
+	}
+}
+
+func TestScanTSStrings(t *testing.T) {
+	src := "// it's a comment with 'quotes'\n" +
+		"/* and \"more\" */\n" +
+		"const a = t('nav.home') // done\n" +
+		"const b = `${t(page.label)} · ${BRAND.name}`\n" +
+		"const c = { x: \"shell.skip\" }\n" +
+		"const d = `plain template`\n" +
+		"const e = `nested ${f(`inner`, { y: 'deep' })} end`\n" +
+		"const f = 'it\\'s'\n" +
+		"const g = 'unclosed\n" +
+		"t('next.line')\n"
+	got := strings.Join(scanTSStrings(src), "|")
+	for _, must := range []string{"nav.home", "shell.skip", "plain template", "inner", "deep", "it's", "next.line"} {
+		if !strings.Contains("|"+got+"|", "|"+must+"|") {
+			t.Errorf("missed %q in %q", must, got)
+		}
+	}
+	for _, mustNot := range []string{"quotes", "more", "nested ", " · "} {
+		if strings.Contains(got, mustNot) {
+			t.Errorf("saw %q in %q", mustNot, got)
+		}
 	}
 }

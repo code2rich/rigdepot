@@ -30,19 +30,19 @@ type brandNames struct {
 }
 
 // brandFields lists the constants in the order they are generated, each with
-// its documentation.
-func (b brandNames) fields() []struct{ name, value, doc string } {
-	return []struct{ name, value, doc string }{
-		{"Name", b.Name, "the product name."},
-		{"CLI", b.CLI, "the name of the command-line program, as typed."},
-		{"CLILong", b.CLILong, "the long name of the command-line program, used for packages."},
-		{"Server", b.Server, "the name of the server program."},
-		{"Home", b.Home, "the name of the local data directory inside the user's home directory."},
-		{"Prefix", b.Prefix, "the prefix of every entry written into another tool's configuration."},
-		{"ManagedMarker", b.ManagedMarker, "the marker left in files this product manages."},
-		{"MCPEntry", b.MCPEntry, "the name of the single-entry MCP server."},
-		{"RepoConfig", b.RepoConfig, "the file name of a resource repository's configuration."},
-		{"EnvPrefix", b.EnvPrefix, "the prefix of every environment variable the programs read."},
+// its key in brand.json and its documentation.
+func (b brandNames) fields() []struct{ name, key, value, doc string } {
+	return []struct{ name, key, value, doc string }{
+		{"Name", "name", b.Name, "the product name."},
+		{"CLI", "cli", b.CLI, "the name of the command-line program, as typed."},
+		{"CLILong", "cliLong", b.CLILong, "the long name of the command-line program, used for packages."},
+		{"Server", "server", b.Server, "the name of the server program."},
+		{"Home", "home", b.Home, "the name of the local data directory inside the user's home directory."},
+		{"Prefix", "prefix", b.Prefix, "the prefix of every entry written into another tool's configuration."},
+		{"ManagedMarker", "managedMarker", b.ManagedMarker, "the marker left in files this product manages."},
+		{"MCPEntry", "mcpEntry", b.MCPEntry, "the name of the single-entry MCP server."},
+		{"RepoConfig", "repoConfig", b.RepoConfig, "the file name of a resource repository's configuration."},
+		{"EnvPrefix", "envPrefix", b.EnvPrefix, "the prefix of every environment variable the programs read."},
 	}
 }
 
@@ -76,26 +76,33 @@ type generated struct {
 
 // generate computes every generated file without touching the disk. env is
 // the environment of the code generators it runs; nil means this process's.
-func generate(root string, env []string) ([]generated, error) {
+// skipped lists the files this machine cannot generate (the API types of
+// the web console without Node): they are reported as not run.
+func generate(root string, env []string) (files []generated, skipped []webSkipped, err error) {
 	b, err := readBrand(root)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	src, err := brandGo(b)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	files := []generated{{path: "internal/brand/brand_gen.go", data: src}}
+	files = []generated{{path: "internal/brand/brand_gen.go", data: src}}
 	messages, err := generateMessages(root)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	files = append(files, messages...)
 	api, err := generateAPI(root, env)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return append(files, api...), nil
+	files = append(files, api...)
+	web, skipped, err := generateWeb(root, env, b)
+	if err != nil {
+		return nil, nil, err
+	}
+	return append(files, web...), skipped, nil
 }
 
 func brandGo(b brandNames) ([]byte, error) {
@@ -121,37 +128,43 @@ func runGen(root string, args []string) error {
 			return fmt.Errorf("unknown argument %q (the only option is --check)", a)
 		}
 	}
-	return gen(root, nil, check)
+	_, err := gen(root, nil, check)
+	return err
 }
 
 // gen regenerates everything with the code generators running in env (nil:
 // this process's environment) and writes the result, or with check only
-// reports what is out of date.
-func gen(root string, env []string, check bool) error {
-	files, err := generate(root, env)
+// reports what is out of date. A file this machine cannot generate is
+// printed as not run and returned in skipped; it never counts as up to
+// date.
+func gen(root string, env []string, check bool) (skipped []webSkipped, err error) {
+	files, skipped, err := generate(root, env)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	for _, s := range skipped {
+		fmt.Printf("not run: %s (%s)\n", s.path, s.reason)
 	}
 	stale := staleFiles(root, files)
 	if check {
 		if len(stale) > 0 {
-			return fmt.Errorf("generated files are out of date: %s\nrun: go run ./tools/dev gen", strings.Join(stale, ", "))
+			return skipped, fmt.Errorf("generated files are out of date: %s\nrun: go run ./tools/dev gen", strings.Join(stale, ", "))
 		}
-		return nil
+		return skipped, nil
 	}
 	for _, f := range files {
 		path := filepath.Join(root, filepath.FromSlash(f.path))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return err
+			return skipped, err
 		}
 		if err := os.WriteFile(path, f.data, 0o644); err != nil {
-			return err
+			return skipped, err
 		}
 	}
 	for _, p := range stale {
 		fmt.Println("wrote", p)
 	}
-	return nil
+	return skipped, nil
 }
 
 // staleFiles returns the generated files whose content on disk differs. A

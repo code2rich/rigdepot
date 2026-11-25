@@ -29,6 +29,8 @@ var tasks = map[string]task{
 	"gen":              {"regenerate generated files; --check only reports whether they are stale", runGen},
 	"check-linux":      {"run check inside a local Linux container (needs Docker)", runCheckLinux},
 	"release-snapshot": {"build all release artifacts into dist/ without publishing", runReleaseSnapshot},
+	"web-deps":         {"install the web console's dependencies (needs Node, pnpm and the network)", runWebDeps},
+	"web":              {"build the web console into web/dist for go build -tags webdist", runWeb},
 }
 
 func main() {

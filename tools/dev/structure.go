@@ -80,6 +80,16 @@ func isGenerated(data []byte) bool {
 	return bytes.Contains(head, []byte("// Code generated ")) && bytes.Contains(head, []byte("DO NOT EDIT."))
 }
 
+// isGeneratedText reports whether a file in another language carries the
+// generated-code marker in a comment of its own syntax.
+func isGeneratedText(data []byte) bool {
+	head := data
+	if len(head) > 512 {
+		head = head[:512]
+	}
+	return bytes.Contains(head, []byte("Code generated ")) && bytes.Contains(head, []byte("DO NOT EDIT."))
+}
+
 // goFile is a parsed Go file.
 type goFile struct {
 	rel  string
@@ -340,14 +350,22 @@ func needsLicenseHeader(f sourceFile) bool {
 		return false
 	}
 	base := path.Base(f.rel)
+	if lockFiles[base] {
+		return false
+	}
 	switch path.Ext(base) {
 	case ".go":
 		return !isGenerated(f.data)
-	case ".sh", ".ps1", ".yaml", ".yml", ".service", ".toml", ".ts", ".tsx", ".css", ".sql":
+	case ".ts", ".tsx", ".css":
+		return !isGeneratedText(f.data)
+	case ".sh", ".ps1", ".yaml", ".yml", ".service", ".toml", ".sql":
 		return true
 	}
 	return base == "Makefile" || base == "Dockerfile" || strings.HasPrefix(base, "Dockerfile.")
 }
+
+// lockFiles are written by package managers; they cannot carry a header.
+var lockFiles = map[string]bool{"pnpm-lock.yaml": true}
 
 func checkLicenseHeaders(files []sourceFile) []violation {
 	var out []violation

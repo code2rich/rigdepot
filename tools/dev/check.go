@@ -49,9 +49,7 @@ func checkSteps() []step {
 			return "go vet ./...", s.command(nil, "go", "vet", "./...").Run()
 		}},
 		{"staticcheck", stepStaticcheck},
-		{"generated files", func(s *sandbox) (string, error) {
-			return "brand.json and api/openapi.yaml regenerated and compared", gen(s.root, s.env, true)
-		}},
+		{"generated files", stepGenerated},
 		{"structure rules", stepStructure},
 		{"messages", stepMessages},
 		{"tests", func(s *sandbox) (string, error) {
@@ -59,28 +57,55 @@ func checkSteps() []step {
 		}},
 		{"core only", stepCoreOnly},
 		{"cross-compile", stepCrossCompile},
-		{"web console", func(s *sandbox) (string, error) {
-			if !isFile(filepath.Join(s.root, "web", "package.json")) {
-				return "", errNotRun{"there is no web/package.json yet"}
-			}
-			return "", errors.New("web/package.json exists but the web console checks are not implemented in tools/dev")
-		}},
+		{"web console", stepWeb},
 	}
 }
 
+// stepGenerated regenerates everything and compares. A file this machine
+// cannot generate is named in the detail as not run.
+func stepGenerated(s *sandbox) (string, error) {
+	skipped, err := gen(s.root, s.env, true)
+	detail := "brand.json, api/openapi.yaml, locales/ and web/tokens regenerated and compared"
+	for _, sk := range skipped {
+		detail += "; not run: " + sk.path + " (" + sk.reason + ")"
+	}
+	return detail, err
+}
+
+// stepFormat runs gofmt -l on the repository's Go files. It lists them
+// itself instead of handing gofmt ".": gofmt would also walk into
+// web/node_modules, where some packages ship Go files of their own.
 func stepFormat(s *sandbox) (string, error) {
 	goroot, err := goEnv(s.root, "GOROOT")
 	if err != nil {
 		return "", err
 	}
-	out, err := output(s.root, s.env, filepath.Join(goroot, "bin", "gofmt"), "-l", ".")
+	files, err := walkSource(s.root)
 	if err != nil {
 		return "", err
 	}
-	if out != "" {
-		return "", fmt.Errorf("these files are not gofmt-formatted:\n%s", out)
+	var goFiles []string
+	for _, f := range files {
+		if strings.HasSuffix(f.rel, ".go") {
+			goFiles = append(goFiles, filepath.FromSlash(f.rel))
+		}
 	}
-	return "gofmt -l .", nil
+	var unformatted []string
+	// In batches, to stay below the command-line length limit of Windows.
+	for start := 0; start < len(goFiles); start += 200 {
+		batch := goFiles[start:min(start+200, len(goFiles))]
+		out, err := output(s.root, s.env, filepath.Join(goroot, "bin", "gofmt"), append([]string{"-l"}, batch...)...)
+		if err != nil {
+			return "", err
+		}
+		if out != "" {
+			unformatted = append(unformatted, out)
+		}
+	}
+	if len(unformatted) > 0 {
+		return "", fmt.Errorf("these files are not gofmt-formatted:\n%s", strings.Join(unformatted, "\n"))
+	}
+	return fmt.Sprintf("gofmt -l on %d files (web/node_modules left out)", len(goFiles)), nil
 }
 
 func stepStaticcheck(s *sandbox) (string, error) {
