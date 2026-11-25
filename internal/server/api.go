@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/code2rich/rigdepot/internal/buildinfo"
 	"github.com/code2rich/rigdepot/internal/logging"
 	"github.com/code2rich/rigdepot/internal/server/access"
 	"github.com/code2rich/rigdepot/internal/server/audit"
@@ -41,6 +42,7 @@ type api struct {
 	*setupAPI
 	*auditAPI
 	*modulesAPI
+	*toolsAPI
 }
 
 // fallback puts notImplemented's methods one embedding level below the
@@ -69,6 +71,11 @@ type hooks struct {
 	// sendTestMail sends a test message with the given mail server
 	// (notify, M1-18). Nil: sendTestMail answers 501.
 	sendTestMail func(ctx context.Context, server settings.MailConfig, to string) error
+	// toolUsage counts people by tool and by command-line version, from
+	// the devices (authn, M1-20) and the install reports (delivery). Nil:
+	// the tool adapters page shows no counts (0 people, an empty
+	// distribution).
+	toolUsage toolUsage
 }
 
 // apiMounts builds the handlers that serve mounts: the API under /api/ and
@@ -86,6 +93,10 @@ func apiMounts(app *App) Mounts {
 		setupAPI:    &setupAPI{settings: app.settings, hooks: &app.hooks},
 		auditAPI:    &auditAPI{log: app.audit, hooks: &app.hooks},
 		modulesAPI:  &modulesAPI{settings: app.settings},
+		toolsAPI:    &toolsAPI{settings: app.settings, hooks: &app.hooks, adapters: app.adapters, version: app.version},
+	}
+	if impl.toolsAPI.version == "" {
+		impl.toolsAPI.version = buildinfo.Get().Version
 	}
 	// The routes of the optional modules that are on, under /api/v1/x/<id>/;
 	// they log their own route templates.

@@ -414,3 +414,53 @@ func TestModuleValues(t *testing.T) {
 		}
 	})
 }
+
+func TestCompareVersions(t *testing.T) {
+	for _, c := range []struct {
+		a, b string
+		want int
+	}{
+		{"0.4.0", "0.4.0", 0}, {"0.4.0", "0.10.0", -1}, {"1.0.0", "0.99.99", 1}, {"0.5.0-rc.1", "0.5.0", -1},
+		{"0.5.0-rc.2", "0.5.0-rc.1", 1}, {"0.5.0+build.7", "0.5.0", 0}, {"bad", "0.0.0", -1}, {"0.0.0", "bad", 1},
+	} {
+		if got := settings.CompareVersions(c.a, c.b); got != c.want {
+			t.Errorf("CompareVersions(%q, %q) = %d, want %d", c.a, c.b, got, c.want)
+		}
+	}
+	for _, bad := range []string{"", "1.2", "1.2.3.4", "v1.2.3", "01.2.3", "1.2.3-", "1.2.3-a_b", "-1.2.3"} {
+		if _, ok := settings.ParseVersion(bad); ok {
+			t.Errorf("ParseVersion(%q) accepted", bad)
+		}
+	}
+}
+
+func TestToolSettings(t *testing.T) {
+	dbxtest.Each(t, func(t *testing.T, db *dbx.DB) {
+		f := setup(t, db, settings.Options{})
+		ctx := context.Background()
+		if tools, err := f.s.Tools(ctx, admin); err != nil || len(tools.DisabledAdapters) != 0 || tools.CLIMinVersion != "" {
+			t.Fatalf("fresh: %+v %v", tools, err)
+		}
+		if _, err := f.s.Tools(ctx, member); !errors.Is(err, settings.ErrDenied) {
+			t.Errorf("a member reads: %v", err)
+		}
+		if err := f.s.SetAdapterEnabled(ctx, member, "codex", "Codex", false); !errors.Is(err, settings.ErrDenied) {
+			t.Errorf("a member switches: %v", err)
+		}
+		if err := f.s.SetAdapterEnabled(ctx, admin, "codex", "Codex", false); err != nil {
+			t.Fatal(err)
+		}
+		if err := f.s.SetCLIMinVersion(ctx, admin, "0.3.0", "0.4.0"); err == nil {
+			t.Error("below the floor accepted")
+		}
+		if err := f.s.SetCLIMinVersion(ctx, admin, "0.4.1", "0.4.0"); err != nil {
+			t.Fatal(err)
+		}
+		if tools, err := f.s.Tools(ctx, admin); err != nil || strings.Join(tools.DisabledAdapters, ",") != "codex" || tools.CLIMinVersion != "0.4.1" {
+			t.Errorf("after the changes: %+v %v", tools, err)
+		}
+		if n := len(f.entries(t, "cli.")); n != 1 {
+			t.Errorf("%d cli entries, want 1 (the refusal below the floor is not a denial)", n)
+		}
+	})
+}

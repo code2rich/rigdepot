@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/ext/module"
 	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/brand"
@@ -81,6 +82,10 @@ type fixtureOptions struct {
 	// the deployment disabled.
 	modules []module.Module
 	locked  []string
+	// adapters stand in for the tool adapters compiled in; version for the
+	// server's version.
+	adapters []adapter.Adapter
+	version  string
 }
 
 func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
@@ -116,7 +121,7 @@ func newAPIWith(t *testing.T, o fixtureOptions) *apiFixture {
 	if o.hooks {
 		app.hooks.firstAdmin = fakeFirstAdmin{}
 	}
-	app.mailChannels, app.modules = o.channels, o.modules
+	app.mailChannels, app.modules, app.adapters, app.version = o.channels, o.modules, o.adapters, o.version
 	cfg.ModulesDisabled = o.locked
 	if o.background {
 		app.bg = newBackground(app)

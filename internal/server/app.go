@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/code2rich/rigdepot/ext/adapter"
 	"github.com/code2rich/rigdepot/ext/module"
 	extnotify "github.com/code2rich/rigdepot/ext/notify"
 	"github.com/code2rich/rigdepot/internal/server/access"
@@ -61,6 +62,11 @@ type App struct {
 	// modules are the optional modules compiled in; nil means the registry
 	// (ext/module). Tests put fake modules here.
 	modules []module.Module
+	// adapters are the tool adapters compiled in; nil means the registry
+	// (ext/adapter). Tests put adapters made from profiles here.
+	adapters []adapter.Adapter
+	// version is this server's version; "" means the build's (buildinfo).
+	version string
 
 	checks   []ReadyCheck
 	draining atomic.Bool
