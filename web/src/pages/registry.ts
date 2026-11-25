@@ -83,7 +83,7 @@ export const NAV: readonly NavGroup[] = [
         path: '/manage/resources',
         label: 'nav.resources',
         icon: 'layers',
-        component: notBuilt('resources'),
+        component: lazy(() => import('./resources')),
       },
     ],
   },
