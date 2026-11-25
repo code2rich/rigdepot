@@ -1,0 +1,5 @@
+meta:
+  name: Jira
+  summary: j
+server:
+  type: http
