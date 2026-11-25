@@ -82,8 +82,8 @@ type workflow struct{}
 
 type workflowSpec struct{ refs []string }
 
-// References is what the catalog reads to list what a resource uses.
-func (s workflowSpec) References() []string { return s.refs }
+// Refs is what the catalog reads to list what a resource uses (kind.Referrer).
+func (s workflowSpec) Refs() []string { return s.refs }
 
 func (workflow) ID() string          { return resource.KindWorkflow }
 func (workflow) Layout() kind.Layout { return kind.Layout{Dir: "workflows", File: true, Ext: ".yaml"} }
@@ -106,6 +106,8 @@ func (workflow) Parse(ref resource.Ref, files fs.FS) (kind.Spec, error) {
 	for _, st := range doc.Steps {
 		s.refs = append(s.refs, st.Use)
 	}
+	slices.Sort(s.refs)
+	s.refs = slices.Compact(s.refs)
 	return s, nil
 }
 

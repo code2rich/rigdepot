@@ -223,10 +223,16 @@ const (
 	ConfigWarnUnknownKey = "config.warn.unknown_key"
 	// DisableAlready (cli.json): {{resource}} is already off on this computer.
 	DisableAlready = "disable.already"
+	// DisableAlreadyServer (cli.json): {{resource}} is already off for you.
+	DisableAlreadyServer = "disable.already_server"
 	// DisableDone (cli.json): Turned off {{resource}} on this computer.
 	DisableDone = "disable.done"
+	// DisableDoneServer (cli.json): Turned off {{resource}} for you, on all your computers from their next…
+	DisableDoneServer = "disable.done_server"
 	// DisableRequired (cli.json): {{resource}} is required by your team and cannot be turned off. Only t…
 	DisableRequired = "disable.required"
+	// DisableRequiredServer (cli.json): {{resource}} is required in your scope and cannot be turned off. Its o…
+	DisableRequiredServer = "disable.required_server"
 	// DisableShort (cli.json): Turn off a recommended resource on this computer; the next sync remove…
 	DisableShort = "disable.short"
 	// DisableSyncHint (cli.json): Run "{{command}}" to remove it from your AI tools.
@@ -403,8 +409,12 @@ const (
 	DoctorToolsUnverified = "doctor.tools.unverified"
 	// EnableAlready (cli.json): {{resource}} is already on.
 	EnableAlready = "enable.already"
+	// EnableAlreadyServer (cli.json): {{resource}} is already on for you.
+	EnableAlreadyServer = "enable.already_server"
 	// EnableDone (cli.json): Turned on {{resource}} on this computer.
 	EnableDone = "enable.done"
+	// EnableDoneServer (cli.json): Turned on {{resource}} for you, on all your computers from their next …
+	EnableDoneServer = "enable.done_server"
 	// EnableNotDelivered (cli.json): {{resource}} is still not installed here: {{reason}}.
 	EnableNotDelivered = "enable.not_delivered"
 	// EnableRequired (cli.json): {{resource}} is required: it is always installed.
@@ -821,6 +831,28 @@ const (
 	PlanTotal = "plan.total"
 	// PlanUntouched (cli.json): Not changed: your own skills, your own MCP servers, hooks (not install…
 	PlanUntouched = "plan.untouched"
+	// RemoteCached (cli.json): {{address}} cannot be reached ({{detail}}), so what it said at {{time}…
+	RemoteCached = "remote.cached"
+	// RemoteFailed (cli.json): {{address}} answered with an error: {{detail}}. Nothing was changed.
+	RemoteFailed = "remote.failed"
+	// RemoteKeepFailed (cli.json): Cannot keep what {{address}} said for when it cannot be reached: {{det…
+	RemoteKeepFailed = "remote.keep_failed"
+	// RemoteNewer (cli.json): {{cli}} {{latest}} is available; this is {{version}}.
+	RemoteNewer = "remote.newer"
+	// RemoteNotLoggedIn (cli.json): This computer is not signed in to {{address}}. Run "{{cli}} login" fir…
+	RemoteNotLoggedIn = "remote.not_logged_in"
+	// RemoteReportFailed (cli.json): What was installed could not be reported to {{address}}: {{detail}}
+	RemoteReportFailed = "remote.report_failed"
+	// RemoteSignedOut (cli.json): {{address}} no longer accepts this computer's sign-in: {{detail}}
+	RemoteSignedOut = "remote.signed_out"
+	// RemoteSignedOutHint (cli.json): Run "{{cli}} logout" and then "{{cli}} login". Nothing was changed.
+	RemoteSignedOutHint = "remote.signed_out_hint"
+	// RemoteTooOld (cli.json): {{address}} needs {{cli}} {{min}} or newer; this is {{version}}. Upgra…
+	RemoteTooOld = "remote.too_old"
+	// RemoteUnavailable (cli.json): {{resource}} could not be had from the server ({{detail}}); what was w…
+	RemoteUnavailable = "remote.unavailable"
+	// RemoteUnreachable (cli.json): {{address}} cannot be reached, and no earlier answer of it is kept her…
+	RemoteUnreachable = "remote.unreachable"
 	// RootShort (cli.json): Sync your team's AI coding resources into the AI tools on this compute…
 	RootShort = "root.short"
 	// SelectionNoSuchResource (cli.json): There is no resource {{resource}} in {{url}}.
@@ -847,7 +879,7 @@ const (
 	SourceNoGit = "source.no_git"
 	// SourceNoRef (cli.json): The resource repository {{url}} has no such branch, tag, commit or dir…
 	SourceNoRef = "source.no_ref"
-	// SourceNone (cli.json): There is nothing to sync from: give --repo <address>, or set it once w…
+	// SourceNone (cli.json): There is nothing to sync from: sign in with "{{cli}} login <server>", …
 	SourceNone = "source.none"
 	// SourceNotARepo (cli.json): {{url}} is not a resource repository: it has no {{file}}.
 	SourceNotARepo = "source.not_a_repo"
@@ -897,6 +929,8 @@ const (
 	StatusNoSource = "status.no_source"
 	// StatusNoSuchResource (cli.json): Nothing is known about {{resource}}: it is neither installed nor in th…
 	StatusNoSuchResource = "status.no_such_resource"
+	// StatusServer (cli.json): Server: {{source}}
+	StatusServer = "status.server"
 	// StatusShort (cli.json): Show what is installed, where, and whether it was changed since
 	StatusShort = "status.short"
 	// StatusSource (cli.json): Resource repository: {{source}}

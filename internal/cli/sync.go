@@ -87,7 +87,7 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 			return err
 		}
 	}
-	st, err := a.desiredState(ctx, l, f.src)
+	st, rem, err := a.resolveSource(ctx, l, f.src)
 	if errors.Is(err, errNoSource) {
 		return a.noSourceError(cmd.CommandPath())
 	}
@@ -104,9 +104,12 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 		Disabled:  l.cfg.List(localconfig.KeyToolsDisabled),
 		Overwrite: f.overwrite,
 		// Without a server, the only way to hand a tool an MCP server's secrets is the tool's
-		// own environment variable reference (decision D5); mcp.mode applies once there is one.
+		// own environment variable reference (decision D5).
+		// TODO(M1-28, M1-2A): with a server, mcp.mode (and the server's default below it) once
+		// the sealed secrets reach this computer and rgd mcp run can hand them over.
 		MCPMode: adapter.MCPNativeEnv,
 	}
+	rem.apply(&opt)
 	if f.plan {
 		return a.syncPlan(ctx, l, st, opt, f)
 	}
@@ -166,6 +169,11 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 		failure.Err = applyErr
 		doc.Error = &errorField{Code: failure.Code, Message: failure.Message}
 	}
+	exit := syncExit(p, res, kept)
+	if rem != nil && !rem.state.Cached {
+		a.report(ctx, rem, st, p, res, failure != nil || exit != nil && cliout.ExitOf(exit) == cliout.ExitFailure, exit != nil)
+		a.newerHint(rem)
+	}
 	if err := a.out.Result(cliout.Schema("sync", 1), doc, func(w io.Writer) error {
 		return a.writeView(w, a.syncResultView(l, p, st, res, kept, f))
 	}); err != nil {
@@ -174,7 +182,7 @@ func (a *app) runSync(ctx context.Context, cmd *cobra.Command, f syncFlags) erro
 	if failure != nil {
 		return failure
 	}
-	return syncExit(p, res, kept)
+	return exit
 }
 
 // knowledgeFetcher is the person's own git for the knowledge bases. Their addresses come from the

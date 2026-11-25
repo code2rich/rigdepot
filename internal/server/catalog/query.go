@@ -493,3 +493,89 @@ func (s *Service) Target(ctx context.Context, code string) (access.Target, bool,
 func (s *Service) SourceName(ctx context.Context, id string) string {
 	return s.sourceName(ctx, s.db, id)
 }
+
+// Live is the live version of a resource as package delivery hands it out: its content digest,
+// the address of its bundle and the bundle's size in bytes.
+type Live struct {
+	Version int
+	Digest  resource.Digest
+	Bundle  string
+	Size    int64
+}
+
+// LiveVersions returns, by resource id, the live version of each published resource among ids.
+// It checks no permission: the caller has found the resources with Catalog.
+func (s *Service) LiveVersions(ctx context.Context, ids []string) (map[string]Live, error) {
+	out := map[string]Live{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT r.id, v.number, v.digest, v.bundle, b.size
+		FROM resources r
+		JOIN resource_versions v ON v.resource_id = r.id AND v.number = r.current_version
+		JOIN blobs b ON b.digest = v.bundle
+		WHERE r.status = 'published' AND r.id IN (`+strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")+`)`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var l Live
+		if err := rows.Scan(&id, &l.Version, &l.Digest, &l.Bundle, &l.Size); err != nil {
+			return nil, err
+		}
+		out[id] = l
+	}
+	return out, rows.Err()
+}
+
+// BundleResources returns the published resources that have a version, live or earlier, stored
+// in the bundle at address. Package delivery hands a bundle only to someone who sees one of them.
+func (s *Service) BundleResources(ctx context.Context, address string) ([]Resource, error) {
+	rows, err := s.loadRows(ctx, s.db, `r.status = 'published' AND r.id IN (SELECT resource_id FROM resource_versions WHERE bundle = ?)`, address)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Resource, len(rows))
+	for i, r := range rows {
+		out[i] = r.Resource
+	}
+	return out, nil
+}
+
+// ResourceIDs returns the ids of the resources with the given codes, by code; codes the catalog
+// does not have are left out.
+func (s *Service) ResourceIDs(ctx context.Context, codes []string) (map[string]string, error) {
+	out := map[string]string{}
+	if len(codes) == 0 {
+		return out, nil
+	}
+	args := make([]any, len(codes))
+	for i, c := range codes {
+		args[i] = c
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT code, id FROM resources WHERE code IN (`+strings.TrimSuffix(strings.Repeat("?,", len(codes)), ",")+`)`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var code, id string
+		if err := rows.Scan(&code, &id); err != nil {
+			return nil, err
+		}
+		out[code] = id
+	}
+	return out, rows.Err()
+}
+
+// Visible reports whether someone with visibility v gets a resource: it is published and in a
+// scope v includes.
+func (r Resource) Visible(v access.Visibility) bool {
+	return r.Status == StatusPublished && v.Includes(r.target())
+}

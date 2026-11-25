@@ -48,6 +48,7 @@ type api struct {
 	*modulesAPI
 	*toolsAPI
 	*catalogAPI
+	*deliveryAPI
 	*metaAPI
 	*notificationsAPI
 	*cliAPI
@@ -142,6 +143,7 @@ func apiMounts(app *App) Mounts {
 	if app.authnOps != nil {
 		impl.metaAPI.methods = app.authnOps.LoginMethods
 	}
+	impl.deliveryAPI = &deliveryAPI{svc: app.delivery, settings: app.settings, tools: impl.toolsAPI, hooks: &app.hooks}
 	// The routes of the optional modules that are on, under /api/v1/x/<id>/;
 	// they log their own route templates.
 	var modules http.Handler

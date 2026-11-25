@@ -63,6 +63,17 @@ device_codes
   last_polled_at bigint
   key_storage text not null
 
+device_syncs
+  device_id text not null pk
+  user_id text not null
+  cli_version text not null
+  os text not null
+  arch text not null
+  result text not null
+  tools text not null
+  finished_at bigint not null
+  reported_at bigint not null
+
 devices
   id text not null pk
   user_id text not null
@@ -137,6 +148,7 @@ installs
   degraded boolean not null
   error_code text not null
   reported_at bigint not null
+  form text not null
 
 invite_products
   invite_id text not null pk

@@ -17,6 +17,7 @@ import (
 	"github.com/code2rich/rigdepot/internal/server/catalog"
 	"github.com/code2rich/rigdepot/internal/server/config"
 	"github.com/code2rich/rigdepot/internal/server/dbx"
+	"github.com/code2rich/rigdepot/internal/server/delivery"
 	"github.com/code2rich/rigdepot/internal/server/events"
 	"github.com/code2rich/rigdepot/internal/server/httpapi/authnapi"
 	"github.com/code2rich/rigdepot/internal/server/masterkey"
@@ -85,6 +86,10 @@ func (a *App) openServices(ctx context.Context) error {
 	if a.authnOps, err = authnapi.New(a.authn, authnapi.Options{
 		BaseURL: a.cfg.BaseURL, TrustedProxies: a.cfg.TrustedProxies, Log: a.log, Devices: a.devices,
 		Protected: []string{modhost.RoutePrefix}, SignInRate: a.signInRate,
+		// What each computer said at its last sync; delivery exists by the time anyone asks.
+		DeviceSyncs: func(ctx context.Context, ids []string) (map[string]authnapi.DeviceSync, error) {
+			return deliveryHooks{svc: a.delivery}.DeviceSyncs(ctx, ids)
+		},
 	}); err != nil {
 		return err
 	}
@@ -98,6 +103,14 @@ func (a *App) openServices(ctx context.Context) error {
 	}
 	if a.catalog, err = catalog.New(a.db, a.access, co); err != nil {
 		return err
+	}
+	// Delivery counts the installs of the computers that are signed in: the device code flow's.
+	a.delivery = delivery.New(a.db, a.access, a.catalog, delivery.Options{Auditor: log, LiveDevices: a.devices.LiveDevices})
+	if a.hooks.delivery == nil {
+		a.hooks.delivery = deliveryHooks{svc: a.delivery, names: a.hooks.names}
+	}
+	if a.hooks.toolUsage == nil {
+		a.hooks.toolUsage = deliveryHooks{svc: a.delivery}
 	}
 
 	// The master key is loaded and is the one the database was sealed with.
