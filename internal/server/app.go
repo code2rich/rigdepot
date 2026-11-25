@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -93,6 +94,12 @@ type App struct {
 
 	// requests counts the requests for the metrics (M1-41).
 	requests *requestMetrics
+
+	// hangup delivers SIGHUP, which reloads the certificate files (tls.go); nil never does.
+	hangup <-chan os.Signal
+	// certCheckEvery is how often the certificate files are checked for a change; zero is
+	// certCheckEvery. Tests shorten it.
+	certCheckEvery time.Duration
 }
 
 // ReadyCheck is one item of /readyz. A failing critical check makes the
@@ -185,17 +192,28 @@ func (a *App) Serve(ctx context.Context, ln net.Listener) error {
 	}
 	var redirect *http.Server
 	if a.cfg.ServesTLS() {
-		tlsCfg, err := a.tlsConfig()
+		setup, err := a.tlsSetup()
 		if err != nil {
+			ln.Close()
 			return err
 		}
-		ln = tls.NewListener(ln, tlsCfg)
+		ln = tls.NewListener(ln, setup.config)
+		if setup.watch != nil {
+			wctx, stopWatch := context.WithCancel(ctx)
+			defer stopWatch()
+			go setup.watch(wctx)
+		}
 		if addr := a.cfg.TLS.HTTPRedirectListen; addr != "" {
 			rln, err := net.Listen("tcp", addr)
 			if err != nil {
+				ln.Close()
 				return fmt.Errorf("listen %s (HTTP redirect): %w", addr, err)
 			}
-			redirect = &http.Server{Handler: a.redirectToHTTPS(), ReadHeaderTimeout: 10 * time.Second}
+			h := a.redirectToHTTPS()
+			if setup.redirect != nil {
+				h = setup.redirect(h)
+			}
+			redirect = &http.Server{Handler: h, ReadHeaderTimeout: 10 * time.Second}
 			go func() {
 				if err := redirect.Serve(rln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 					a.log.Error("HTTP redirect listener stopped", "err", err)
@@ -229,23 +247,6 @@ func (a *App) Serve(ctx context.Context, ln net.Listener) error {
 		err = errors.Join(err, serveErr)
 	}
 	return err
-}
-
-// tlsConfig loads the certificate given in the configuration. Reloading it
-// on SIGHUP and ACME are task M1-40.
-func (a *App) tlsConfig() (*tls.Config, error) {
-	if len(a.cfg.TLS.ACMEDomains) > 0 {
-		return nil, errors.New("automatic certificates (tls.acme_domains) are not implemented in this version yet; use tls.cert_file and tls.key_file or a reverse proxy")
-	}
-	cert, err := tls.LoadX509KeyPair(a.cfg.TLS.CertFile, a.cfg.TLS.KeyFile)
-	if err != nil {
-		return nil, fmt.Errorf("load the TLS certificate: %w", err)
-	}
-	return &tls.Config{
-		MinVersion:   tls.VersionTLS12,
-		Certificates: []tls.Certificate{cert},
-		NextProtos:   []string{"h2", "http/1.1"},
-	}, nil
 }
 
 // redirectToHTTPS sends every plain HTTP request to the same path on the

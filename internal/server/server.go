@@ -39,11 +39,16 @@ const (
 func Main(args []string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return run(ctx, args, &env{stdout: os.Stdout, stderr: os.Stderr, lookupEnv: os.LookupEnv})
+	// SIGHUP reloads the TLS certificate files instead of ending the process.
+	hangup := make(chan os.Signal, 1)
+	signal.Notify(hangup, syscall.SIGHUP)
+	defer signal.Stop(hangup)
+	return run(ctx, args, &env{stdin: os.Stdin, stdout: os.Stdout, stderr: os.Stderr, lookupEnv: os.LookupEnv, hangup: hangup})
 }
 
 // env is what a command gets from the process. Tests make their own.
 type env struct {
+	stdin          io.Reader // nil reads nothing
 	stdout, stderr io.Writer
 	lookupEnv      func(string) (string, bool)
 	// listening, when set, receives the address serve listens on once it
@@ -53,6 +58,14 @@ type env struct {
 	metricsListening chan<- string
 	// mounts are the handlers serve mounts; see apiHandler.
 	mounts func(*App) Mounts
+	// hangup receives SIGHUP: reload the TLS certificate files.
+	hangup <-chan os.Signal
+	// certCheckEvery overrides how often the certificate files are checked for a change.
+	certCheckEvery time.Duration
+	// doctorDial replaces how doctor connects to the mail server.
+	doctorDial func(ctx context.Context, network, addr string) (net.Conn, error)
+	// doctorNow replaces the time doctor judges certificates and backups by.
+	doctorNow time.Time
 }
 
 type command struct {
@@ -62,23 +75,23 @@ type command struct {
 }
 
 // commands is the subcommand table of docs/architecture/08-deployment.md#管理子命令.
-// The ones that run "notYet" are task M1-42 (and setup --from, which comes
-// after the setup wizard); they are listed so that the command line is
-// complete and says so instead of failing as unknown.
+// setup --from, which comes after the setup wizard, runs "notYet": it is
+// listed so that the command line is complete and says so instead of
+// failing as unknown.
 func commands() []command {
 	return []command{
 		{"serve", "start the server (the default)", runServe},
 		{"migrate", "only run the database migrations", runMigrate},
 		{"healthcheck", "check that the server on this machine answers, for container health checks", runHealthcheck},
 		{"version", "print the version", runVersion},
-		{"backup", "make a consistent snapshot of the database", notYet},
-		{"restore", "check a snapshot (--check)", notYet},
-		{"reset-admin", "reset the password of a local administrator", notYet},
+		{"backup", "make a consistent snapshot of the database", runBackup},
+		{"restore", "check a snapshot (--check)", runRestore},
+		{"reset-admin", "reset the password of a local administrator", runResetAdmin},
 		{"keys rotate", "re-wrap every data key with a new master key", runKeysRotate},
 		{"audit verify", "verify the audit log's hash chain", runAuditVerify},
 		{"setup", "complete the first setup from a file (--from)", notYet},
-		{"config check", "print the effective configuration and where each value comes from", notYet},
-		{"doctor", "check the environment", notYet},
+		{"config check", "print the effective configuration and where each value comes from", runConfigCheck},
+		{"doctor", "check the environment", runDoctor},
 	}
 }
 
@@ -215,7 +228,7 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 	defer db.Close()
 
 	if cfg.AutoMigrate {
-		applied, err := migrations.Apply(ctx, db)
+		applied, err := migrate(ctx, cfg, db, log)
 		if err != nil {
 			return err
 		}
@@ -234,6 +247,7 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger, e *env) er
 	}
 
 	app := NewApp(cfg, log, db, Mounts{})
+	app.hangup, app.certCheckEvery = e.hangup, e.certCheckEvery
 	// The event bus and the scheduler come first: the domain services
 	// publish and schedule on them.
 	app.bg = newBackground(app)
@@ -312,9 +326,6 @@ func serveMetrics(app *App, e *env) (func(), error) {
 // warnNotYet logs the settings this version reads but does not act on yet,
 // so that nobody thinks they are in effect.
 func warnNotYet(cfg *config.Config, log *slog.Logger) {
-	if cfg.BackupDir != "" {
-		log.Warn("the built-in daily backup is not implemented in this version yet; backup.dir is ignored")
-	}
 	if len(cfg.ModulesDisabled) > 0 {
 		log.Info("modules disabled by configuration", "modules", strings.Join(cfg.ModulesDisabled, ","))
 	}
@@ -332,7 +343,7 @@ func runMigrate(ctx context.Context, e *env, args []string) int {
 		return exitFailure
 	}
 	defer db.Close()
-	applied, err := migrations.Apply(ctx, db)
+	applied, err := migrate(ctx, cfg, db, log)
 	for _, m := range applied {
 		log.Info("migration applied", "name", m.Name)
 	}

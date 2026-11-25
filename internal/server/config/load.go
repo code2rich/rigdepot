@@ -44,6 +44,7 @@ var settings = []Setting{
 	{Key: "tls.key_file", Env: EnvName("TLS_KEY_FILE"), Flag: "tls-key-file", InFile: true, Help: "TLS private key file"},
 	{Key: "tls.acme_domains", Env: EnvName("TLS_ACME_DOMAINS"), Flag: "tls-acme-domains", InFile: true, Help: "domains to get certificates for automatically, comma-separated"},
 	{Key: "tls.acme_email", Env: EnvName("TLS_ACME_EMAIL"), Flag: "tls-acme-email", InFile: true, Help: "contact address for the certificate authority"},
+	{Key: "tls.acme_directory_url", Env: EnvName("TLS_ACME_DIRECTORY_URL"), Flag: "tls-acme-directory-url", InFile: true, Help: "ACME directory of the certificate authority (default Let's Encrypt)"},
 	{Key: "tls.http_redirect_listen", Env: EnvName("HTTP_REDIRECT_LISTEN"), Flag: "http-redirect-listen", InFile: true, Help: "plain HTTP address that only redirects to HTTPS, such as :80"},
 	{Key: "trusted_proxies", Env: EnvName("TRUSTED_PROXIES"), Flag: "trusted-proxies", InFile: true, Help: "address ranges of the reverse proxy, comma-separated"},
 	{Key: "insecure_http", Env: EnvName("INSECURE_HTTP"), Flag: "insecure-http", Help: "allow plain HTTP on a network address (isolated trials only)"},

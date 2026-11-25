@@ -83,12 +83,19 @@ type Config struct {
 
 // TLS is how the server terminates TLS itself, when it does.
 type TLS struct {
-	CertFile           string
-	KeyFile            string
-	ACMEDomains        []string
-	ACMEEmail          string
+	CertFile    string
+	KeyFile     string
+	ACMEDomains []string
+	ACMEEmail   string
+	// ACMEDirectoryURL is the certificate authority's ACME directory; ""
+	// is Let's Encrypt (DefaultACMEDirectory).
+	ACMEDirectoryURL   string
 	HTTPRedirectListen string
 }
+
+// DefaultACMEDirectory is the ACME directory used when none is configured:
+// Let's Encrypt's production directory, the one autocert uses too.
+const DefaultACMEDirectory = "https://acme-v02.api.letsencrypt.org/directory"
 
 // Enabled reports whether the server itself serves HTTPS.
 func (t TLS) Enabled() bool {
@@ -236,9 +243,34 @@ func (c *Config) apply(raw map[string]rawValue) error {
 		errs = append(errs, fmt.Errorf("tls.cert_file and tls.key_file go together: give both or neither"))
 	}
 	if v, ok := get("tls.acme_domains"); ok {
-		c.TLS.ACMEDomains = splitList(v)
+		for _, d := range splitList(v) {
+			d = strings.ToLower(strings.TrimSuffix(d, "."))
+			if !acmeDomain.MatchString(d) {
+				fail("tls.acme_domains", "%q is not a domain name a certificate can be issued for automatically (no addresses, no wildcards, at least one dot)", d)
+				continue
+			}
+			c.TLS.ACMEDomains = append(c.TLS.ACMEDomains, d)
+		}
+		if c.BaseURL != nil && len(c.TLS.ACMEDomains) > 0 && !slices.Contains(c.TLS.ACMEDomains, strings.ToLower(c.BaseURL.Hostname())) {
+			fail("tls.acme_domains", "does not include %s, the host of base_url, so browsers would get no certificate for it", c.BaseURL.Hostname())
+		}
 	}
 	c.TLS.ACMEEmail, _ = get("tls.acme_email")
+	if v, ok := get("tls.acme_directory_url"); ok {
+		u, err := url.Parse(v)
+		switch {
+		case err != nil || u.Host == "" || (u.Scheme != "https" && u.Scheme != "http"):
+			fail("tls.acme_directory_url", "want the https:// address of an ACME directory")
+		case u.Scheme == "http" && !IsLoopbackHost(u.Hostname()):
+			fail("tls.acme_directory_url", "plain http is only allowed for a test authority on this machine")
+		case len(c.TLS.ACMEDomains) == 0:
+			fail("tls.acme_directory_url", "needs tls.acme_domains")
+		default:
+			c.TLS.ACMEDirectoryURL = v
+		}
+	} else if len(c.TLS.ACMEDomains) > 0 {
+		c.TLS.ACMEDirectoryURL = DefaultACMEDirectory
+	}
 	if c.TLS.CertFile != "" && len(c.TLS.ACMEDomains) > 0 {
 		errs = append(errs, fmt.Errorf("tls.cert_file and tls.acme_domains exclude each other: bring your own certificate or have one issued, not both"))
 	}
@@ -396,6 +428,9 @@ func (c *Config) apply(raw map[string]rawValue) error {
 var (
 	localeTag = regexp.MustCompile(`^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$`)
 	moduleID  = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+	// acmeDomain is a lower-case DNS name of at least two labels whose last
+	// label is not a number (so not an IPv4 address).
+	acmeDomain = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$`)
 )
 
 func parseBaseURL(v string) (*url.URL, error) {
