@@ -92,7 +92,7 @@ func stepStaticcheck(s *sandbox) (string, error) {
 	if !isFile(filepath.Join(s.root, filepath.FromSlash(toolsModfile))) {
 		return "", fmt.Errorf("%s is missing", toolsModfile)
 	}
-	if err := s.command(nil, "go", goTool("staticcheck", "./...")...).Run(); err != nil {
+	if err := s.command(nil, "go", goTool(toolsModfile, "staticcheck", "./...")...).Run(); err != nil {
 		return "", fmt.Errorf("%w (if the tool could not be built, run first: go run ./tools/dev deps)", err)
 	}
 	return "version pinned in " + toolsModfile, nil

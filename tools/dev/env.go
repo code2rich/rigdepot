@@ -152,11 +152,19 @@ func output(dir string, env []string, name string, args ...string) (string, erro
 	return strings.TrimSpace(stdout.String()), nil
 }
 
-// toolsModfile is where the versions of third-party development tools are
-// pinned, so that they stay out of the main module's go.mod.
-const toolsModfile = "tools/tools.mod"
+// The versions of third-party development tools are pinned in module files
+// of their own, so that they stay out of the main module's go.mod.
+const (
+	// toolsModfile pins what check needs. Everyone downloads these.
+	toolsModfile = "tools/tools.mod"
+	// releaseModfile pins the release tooling. It has several hundred
+	// dependencies of its own, which only someone building a release needs,
+	// and it must not decide which Go version the checks require.
+	releaseModfile = "tools/release.mod"
+)
 
-// goTool returns the arguments that run a pinned development tool.
-func goTool(name string, args ...string) []string {
-	return append([]string{"tool", "-modfile=" + toolsModfile, name}, args...)
+// goTool returns the arguments that run a development tool pinned in the
+// given module file.
+func goTool(modfile, name string, args ...string) []string {
+	return append([]string{"tool", "-modfile=" + modfile, name}, args...)
 }

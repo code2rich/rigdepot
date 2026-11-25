@@ -2,7 +2,7 @@
 # Copyright 2026 The Rigdepot Authors
 #
 # Release configuration. Run it through the development entry point, which
-# uses the goreleaser version pinned in tools/tools.mod:
+# uses the goreleaser version pinned in tools/release.mod:
 #
 #   go run ./tools/dev release-snapshot    build everything into dist/, publish nothing
 #
@@ -138,11 +138,16 @@ homebrew_casks:
     # stops a binary that is not notarized. Until releases are notarized, the
     # cask removes the mark from the one file it installed. Delete this hook
     # together with enabling notarization above.
+    #
+    # This is the spelling goreleaser v2.14 understands. From v2.19 on it is
+    # deprecated in favour of "install_steps" with Homebrew's declarative
+    # steps (run instead of system_command, on_macos instead of OS.mac?);
+    # rewrite it when the pinned goreleaser is upgraded.
     hooks:
       post:
-        install_steps: |
-          on_macos do
-            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/rgd"]
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/rgd"]
           end
 
 scoops:

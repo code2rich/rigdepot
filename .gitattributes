@@ -14,4 +14,4 @@
 # Generated files: collapsed in diffs on GitHub.
 *_gen.go linguist-generated=true
 go.sum linguist-generated=true
-tools/tools.sum linguist-generated=true
+tools/*.sum linguist-generated=true

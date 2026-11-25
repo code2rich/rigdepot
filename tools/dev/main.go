@@ -23,11 +23,12 @@ type task struct {
 }
 
 var tasks = map[string]task{
-	"deps":        {"download dependencies (the only step that needs the network)", runDeps},
-	"check":       {"run every pre-merge check and print a result table", runCheck},
-	"test":        {"run tests in an isolated environment: test [packages] [go test flags]", runTest},
-	"gen":         {"regenerate generated files; --check only reports whether they are stale", runGen},
-	"check-linux": {"run check inside a local Linux container (needs Docker)", runCheckLinux},
+	"deps":             {"download dependencies (the only step that needs the network)", runDeps},
+	"check":            {"run every pre-merge check and print a result table", runCheck},
+	"test":             {"run tests in an isolated environment: test [packages] [go test flags]", runTest},
+	"gen":              {"regenerate generated files; --check only reports whether they are stale", runGen},
+	"check-linux":      {"run check inside a local Linux container (needs Docker)", runCheckLinux},
+	"release-snapshot": {"build all release artifacts into dist/ without publishing", runReleaseSnapshot},
 }
 
 func main() {

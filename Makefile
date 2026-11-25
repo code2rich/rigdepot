@@ -8,7 +8,7 @@
 #
 # Do not put any logic here: what lives in this file cannot run on Windows.
 
-.PHONY: deps check test gen check-linux
+.PHONY: deps check test gen check-linux release-snapshot
 
 deps:
 	go run ./tools/dev deps
@@ -24,3 +24,6 @@ gen:
 
 check-linux:
 	go run ./tools/dev check-linux
+
+release-snapshot:
+	go run ./tools/dev release-snapshot
