@@ -122,7 +122,7 @@ export interface PublicPage {
 export const PUBLIC: readonly PublicPage[] = [
   { id: 'login', path: '/login', label: 'page.login', component: lazy(() => import('./login')) },
   { id: 'apply', path: '/apply', label: 'page.apply', component: lazy(() => import('./apply')) },
-  { id: 'setup', path: '/setup', label: 'page.setup', component: notBuilt('setup') },
+  { id: 'setup', path: '/setup', label: 'page.setup', component: lazy(() => import('./setup')) },
   { id: 'device', path: '/device', label: 'page.device', component: notBuilt('device') },
   { id: 'invite', path: '/invite/:token', label: 'page.invite', component: lazy(() => import('./invite')) },
 ]
