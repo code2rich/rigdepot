@@ -13,7 +13,7 @@ For how the pieces fit together in more depth (the sync engine, the server's lay
 Rigdepot keeps a team's skills, MCP servers, workflows and agents in one Git repository and installs them into the AI coding tools on each person's computer. The repository holds two Go programs:
 
 - **`rgd`**, the command-line program on each person's computer. It reads resources, works out what to write into each tool, shows you, writes after you agree, records every write and can undo all of it.
-- **`rgd-server`**, the server a team hosts itself. It manages who may use what, releases, audit and notifications. The web console is embedded in it.
+- **`rgd-server`**, the server a team hosts itself. It manages who may use what, releases, personal secrets, audit, feedback and notifications. The web console is embedded in it.
 
 `rgd` works without the server, and most contributions only touch the `rgd` half.
 
@@ -60,7 +60,7 @@ The `Makefile` only holds aliases for these. CI runs the same commands. No check
 
 ```sh
 go build -o "$PWD/rgd" ./cmd/rgd
-env -u CLAUDE_CONFIG_DIR -u CODEX_HOME -u XDG_CONFIG_HOME HOME="$(mktemp -d)" sh   # a shell with an empty home
+env -u CLAUDE_CONFIG_DIR -u CODEX_HOME -u XDG_CONFIG_HOME HOME="$(mktemp -d)" RGD_KEYRING=file sh   # a shell with an empty home
 ./rgd sync --repo . --dir examples/resources --plan
 ./rgd sync --repo . --dir examples/resources
 ./rgd status --repo . --dir examples/resources
@@ -69,7 +69,7 @@ env -u CLAUDE_CONFIG_DIR -u CODEX_HOME -u XDG_CONFIG_HOME HOME="$(mktemp -d)" sh
 exit
 ```
 
-On Windows, set `USERPROFILE` to an empty directory instead of `HOME`. The variables taken out with `env -u` move a tool's configuration elsewhere; left in place, they would point back at your real one.
+On Windows, set `USERPROFILE` to an empty directory instead of `HOME`. The variables taken out with `env -u` move a tool's configuration elsewhere; left in place, they would point back at your real one. `RGD_KEYRING=file` keeps a test sign-in out of your system keychain, which does not move with `HOME`.
 
 `examples/resources` is a sample resource repository that passes every check; `examples/resources-broken/<rule>` is one small repository per check rule that breaks exactly that rule. `--repo` reads what is committed, so commit (or stash into a branch) what you want it to see.
 

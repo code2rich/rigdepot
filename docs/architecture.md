@@ -69,7 +69,8 @@ Everything `rgd` keeps for itself is in `~/.rigdepot` (`--home` or `RGD_HOME` mo
 | `cache/` | `repos/` (bare clones of resource repositories), `bundles/` (resource bundles from the server) |
 | `backup/` | Copies of other tools' config files from before the first change |
 | `kept/` | The person's own versions of files that `--overwrite` replaced |
-| `secrets/` | Device key and token when there is no system keychain |
+| `secrets/` | `vault.json`, the personal secrets sealed for this device; the device key and token too when there is no system keychain |
+| `mcp/` | One file per MCP server synced here, saying how to reach it, with secrets as references (for `rgd mcp`) |
 | `flows/`, `knowledge/` | Workflow runs; knowledge bases pulled with the person's own Git access |
 | `tmp/`, `logs/` | Working space; logs |
 
@@ -121,7 +122,8 @@ Config keys are set by `internal/configedit`, which edits JSON, JSONC and TOML i
 - `internal/doctor` holds the self-check items of `rgd doctor`, one file each.
 - `internal/device` and `internal/keyring`: the device code sign-in, the device key pair and token, in the system keychain or in files only the user can read.
 - `internal/flow`: `rgd flow next` hands out a workflow's steps one at a time and checks each before the next.
-- `internal/localsecrets` and `internal/mcprun` are reserved for personal secrets on the device and the `rgd mcp` commands; they hold only their documentation in this version.
+- `internal/localsecrets` keeps the personal secrets as the server sealed them for this device (HPKE to the device key) and opens one only at the moment it is used.
+- `internal/mcprun` is `rgd mcp`: `run` starts one MCP server with the secrets in its environment or, for an HTTP server, bridges standard input and output to it with the secrets in the headers (nothing listens on a port); `serve` is the single entry, one MCP server offering the tools of all the others; `call` runs one tool, for servers delivered as a skill. A missing secret becomes a tool answer that says which one to set, not a server that fails to start. AI tools therefore only ever see a command, never a secret.
 
 ## The server
 
@@ -136,7 +138,7 @@ HTTP        app.go, http.go: health, readiness, security headers, request ids, t
   │         httpapi: the strict server generated from api/openapi.yaml
   │         api.go + api_<domain>.go, httpapi/accessapi, httpapi/authnapi: one adapter per domain
   ▼
-domains     access  authn  catalog  delivery  settings  audit  events  notify  (secrets  feedback)
+domains     access  authn  catalog  delivery  secrets  feedback  settings  audit  events  notify
   ▼
 foundation  config  dbx  migrations  masterkey  jobs
 ```
@@ -152,7 +154,8 @@ The HTTP layer translates; the domain packages decide; the foundation stores. Be
 | `settings` | `audit` | Run-time settings and the setup wizard's state |
 | `notify` | `access`, `events` | In-app notifications and the mail outbox |
 | `audit`, `events` | nothing | The hash-chained audit log; the in-process event bus |
-| `secrets`, `feedback` | as listed in `layout.go` | Reserved; not implemented in this version |
+| `secrets` | `access`, `audit` | Personal secret definitions and values, envelope-encrypted, sealed for each device on delivery |
+| `feedback` | `access`, `catalog`, `audit`, `events` | The feedback queue, its states and ratings |
 
 Nobody imports `notify`: a domain publishes an event (`catalog.published`, `access.join_requested` …) and the notification rules subscribe to it. Everything the domains share crosses these lines and no others.
 
@@ -190,7 +193,8 @@ Everything under `ext/` is public API, versioned v0 until 1.0 (breaking changes 
 | `ext/identity` | A sign-in method for the server | `oidc`, `gitlab` | `builtin/all/server/identity.go` |
 | `ext/notify` | A notification channel | `email` | `builtin/all/server/notifiers.go` |
 | `ext/module` | An optional module of the server | none yet | `modules/all/` |
-| `ext/source`, `ext/secretbackend` | Where the server gets resources and keeps secrets | none yet | — |
+| `ext/secretbackend` | What wraps the data keys of personal secrets (Vault, a cloud KMS …) | the master key, in the core (`internal/server/secrets`) | — |
+| `ext/source` | Where the server gets resources from | not settled yet; the server pulls Git repositories itself | — |
 | `ext/resource` | Shared types: references, metadata, bundles | — | — |
 
 Each extensible package has a test suite in a sub-package whose name ends in `test` (`adaptertest`, `kindtest`, `checktest`); a built-in item's tests are a few lines that hand it to the suite.
@@ -210,7 +214,7 @@ Each extensible package has a test suite in a sub-package whose name ends in `te
 | Examples | `examples/` | The sample repository passes every rule; each broken one is hit by exactly its rule; `rgd check` output in both languages |
 | Storage | `internal/server/dbx/dbxtest` | Each storage test on SQLite, and on PostgreSQL when `RGD_TEST_POSTGRES_DSN` names a local database |
 | Contract | `internal/server` | The server's answers match `api/openapi.yaml` |
-| End to end | `test/e2e` | The real `rgd` and `rgd-server` programs: sync, status, uninstall in temporary homes; sign-in and sync from a running server; nothing removed when it stops |
+| End to end | `test/e2e` | The real `rgd` and `rgd-server` programs: sync, status, uninstall in temporary homes; sign-in and sync from a running server; nothing removed when it stops; a personal secret from the browser to an MCP server started by `rgd mcp` |
 | Real tools (opt-in) | `test/realtools` | The installed Claude Code, Codex and OpenCode read what `rgd` wrote, in a temporary home: `RGD_TEST_REAL_TOOLS=claude,codex,opencode` |
 | Web console | `web/` | Format, lint, type check, unit tests (Vitest) and a build; part of `check` when Node and pnpm are installed |
 

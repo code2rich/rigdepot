@@ -13,7 +13,7 @@
 Rigdepot 把团队的 Skill、MCP、工作流和 Agent 放在一个 Git 仓库里，再装进每个人电脑上的各种 AI 编码工具。仓库里是两个 Go 程序：
 
 - **`rgd`**：命令行，装在每个人的电脑上。它读资源，算出要往每个工具里写什么，给你看，征得同意后写入，记下写过的每一处，并且能原样撤掉。
-- **`rgd-server`**：服务端，团队自己部署。它管谁能用什么、版本发布、审计和通知。网页控制台嵌在它里面。
+- **`rgd-server`**：服务端，团队自己部署。它管谁能用什么、版本发布、个人密钥、审计、问题反馈和通知。网页控制台嵌在它里面。
 
 `rgd` 不需要服务端也能用，大部分贡献只碰 `rgd` 这一半。
 
@@ -60,7 +60,7 @@ go run ./tools/dev check     # 全部检查，结尾打印一张结果表
 
 ```sh
 go build -o "$PWD/rgd" ./cmd/rgd
-env -u CLAUDE_CONFIG_DIR -u CODEX_HOME -u XDG_CONFIG_HOME HOME="$(mktemp -d)" sh   # 一个主目录是空的 shell
+env -u CLAUDE_CONFIG_DIR -u CODEX_HOME -u XDG_CONFIG_HOME HOME="$(mktemp -d)" RGD_KEYRING=file sh   # 一个主目录是空的 shell
 ./rgd sync --repo . --dir examples/resources --plan
 ./rgd sync --repo . --dir examples/resources
 ./rgd status --repo . --dir examples/resources
@@ -69,7 +69,7 @@ env -u CLAUDE_CONFIG_DIR -u CODEX_HOME -u XDG_CONFIG_HOME HOME="$(mktemp -d)" sh
 exit
 ```
 
-在 Windows 上，把 `USERPROFILE` 而不是 `HOME` 指向一个空目录。用 `env -u` 去掉的那几个变量会把某个工具的配置挪到别处；留着的话，它们会指回你真实的配置。
+在 Windows 上，把 `USERPROFILE` 而不是 `HOME` 指向一个空目录。用 `env -u` 去掉的那几个变量会把某个工具的配置挪到别处；留着的话，它们会指回你真实的配置。`RGD_KEYRING=file` 让试验性的登录不进你的系统钥匙串，钥匙串不会跟着 `HOME` 换。
 
 `examples/resources` 是一个示例资源仓库，能通过全部检查；`examples/resources-broken/<规则>` 是每条检查规则一个的小仓库，恰好违反那一条。`--repo` 读的是已提交的内容，所以想让它看到的改动要先提交（或者先提交到一个分支）。
 

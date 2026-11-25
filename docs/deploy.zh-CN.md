@@ -33,7 +33,8 @@
 - **一台 Linux 机器**，amd64 或 arm64。macOS 上也能跑起来试用；Windows 不作为服务端的支持平台。
 - **一个地址**，比如 `hub.example.com`，大家的浏览器和命令行都能访问到。登录回调、邮件里的链接、Cookie、安装命令都依赖这个地址，所以第一次启动之前就定下来。
 - **HTTPS。** 个人凭据要经过这条连接，所以服务端拒绝在本机以外用明文 HTTP。通常由你们已有的反向代理做 HTTPS；服务端自己也能做（见 [HTTPS](#https)）。
-- **能访问它要连的东西**：你们的身份源（OIDC 或 GitLab）、邮件服务器，以后还有资源仓库。服务端不会主动访问项目方或任何别的地址。
+- **能访问它要连的东西**：你们的资源仓库、身份源（OIDC 或 GitLab）和邮件服务器。服务端不会主动访问项目方或任何别的地址。
+- **`git`**，2.31 或更新，用来拉资源仓库。镜像里有，安装包把它列为依赖。
 
 要备份的有两样：**数据库**和**主密钥**。这两样故意分开放，见[备份与恢复](#备份与恢复)。
 
@@ -54,7 +55,7 @@ SQLite 是默认的，一台机器上几百人的团队够用。要跑多个实�
 | --- | --- | --- |
 | `rigdepot.db`（运行时旁边还有 `-wal`、`-shm`） | SQLite 数据库 | 要，用 `rgd-server backup` |
 | `master.key` | 主密钥（没有另外指定时） | 要，单独保管 |
-| `repos/` | 资源仓库的缓存 | 不用，会重建 |
+| `cache/repos/` | 资源仓库的裸克隆 | 不用，会重新拉 |
 | `acme/` | 服务端自己申请的证书（开了才有） | 不用，会重新申请 |
 | `backups/` | `rgd-server backup` 和迁移前的快照（没设 `backup.dir` 时） | 复制到别的机器上 |
 | `cli/` | 可选：要分发的 `rgd` 发布压缩包（见[给内网分发命令行](#给内网分发命令行)） | 不用 |
@@ -276,7 +277,7 @@ sudo systemctl enable --now rigdepot-server
 
 1. **创建管理员**：先填初始化口令，再填一个本地管理员的账号和密码。身份源出问题时，这个账号是你进得来的那扇门。
 2. **登录方式**：本地账号、OIDC（公司的单点登录）或 GitLab。以后都可以在「用户与登录」里设置或修改；要在身份源那边登记的回调地址也显示在那里。
-3. **资源仓库**：服务端从哪个 Git 仓库导入资源。这一版还不能拉取仓库；跳过这一步，到控制台的「资源管理」里添加资源（上传压缩包，或者在网页上登记 MCP）。
+3. **资源仓库**：服务端从哪个 Git 仓库导入资源，填 `https://` 或 `ssh` 地址和分支；需要的话给 `https://` 仓库一个只读令牌。服务端马上拉一次，之后每隔 `RGD_SOURCE_SYNC_INTERVAL`（10 分钟）拉一次；新的和改过的资源以草稿进来，发不发布由人决定。这一步可以跳过：资源仓库也可以在「平台设置」里管理；在「资源管理」里，单个资源还能以压缩包上传，MCP 还能在网页上登记。
 4. **数据与隐私**：可选模块，默认全关。这一版还没有可选模块。
 5. **第一个产品**：产品决定谁能看到哪些资源。现在建一个，或者以后在「产品与成员」里建。
 
@@ -338,7 +339,7 @@ keep = 30
 | `RGD_LOG_FORMAT` | `log.format` | `--log-format` | `json` | `json` 或 `text`。日志写到标准输出，密钥会被遮住。 |
 | `RGD_METRICS_ADDR` | `metrics_addr` | `--metrics-addr` | 不开 | `GET /metrics` 的地址，比如 `127.0.0.1:9464`。不能是对外的端口。 |
 | `RGD_GIT` | `git` | `--git` | `git` | git 程序。 |
-| `RGD_SOURCE_SYNC_INTERVAL` | `source_sync_interval` | `--source-sync-interval` | `10m` | 拉资源仓库的间隔，至少 `1m`。会读取，但要等拉取仓库的功能来了才用上。 |
+| `RGD_SOURCE_SYNC_INTERVAL` | `source_sync_interval` | `--source-sync-interval` | `10m` | 拉资源仓库的间隔，至少 `1m`。 |
 | `RGD_MAX_BUNDLE_MB` | `max_bundle_mb` | `--max-bundle-mb` | `5` | 接受的资源压缩包上限，单位 MB（1–1024）。 |
 | `RGD_CLI_DIST_DIR` | `cli_dist_dir` | `--cli-dist-dir` | `<数据目录>/cli`，再 `/usr/share/rigdepot/cli` | 要分发的 `rgd` 发布压缩包放在哪。设了它就只找这一个目录。 |
 | `RGD_CLI_DOWNLOAD_BASE` | `cli_download_base` | `--cli-download-base` | 无 | 一个 `https://` 目录，里面放着某次发布的 `checksums.txt` 和压缩包（镜像站、内部制品库）；服务端上没有压缩包时，安装脚本从这里下载。 |
@@ -378,7 +379,7 @@ irm https://hub.example.com/install.ps1 | iex               # Windows
 | 数据库（PostgreSQL） | `pg_dump`，或者托管服务的快照 | `rgd-server backup` 会拒绝并说明。 |
 | 主密钥 | 复制 `master.key`（或者保管好你在 `RGD_MASTER_KEY` 里给的值） | 做一次，`keys rotate` 之后再做一次。绝不和数据库的备份放在一起。 |
 
-数据库备份里故意不含主密钥：没有密钥，偷走的备份里看不到任何密钥内容。**主密钥丢了，库里所有加密的内容（身份源的 Client Secret、仓库令牌、邮件密码，以后还有每个人的个人密钥）都再也读不出来**，只能重新填；其余数据不受影响。有密钥再加上备份，就什么都能读，所以备份要按敏感数据保管。
+数据库备份里故意不含主密钥：没有密钥，偷走的备份里看不到任何密钥内容。**主密钥丢了，库里所有加密的内容（每个人的个人密钥、身份源的 Client Secret、仓库令牌、邮件密码）都再也读不出来**，只能重新填；其余数据不受影响。有密钥再加上备份，就什么都能读，所以备份要按敏感数据保管。
 
 ```sh
 rgd-server backup                     # 放进 backup.dir，没设时放进 <数据目录>/backups
@@ -454,7 +455,7 @@ rgd-server restore --check /srv/backups/rigdepot-20261125T030000Z.db
 ## 健康检查和指标
 
 - `GET /healthz`：进程在服务就回答 200。
-- `GET /readyz`：回答一个 JSON，每项检查一条。`database`、`migrations`、`master_key` 失败时返回 503（`unavailable`）；`mail`、`audit_chain` 以及开了每日备份时的 `backup` 失败只会让它 `degraded`，仍是 200。邮件没配置导致的 degraded 是正常的，配好就没了。
+- `GET /readyz`：回答一个 JSON，每项检查一条。`database`、`migrations`、`master_key` 失败时返回 503（`unavailable`）；`mail`、`audit_chain`、`sources`（某个资源仓库上一次拉取失败）以及开了每日备份时的 `backup` 失败只会让它 `degraded`，仍是 200；服务端继续提供上一次成功拉取导入的内容。邮件没配置导致的 degraded 是正常的，配好就没了。
 
 设了 `RGD_METRICS_ADDR` 时，那个单独的地址上的 `GET /metrics` 以 Prometheus 文本格式提供指标。名字都以 `rgd_server_` 开头：
 
@@ -500,4 +501,5 @@ rgd-server restore --check /srv/backups/rigdepot-20261125T030000Z.db
 | `the database was migrated by a newer version of this program` | 旧程序遇到了新数据库：运行新版本，或者按[升级](#升级)里的办法退回去。 |
 | `rgd` 说它的版本太旧（退出码 8） | 重新运行「接入指南」里的安装命令。 |
 | 用身份源登录，跳回来之后失败 | 在身份源那边登记的回调地址必须和「用户与登录」里显示的一致，它跟着 `RGD_BASE_URL` 走。 |
+| 资源仓库没有导入 | `/readyz` 里 `sources` 是 degraded，日志里写着原因。在「平台设置」里核对地址、分支和只读令牌，并确认服务器上 `git --version` 是 2.31 或更新。 |
 | 大家收不到邮件 | 在「平台设置」里配好邮件服务器，发一封测试邮件，再看 `rgd_server_mail_outbox_messages` 指标或日志。 |

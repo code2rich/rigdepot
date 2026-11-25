@@ -33,7 +33,8 @@ You need:
 - **A Linux machine**, amd64 or arm64. The server also runs on macOS for a trial; Windows is not supported as a server.
 - **A name for it**, such as `hub.example.com`, that people's browsers and the command line reach. Sign-in callbacks, links in emails, cookies and the install command all depend on this address, so pick it before the first start.
 - **HTTPS.** Personal credentials travel over this connection, so the server refuses plain HTTP beyond the machine it runs on. Normally a reverse proxy you already run terminates HTTPS; the server can also do it itself (see [HTTPS](#https)).
-- **Outgoing access** to what you connect it to: your identity provider (OIDC or GitLab), your mail server, and later your resource repositories. The server never contacts the project or any other address of its own accord.
+- **Outgoing access** to what you connect it to: your resource repositories, your identity provider (OIDC or GitLab) and your mail server. The server never contacts the project or any other address of its own accord.
+- **`git`**, 2.31 or later, to pull resource repositories. The image has it and the packages depend on it.
 
 Two things will need a backup: the **database** and the **master key**. They are kept apart on purpose; see [Backup and restore](#backup-and-restore).
 
@@ -54,7 +55,7 @@ Every form keeps the same things in its data directory:
 | --- | --- | --- |
 | `rigdepot.db` (with `-wal` and `-shm` next to it while running) | The SQLite database | Yes, with `rgd-server backup` |
 | `master.key` | The master key, unless configured elsewhere | Yes, separately |
-| `repos/` | Cache of resource repositories | No; rebuilt |
+| `cache/repos/` | Bare clones of the resource repositories | No; pulled again |
 | `acme/` | Certificates the server obtained itself, when it does | No; obtained again |
 | `backups/` | Snapshots from `rgd-server backup` and before migrations, unless `backup.dir` says otherwise | Copy them off the machine |
 | `cli/` | Optional: `rgd` release archives to hand out (see [Handing out the command line](#handing-out-the-command-line)) | No |
@@ -276,7 +277,7 @@ Open the public address in a browser. The wizard has five steps:
 
 1. **Create administrator**: the setup token, then the account name and password of a local administrator. This account stays your way in when an identity provider has trouble.
 2. **Sign-in methods**: local accounts, OIDC (your company's single sign-on) or GitLab. Each can be set up or changed later under *Users & sign-in*. The callback address to register with the identity provider is shown there.
-3. **Resource repository**: the Git repository the server imports resources from. This version cannot pull repositories yet; skip the step and add resources in the console under *Resources* (upload an archive, or register an MCP server on the web).
+3. **Resource repository**: the Git repository the server imports resources from, by `https://` or `ssh` address and branch, with a read-only token for an `https://` repository that needs one. The server pulls it now and every `RGD_SOURCE_SYNC_INTERVAL` (10 minutes); new and changed resources arrive as drafts, and people decide what is published. The step can be skipped: repositories are also managed under *Settings*, and under *Resources* single resources can be uploaded as an archive or, for MCP servers, registered on the web.
 4. **Data & privacy**: optional modules, all off by default. This version has none.
 5. **First product**: a product decides who sees which resources. Create one now, or later under *Products & members*.
 
@@ -338,7 +339,7 @@ An unknown key in the file is an error, so that a typo does not silently leave a
 | `RGD_LOG_FORMAT` | `log.format` | `--log-format` | `json` | `json` or `text`. Logs go to standard output; secrets are masked. |
 | `RGD_METRICS_ADDR` | `metrics_addr` | `--metrics-addr` | off | Address for `GET /metrics`, such as `127.0.0.1:9464`. Never the public port. |
 | `RGD_GIT` | `git` | `--git` | `git` | The git program. |
-| `RGD_SOURCE_SYNC_INTERVAL` | `source_sync_interval` | `--source-sync-interval` | `10m` | How often to pull resource repositories, at least `1m`. Read but not used until pulling repositories arrives. |
+| `RGD_SOURCE_SYNC_INTERVAL` | `source_sync_interval` | `--source-sync-interval` | `10m` | How often to pull the resource repositories, at least `1m`. |
 | `RGD_MAX_BUNDLE_MB` | `max_bundle_mb` | `--max-bundle-mb` | `5` | The largest resource archive accepted, in MB (1–1024). |
 | `RGD_CLI_DIST_DIR` | `cli_dist_dir` | `--cli-dist-dir` | `<data dir>/cli`, then `/usr/share/rigdepot/cli` | Where the `rgd` release archives to hand out are. When set, only this directory is searched. |
 | `RGD_CLI_DOWNLOAD_BASE` | `cli_download_base` | `--cli-download-base` | none | An `https://` directory holding a release's `checksums.txt` and archives (a mirror, an internal artifact store), for the install scripts when no archives are on this server. |
@@ -378,7 +379,7 @@ Two things, kept in **different places**:
 | The database (PostgreSQL) | `pg_dump`, or your provider's snapshots | `rgd-server backup` refuses and says so. |
 | The master key | Copy `master.key` (or keep the value you gave in `RGD_MASTER_KEY`) | Once, and again after `keys rotate`. Never into the same place as the database backups. |
 
-The master key is never in a database backup, on purpose: a stolen backup without the key reveals no secret. **If the master key is lost, everything encrypted in the database (the client secrets of identity providers, repository tokens, the mail password, and later people's personal secrets) cannot be read again** and has to be entered again; everything else is unaffected. With the key and a backup, everything can be read, so keep backups like other sensitive data.
+The master key is never in a database backup, on purpose: a stolen backup without the key reveals no secret. **If the master key is lost, everything encrypted in the database (people's personal secrets, the client secrets of identity providers, repository tokens, the mail password) cannot be read again** and has to be entered again; everything else is unaffected. With the key and a backup, everything can be read, so keep backups like other sensitive data.
 
 ```sh
 rgd-server backup                     # into backup.dir, else <data dir>/backups
@@ -454,7 +455,7 @@ Every command reads the same configuration as `serve` (environment, file, flags)
 ## Health checks and metrics
 
 - `GET /healthz` answers 200 while the process serves.
-- `GET /readyz` answers a JSON document with one entry per check: `database`, `migrations` and `master_key` make it 503 (`unavailable`) when they fail; `mail`, `audit_chain` and, with daily backups, `backup` only make it `degraded` with 200. "Degraded" because mail is not set up is normal until you set it up.
+- `GET /readyz` answers a JSON document with one entry per check: `database`, `migrations` and `master_key` make it 503 (`unavailable`) when they fail; `mail`, `audit_chain`, `sources` (a resource repository whose last pull failed) and, with daily backups, `backup` only make it `degraded` with 200; the server keeps serving what the last good pull imported. "Degraded" because mail is not set up is normal until you set it up.
 
 With `RGD_METRICS_ADDR` set, `GET /metrics` on that separate address serves metrics in the Prometheus text format. All names start with `rgd_server_`:
 
@@ -500,4 +501,5 @@ Start with `rgd-server doctor` and `rgd-server config check`; between them they 
 | `the database was migrated by a newer version of this program` | An older program meets a newer database: run the newer version, or go back as described in [Upgrading](#upgrading). |
 | `rgd` says its version is too old (exit code 8) | Run the install command from the *Connect* page again. |
 | Sign-in with the identity provider fails after the redirect | The callback address registered with the identity provider must match the one shown under *Users & sign-in*, which follows `RGD_BASE_URL`. |
+| A resource repository is not imported | `/readyz` shows `sources` as degraded and the log says why. Check the address, the branch and the read-only token under *Settings*, and that `git --version` on the server is 2.31 or later. |
 | People are not getting mail | Set up the mail server under *Settings*, use its test mail, and look at `rgd_server_mail_outbox_messages` or the log. |

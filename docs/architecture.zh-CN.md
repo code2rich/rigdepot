@@ -69,7 +69,8 @@ internal/       核心
 | `cache/` | `repos/`（资源仓库的裸克隆）、`bundles/`（从服务端取的资源包） |
 | `backup/` | 其他工具的配置文件在第一次被改之前的副本 |
 | `kept/` | 被 `--overwrite` 替换掉的、本人改过的版本 |
-| `secrets/` | 没有系统钥匙串时，设备密钥和令牌放这里 |
+| `secrets/` | `vault.json`，按这台设备封装的个人密钥；没有系统钥匙串时，设备密钥和令牌也放这里 |
+| `mcp/` | 同步到这里的每个 MCP 一个文件，写着怎么连它，密钥只是引用（给 `rgd mcp` 用） |
 | `flows/`、`knowledge/` | 工作流的运行记录；用本人的 Git 权限拉下来的知识库 |
 | `tmp/`、`logs/` | 临时空间；日志 |
 
@@ -117,7 +118,8 @@ internal/       核心
 - `internal/doctor` 是 `rgd doctor` 的自检项，一项一个文件。
 - `internal/device` 和 `internal/keyring`：设备码登录、设备的密钥对和令牌，放在系统钥匙串里，或者只有本人能读的文件里。
 - `internal/flow`：`rgd flow next` 一步一步发放工作流的步骤，每一步检查过了才发下一步。
-- `internal/localsecrets` 和 `internal/mcprun` 留给设备上的个人密钥和 `rgd mcp` 这组命令；这一版里它们只有文档。
+- `internal/localsecrets` 按服务端为这台设备封装的样子（用设备公钥做 HPKE）保存个人密钥，只在用的那一刻打开一个。
+- `internal/mcprun` 就是 `rgd mcp`：`run` 启动一个 MCP，把密钥放进它的环境变量；对 HTTP 的 MCP，则把标准输入输出桥接过去，密钥放在请求头里（不监听任何端口）。`serve` 是单一入口：一个 MCP 提供其他所有 MCP 的工具。`call` 调用一个工具，给以 Skill 下发的 MCP 用。缺密钥时，工具调用会回答缺哪个、去哪设，而不是 MCP 起不来。所以 AI 工具看到的永远只是一条命令，不是密钥。
 
 ## 服务端
 
@@ -132,7 +134,7 @@ HTTP 层   app.go、http.go：健康检查、就绪检查、安全响应头、�
   │       httpapi：由 api/openapi.yaml 生成的严格服务端接口
   │       api.go + api_<领域>.go、httpapi/accessapi、httpapi/authnapi：每个领域一个适配层
   ▼
-领域层    access  authn  catalog  delivery  settings  audit  events  notify  （secrets  feedback）
+领域层    access  authn  catalog  delivery  secrets  feedback  settings  audit  events  notify
   ▼
 基础层    config  dbx  migrations  masterkey  jobs
 ```
@@ -148,7 +150,8 @@ HTTP 层负责翻译，领域层负责判断，基础层负责存。领域包之
 | `settings` | `audit` | 运行期设置和部署向导的状态 |
 | `notify` | `access`、`events` | 站内通知和邮件发件箱 |
 | `audit`、`events` | 什么都不引用 | 带哈希链的审计日志；进程内的事件总线 |
-| `secrets`、`feedback` | 见 `layout.go` | 预留；这一版还没有实现 |
+| `secrets` | `access`、`audit` | 个人密钥的定义和值，信封加密存放，下发时按设备封装 |
+| `feedback` | `access`、`catalog`、`audit`、`events` | 问题反馈的队列、状态和评分 |
 
 谁都不引用 `notify`：领域包发出一个事件（`catalog.published`、`access.join_requested` 等），通知规则订阅它。领域之间共享的东西都走这几条线，不走别的。
 
@@ -186,7 +189,8 @@ HTTP 层负责翻译，领域层负责判断，基础层负责存。领域包之
 | `ext/identity` | 服务端的一种登录方式 | `oidc`、`gitlab` | `builtin/all/server/identity.go` |
 | `ext/notify` | 一个通知通道 | `email` | `builtin/all/server/notifiers.go` |
 | `ext/module` | 服务端的一个可选模块 | 还没有 | `modules/all/` |
-| `ext/source`、`ext/secretbackend` | 服务端从哪取资源、把密钥存在哪 | 还没有 | — |
+| `ext/secretbackend` | 用什么包住个人密钥的数据密钥（Vault、云 KMS 等） | 主密钥，在核心里（`internal/server/secrets`） | — |
+| `ext/source` | 服务端从哪取资源 | 还没定稿；服务端自己拉 Git 仓库 | — |
 | `ext/resource` | 共用类型：引用、元数据、资源包 | — | — |
 
 每个可扩展的包都有一个名字以 `test` 结尾的子包作为测试套件（`adaptertest`、`kindtest`、`checktest`）；内置项的测试只有几行，把它交给套件。
@@ -206,7 +210,7 @@ HTTP 层负责翻译，领域层负责判断，基础层负责存。领域包之
 | 示例 | `examples/` | 示例仓库通过全部规则；每个故意犯错的仓库恰好被它那条规则命中；两种语言下 `rgd check` 的输出 |
 | 存储 | `internal/server/dbx/dbxtest` | 每个存储测试都在 SQLite 上跑；`RGD_TEST_POSTGRES_DSN` 指向本机的数据库时也在 PostgreSQL 上跑 |
 | 契约 | `internal/server` | 服务端的回答符合 `api/openapi.yaml` |
-| 端到端 | `test/e2e` | 真实的 `rgd` 和 `rgd-server` 程序：在临时主目录里同步、查看状态、卸载；登录正在运行的服务端并从它同步；服务端停掉后什么都不删 |
+| 端到端 | `test/e2e` | 真实的 `rgd` 和 `rgd-server` 程序：在临时主目录里同步、查看状态、卸载；登录正在运行的服务端并从它同步；服务端停掉后什么都不删；个人密钥从浏览器一路到 `rgd mcp` 启动的 MCP |
 | 真实工具（按需） | `test/realtools` | 装在机器上的 Claude Code、Codex、OpenCode 在临时主目录里能读到 `rgd` 写的东西：`RGD_TEST_REAL_TOOLS=claude,codex,opencode` |
 | 网页控制台 | `web/` | 格式、lint、类型检查、单元测试（Vitest）和构建；装了 Node 和 pnpm 时是 `check` 的一部分 |
 

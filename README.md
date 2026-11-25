@@ -93,17 +93,17 @@ How the code is laid out, and where a given change belongs, is described in [CON
 
 ## Status
 
-M0, the command line, is complete. M1, the team server, is mostly built. No version has been released yet: to use Rigdepot today, [build it from source](#build-from-source). To be exact about what exists:
+M0, the command line, is complete, and so is nearly all of M1, the team server. No version has been released yet: to use Rigdepot today, [build it from source](#build-from-source). To be exact about what exists:
 
 | | State |
 | --- | --- |
 | **`rgd` without a server** | Works. `sync --repo` (a Git address or a local path), `sync --plan`, `status` with drift detection and `--diff`, `uninstall`, `check`, `doctor`, `enable` / `disable`, `flow next`, `config`, `completion`. |
-| **`rgd` with a server** | `login` / `logout` (device code confirmed in the browser) and `sync` from the server's catalog work, including install reports. Not yet: personal secrets on the device and the `rgd mcp` commands (single-entry MCP, secret injection), so an MCP server that needs a secret is still written as a reference to an environment variable you set yourself. |
+| **`rgd` with a server** | Works. `login` / `logout` (a code confirmed in the browser), `sync` from the server's catalog with install reports, `secret` (personal secrets, sealed for this computer), `mcp run` / `serve` / `call` (MCP servers started with the secrets filled in, and one single-entry MCP server for all of them), `feedback`. The single entry connects in Claude Code and Codex reads it back; it is not verified in OpenCode yet. |
 | **AI coding tools** | Claude Code, Codex and OpenCode, each verified against the real tool in a temporary home directory (Claude Code 2.1.330, Codex 0.172.0, OpenCode 2.4.1, macOS arm64). |
 | **Resource kinds** | Skill, MCP server, workflow, agent, knowledge base (a Git directory, pulled with each person's own access). |
 | **Check rules** | Eight: credentials, dangerous commands, prompt injection, bundled `.env` files, personal paths, descriptions, overlap between resources, structure. The server runs the same rules on intake. |
-| **`rgd-server`** | Works: setup wizard, local accounts, OIDC and GitLab sign-in, invitations and join requests, products, members and the three roles, access tokens, the catalog with drafts, versions, publishing and rollback, uploading a resource as an archive, registering an MCP server on the web, delivery to `rgd`, in-app and email notifications, the audit log with its hash chain, platform settings, tool adapter switches, HTTPS (certificate files or ACME), backups, the operations commands, metrics, and handing out `rgd` on its own address. |
-| **Not in `rgd-server` yet** | Pulling resource repositories (until then, resources reach the server by upload or by registering them on the web), feedback, personal secrets, unattended setup (`rgd-server setup --from`). The console pages for these are in place and do not work until their server side arrives. |
+| **`rgd-server`** | Works: setup wizard, local accounts, OIDC and GitLab sign-in, invitations and join requests, products, members and the three roles, access tokens, resource repositories pulled on a schedule, the catalog with drafts, versions, publishing and rollback, uploading a resource as an archive, registering an MCP server on the web, delivery to `rgd`, personal secrets (encrypted at rest, sealed for each device), feedback, in-app and email notifications, the audit log with its hash chain, platform settings, tool adapter switches, HTTPS (certificate files or ACME), backups, the operations commands, metrics, and handing out `rgd` on its own address. |
+| **Not in `rgd-server` yet** | Unattended setup (`rgd-server setup --from`). |
 | **Web console** | Every page of M1, in English and Chinese, light and dark. |
 | **Deployment** | Docker Compose (SQLite or PostgreSQL), the container image, Debian and RPM packages with systemd. The files are in [deploy/](deploy/); the guide is [docs/deploy.md](docs/deploy.md). |
 | **Releases** | None yet. The release configuration (archives, packages, image, Homebrew, Scoop) is in the repository and has only been run locally. |
@@ -173,6 +173,8 @@ rgd status
 ```
 
 `rgd login` keeps the address in `~/.rigdepot/config.toml` and the device's token in the system keychain, or in a file only you can read where there is none. After that, `rgd sync` takes its resources from the server: those of the whole organisation and of your products, required and recommended ones by default, optional ones after `rgd enable <code>`. It reports what it installed (no paths, no content), and when the server cannot be reached it works from the last state it received and removes nothing. `--repo` still syncs from a repository instead.
+
+An MCP server that needs a personal secret, such as your own API token, gets it on your computer only: set it with `rgd secret set <name>` (or on the console's *Keys & devices* page), and the AI tool's configuration holds a command, `rgd mcp …`, that fills the secret in when the tool starts the server. The secret never appears in a configuration file. Without a server, a resource's secret is written as a reference to an environment variable of the same name, which you set yourself.
 
 ## Deploying the server
 
