@@ -9,23 +9,21 @@
 
 # Rigdepot
 
-**One depot for your team's AI coding rig — register once, ship to every agent, learn what works.**
+Rigdepot is an open-source tool for software teams that use AI coding agents: it keeps the team's skills, MCP servers, workflows and agents in one Git repository and installs them into Claude Code, Codex and OpenCode on each person's computer, showing every change before it is written and undoing all of it on request. An optional self-hosted server adds access scopes, personal secrets, review, audit and feedback.
 
-Rigdepot keeps a team's skills, MCP servers, workflows and agents in one Git repository, installs them into whichever AI coding tool each person uses, and brings back how well they work.
+[![Release](https://img.shields.io/github/v/release/code2rich/rigdepot)](https://github.com/code2rich/rigdepot/releases/latest)
+[![License: Apache-2.0](https://img.shields.io/github/license/code2rich/rigdepot)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/code2rich/rigdepot?style=flat)](https://github.com/code2rich/rigdepot/stargazers)
+[![Go version](https://img.shields.io/github/go-mod/go-version/code2rich/rigdepot?logo=go&logoColor=white)](go.mod)
 
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Go 1.26](https://img.shields.io/badge/go-1.26-00ADD8.svg?logo=go&logoColor=white)](go.mod)
-[![Release: none yet](https://img.shields.io/badge/release-none%20yet-lightgrey.svg)](#status)
-[![Discord](https://img.shields.io/badge/chat-Discord-5865F2.svg?logo=discord&logoColor=white)](https://discord.gg/feGwwqs7x)
+**[Live demo](https://rigdepot.code2rich.com)** · [Discord](https://discord.gg/feGwwqs7x) · [Releases](https://github.com/code2rich/rigdepot/releases) · [Changelog](CHANGELOG.md)
 
 <!--
-Badges to revisit:
-- CI: add a workflow status badge once GitHub Actions runs for this repository.
-- Release and Go version: switch to the dynamic shields.io badges once the
-  repository is public and the first version is released.
+Badge to revisit: CI. Add the workflow status badge once the ci workflow passes
+on all three runners (Windows tests still fail in 0.1.0).
 -->
 
-> **Status: M0 (the command line) is complete and M1 (the team server) is mostly built.** Nothing is released yet; build from source to try it. See [Status](#status) for exactly what exists today.
+> **Status: 0.1.0, the first release, is out (2026-11-25).** It contains the command line `rgd` (M0) and the team server `rgd-server` with its web console (M1). Windows is a preview in this version; see [Status](#status) and the [known limitations](CHANGELOG.md#known-limitations).
 
 ## Why
 
@@ -38,7 +36,24 @@ Once a team adopts Claude Code, Codex, OpenCode and the like, the same things ha
 - Nobody knows which shared resources are used, and which ones keep failing.
 - Switching tools means starting over.
 
-None of this is a defect of any one tool. The tools live on individual machines, and engineering is a team activity.
+None of this is a defect of any one tool. The tools live on individual machines, and engineering is a team activity. Rigdepot gives the team one reviewed place for these resources and writes each of them into every tool in that tool's own format.
+
+## Install
+
+```sh
+# macOS, Linux (Homebrew)
+brew install --cask code2rich/tap/rigdepot
+
+# Windows (Scoop)
+scoop bucket add code2rich https://github.com/code2rich/scoop-bucket
+scoop install code2rich/rigdepot
+
+# macOS, Linux (script: download it, read it, then run it)
+curl -fsSLO https://raw.githubusercontent.com/code2rich/rigdepot/main/scripts/install.sh
+sh install.sh
+```
+
+Then see what it would do, without changing anything: `rgd sync --repo <your resource repository> --plan`. PowerShell, your organisation's own server and building from source are in [Quick start](#quick-start).
 
 ## What it does
 
@@ -93,7 +108,7 @@ How the code is laid out, and where a given change belongs, is described in [CON
 
 ## Status
 
-M0, the command line, is complete, and so is nearly all of M1, the team server. No version has been released yet: to use Rigdepot today, [build it from source](#build-from-source). To be exact about what exists:
+M0, the command line, is complete, and so is nearly all of M1, the team server. Both are in [0.1.0](https://github.com/code2rich/rigdepot/releases/tag/v0.1.0), the first release. To be exact about what exists:
 
 | | State |
 | --- | --- |
@@ -106,15 +121,13 @@ M0, the command line, is complete, and so is nearly all of M1, the team server. 
 | **Not in `rgd-server` yet** | Unattended setup (`rgd-server setup --from`). |
 | **Web console** | Every page of M1, in English and Chinese, light and dark. |
 | **Deployment** | Docker Compose (SQLite or PostgreSQL), the container image, Debian and RPM packages with systemd. The files are in [deploy/](deploy/); the guide is [docs/deploy.md](docs/deploy.md). |
-| **Releases** | None yet. The release configuration (archives, packages, image, Homebrew, Scoop) is in the repository and has only been run locally. |
-| **CI** | Workflows are written but have **not yet run on GitHub Actions**. Until they do, checks run locally with `go run ./tools/dev check`. |
+| **Releases** | [0.1.0](https://github.com/code2rich/rigdepot/releases/tag/v0.1.0) (2026-11-25), built and published by the release workflow on GitHub Actions: archives for macOS, Linux and Windows, Debian and RPM packages, the container image, the Homebrew cask and the Scoop manifest. |
+| **CI** | `go run ./tools/dev check` runs on GitHub Actions on Linux, macOS and Windows. It passes on Linux and macOS; on Windows some tests still fail, which is why Windows is a preview in 0.1.0. |
 | **Later milestones** | Usage insight, quality scores and more adapters (M2); see the [roadmap](#roadmap). |
 
 ## Quick start
 
-### Install
-
-> Available once the first version is released. Until then, [build from source](#build-from-source).
+### Every way to install
 
 | Platform | Command |
 | --- | --- |
@@ -200,7 +213,7 @@ One executable and one data directory. A small team should be able to deploy it 
 | `rgd` | Supported | Supported | Supported |
 | `rgd-server` | Development and trials only | Supported | Not supported |
 
-"Supported" is the goal for the first release. Today all six targets compile, and the test suite runs on macOS and in a Linux container. Nothing has been verified on a real Windows machine yet.
+0.1.0 is built for all six targets. The test suite passes on macOS and Linux (GitHub Actions and containers). Windows is a preview: some tests still fail on GitHub Actions' Windows runner, and nothing has been verified on a real Windows machine yet; fixes are planned for 0.1.1.
 
 | AI coding tool | Skills | MCP servers | Workflows | Agents | Verified against |
 | --- | --- | --- | --- | --- | --- |
@@ -216,7 +229,7 @@ Where each tool keeps its configuration is verified against the real tool, not g
 | Milestone | In one sentence |
 | --- | --- |
 | **M0 — command-line core** (done) | Without a server, `rgd sync --repo` installs the skills and MCP servers of a resource repository into Claude Code, Codex and OpenCode, with preview, status, drift detection, intake checks and a clean uninstall. |
-| **M1 — team server** (in progress) | A self-hosted server adds the catalog and releases, products and scopes, three roles, sign-in (OIDC, GitLab, local accounts), personal secrets injected on the device, workflows, agents, knowledge bases, basic audit and feedback. |
+| **M1 — team server** (in 0.1.0, except unattended setup) | A self-hosted server adds the catalog and releases, products and scopes, three roles, sign-in (OIDC, GitLab, local accounts), personal secrets injected on the device, workflows, agents, knowledge bases, basic audit and feedback. |
 | **M2 — closing the loop** | Usage insight with each person's consent, friction rate and automatic issue leads, AI review and quality scores, more adapters. |
 | **M3 — more optional modules** | Environment resources and gates, a browser extension, SAML / LDAP / SCIM, external secret backends, approval flows, audit and insight export, IM notifications — ordered by what users ask for. |
 
@@ -238,6 +251,7 @@ go run ./tools/dev check    # every check: format, static analysis, tests, six c
 ## Community
 
 - **Discord**: <https://discord.gg/feGwwqs7x> — everyday talk, ideas, progress.
+- **Live demo**: <https://rigdepot.code2rich.com> — what Rigdepot looks like, without installing anything.
 - **Issues**: bug reports, feature requests and requests for new tool adapters go to [GitHub Issues](https://github.com/code2rich/rigdepot/issues). General questions are better asked on Discord.
 
 ## License and trademark
@@ -245,3 +259,7 @@ go run ./tools/dev check    # every check: format, static analysis, tests, six c
 Rigdepot is fully open source under the [Apache License 2.0](LICENSE): you may use it commercially, modify it, deploy it internally, fork it and host it, and the license includes a patent grant. There is no enterprise edition and no paid feature.
 
 The name "Rigdepot" and its logo are not licensed with the code. You may say that your project is based on Rigdepot; a fork that you distribute to others needs a different name and logo. All names in the code come from one file, [brand.json](brand.json), so that renaming a fork is a one-file change.
+
+---
+
+If Rigdepot is useful to you or your team, a ⭐ [star on GitHub](https://github.com/code2rich/rigdepot) helps other teams find it.

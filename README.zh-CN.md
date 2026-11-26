@@ -9,22 +9,20 @@
 
 # Rigdepot
 
-**团队 AI 编码资源的中台：把好用的 Skill、MCP、工作流统一登记，下发到每个人手里的任何 AI 编码工具，再把用得好不好带回来。**
+Rigdepot 是一个面向使用 AI 编码 Agent 的软件团队的开源工具：它把团队的 Skill、MCP、工作流和 Agent 放在一个 Git 仓库里，装进每个人电脑上的 Claude Code、Codex 和 OpenCode，写入之前先给你看每一处改动，要撤销时能全部撤回。可选的自部署服务端再加上权限范围、个人密钥、评审、审计和反馈。
 
-Rigdepot 把团队的 Skill、MCP、工作流和 Agent 放在一个 Git 仓库里，装进每个人正在用的 AI 编码工具，并把使用效果带回来。
+[![Release](https://img.shields.io/github/v/release/code2rich/rigdepot)](https://github.com/code2rich/rigdepot/releases/latest)
+[![License: Apache-2.0](https://img.shields.io/github/license/code2rich/rigdepot)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/code2rich/rigdepot?style=flat)](https://github.com/code2rich/rigdepot/stargazers)
+[![Go version](https://img.shields.io/github/go-mod/go-version/code2rich/rigdepot?logo=go&logoColor=white)](go.mod)
 
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Go 1.26](https://img.shields.io/badge/go-1.26-00ADD8.svg?logo=go&logoColor=white)](go.mod)
-[![Release: none yet](https://img.shields.io/badge/release-none%20yet-lightgrey.svg)](#状态)
-[![Discord](https://img.shields.io/badge/chat-Discord-5865F2.svg?logo=discord&logoColor=white)](https://discord.gg/feGwwqs7x)
+**[在线演示](https://rigdepot.code2rich.com)** · [Discord](https://discord.gg/feGwwqs7x) · [下载](https://github.com/code2rich/rigdepot/releases) · [更新日志](CHANGELOG.zh-CN.md)
 
 <!--
-以后要改的徽章：
-- CI：GitHub Actions 能在这个仓库跑起来之后，加上工作流状态徽章。
-- Release 和 Go 版本：仓库公开、发布第一个版本之后，换成 shields.io 的动态徽章。
+以后要加的徽章：CI。ci 工作流在三种运行环境上都通过之后（0.1.0 时 Windows 上还有测试失败），加上工作流状态徽章。
 -->
 
-> **状态：M0（命令行）已经完成，M1（团队服务端）大部分已经做好。** 还没有发布任何版本，想试请从源码构建。现在到底有什么，见[状态](#状态)。
+> **状态：第一个版本 0.1.0 已经发布（2026-11-25）。** 里面有命令行 `rgd`（M0）和带网页控制台的团队服务端 `rgd-server`（M1）。这一版里 Windows 是预览，见[状态](#状态)和[已知限制](CHANGELOG.zh-CN.md#已知限制)。
 
 ## 为什么
 
@@ -37,7 +35,24 @@ Rigdepot 把团队的 Skill、MCP、工作流和 Agent 放在一个 Git 仓库�
 - 推了一批资源，不知道谁在用、哪个老是报错。
 - 换一个工具，一切重来。
 
-这些不是某个工具的缺陷。工具在个人的电脑上，而研发是团队的事。
+这些不是某个工具的缺陷。工具在个人的电脑上，而研发是团队的事。Rigdepot 给团队一个经过评审的地方放这些资源，再按每个工具自己的格式写进去。
+
+## 安装
+
+```sh
+# macOS、Linux（Homebrew）
+brew install --cask code2rich/tap/rigdepot
+
+# Windows（Scoop）
+scoop bucket add code2rich https://github.com/code2rich/scoop-bucket
+scoop install code2rich/rigdepot
+
+# macOS、Linux（脚本：先下载、看一眼内容，再运行）
+curl -fsSLO https://raw.githubusercontent.com/code2rich/rigdepot/main/scripts/install.sh
+sh install.sh
+```
+
+装好之后，先看它会做什么，什么都不改：`rgd sync --repo <你们的资源仓库> --plan`。PowerShell、从你们组织自己的服务端安装、从源码构建，见[快速开始](#快速开始)。
 
 ## 它做什么
 
@@ -92,7 +107,7 @@ flowchart LR
 
 ## 状态
 
-M0（命令行）已经完成，M1（团队服务端）也几乎全部做好。还没有发布任何版本：现在要用，请[从源码构建](#从源码构建)。现在有什么，说准确：
+M0（命令行）已经完成，M1（团队服务端）也几乎全部做好，两者都在第一个版本 [0.1.0](https://github.com/code2rich/rigdepot/releases/tag/v0.1.0) 里。现在有什么，说准确：
 
 | | 状态 |
 | --- | --- |
@@ -105,15 +120,13 @@ M0（命令行）已经完成，M1（团队服务端）也几乎全部做好。�
 | **`rgd-server` 还没有的** | 无人值守的初始化（`rgd-server setup --from`）。 |
 | **网页控制台** | M1 的全部页面，中英文，浅色和深色。 |
 | **部署** | Docker Compose（SQLite 或 PostgreSQL）、容器镜像、带 systemd 的 Debian 和 RPM 包。文件在 [deploy/](deploy/)，部署指南是 [docs/deploy.zh-CN.md](docs/deploy.zh-CN.md)。 |
-| **版本发布** | 还没有。发布配置（压缩包、安装包、镜像、Homebrew、Scoop）已经在仓库里，只在本地跑过。 |
-| **CI** | 工作流已经写好，但**还没有在 GitHub Actions 上跑过**。在那之前，检查在本地用 `go run ./tools/dev check` 跑。 |
+| **版本发布** | [0.1.0](https://github.com/code2rich/rigdepot/releases/tag/v0.1.0)（2026-11-25），由 GitHub Actions 上的发布工作流构建并发布：macOS、Linux、Windows 的压缩包，Debian 和 RPM 安装包，容器镜像，Homebrew cask 和 Scoop 清单。 |
+| **CI** | `go run ./tools/dev check` 在 GitHub Actions 的 Linux、macOS、Windows 上跑。Linux 和 macOS 通过；Windows 上还有一些测试失败，所以 0.1.0 里 Windows 是预览。 |
 | **后面的阶段** | 使用洞察、质量分、更多适配器（M2），见[路线图](#路线图)。 |
 
 ## 快速开始
 
-### 安装
-
-> 首个版本发布后可用。在那之前请[从源码构建](#从源码构建)。
+### 所有安装方式
 
 | 平台 | 命令 |
 | --- | --- |
@@ -199,7 +212,7 @@ rgd status
 | `rgd` | 支持 | 支持 | 支持 |
 | `rgd-server` | 只用于开发和试用 | 支持 | 不支持 |
 
-「支持」是第一个版本的目标。现在六个目标都能编译，测试在 macOS 和 Linux 容器里跑过。还没有在任何一台真实的 Windows 机器上验证过。
+0.1.0 为六个目标都构建了。测试在 macOS 和 Linux（GitHub Actions 和容器）上通过。Windows 是预览：GitHub Actions 的 Windows 环境上还有一些测试失败，也还没有在任何一台真实的 Windows 机器上验证过；修复计划在 0.1.1。
 
 | AI 编码工具 | Skill | MCP | 工作流 | Agent | 核对过的版本 |
 | --- | --- | --- | --- | --- | --- |
@@ -215,7 +228,7 @@ rgd status
 | 阶段 | 一句话 |
 | --- | --- |
 | **M0 命令行内核**（已完成） | 不需要服务端，`rgd sync --repo` 把一个资源仓库里的 Skill 和 MCP 装进 Claude Code、Codex、OpenCode，能预览、看状态、检测改动、做入库检查、干净卸载。 |
-| **M1 团队服务端**（进行中） | 自部署的服务端加上目录和版本发布、产品与范围、三种角色、登录（OIDC、GitLab、本地账号）、在本机注入的个人密钥、工作流、Agent、知识库、基础审计和反馈。 |
+| **M1 团队服务端**（在 0.1.0 里，无人值守初始化除外） | 自部署的服务端加上目录和版本发布、产品与范围、三种角色、登录（OIDC、GitLab、本地账号）、在本机注入的个人密钥、工作流、Agent、知识库、基础审计和反馈。 |
 | **M2 闭环** | 需本人同意的使用洞察、摩擦率和自动生成的问题线索、AI 评审和质量分、更多适配器。 |
 | **M3 更多可选模块** | 环境资源与闸门、浏览器插件、SAML / LDAP / SCIM、外部密钥后端、审批流、审计和洞察导出、IM 通知。按使用者的需求排先后。 |
 
@@ -237,6 +250,7 @@ go run ./tools/dev check    # 全部检查：格式、静态检查、测试、�
 ## 社区
 
 - **Discord**：<https://discord.gg/feGwwqs7x>，日常交流、提想法、看进展。
+- **在线演示**：<https://rigdepot.code2rich.com>，不用安装，先看看 Rigdepot 是什么样子。
 - **Issue**：缺陷、功能建议、新工具适配的请求提到 [GitHub Issues](https://github.com/code2rich/rigdepot/issues)。一般的问题更适合在 Discord 里问。
 
 ## 协议与商标
@@ -244,3 +258,7 @@ go run ./tools/dev check    # 全部检查：格式、静态检查、测试、�
 Rigdepot 完全开源，整个仓库采用 [Apache-2.0](LICENSE)：可以商用、修改、内部部署、fork、托管，带专利授权。没有企业版，没有收费功能。
 
 「Rigdepot」这个名称和标志不随代码一起授权。你可以说明你的项目基于 Rigdepot；对外分发的 fork 需要换一个名字和标志。代码里的名字都来自 [brand.json](brand.json) 这一个文件，所以 fork 改名只用改一处。
+
+---
+
+如果 Rigdepot 对你或你的团队有用，欢迎在 GitHub 上点个 ⭐ [Star](https://github.com/code2rich/rigdepot)，让更多团队找到它。
