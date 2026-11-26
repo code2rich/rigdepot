@@ -4,7 +4,7 @@
 
 One section per version, newest first. The text under a version's heading is that version's release notes on GitHub: `go run ./tools/dev release` publishes it, and a release candidate (`v0.2.0-rc.1`) uses the section of the version it leads to. Before 1.0, a minor version (`0.Y.0`) may include incompatible changes; they are listed under "Needs attention".
 
-## 0.1.0 (not released yet)
+## 0.1.0 (2026-11-25)
 
 The first release of Rigdepot: the command line `rgd`, and the team server `rgd-server` with its web console. Both come from one repository and share one version.
 
@@ -18,7 +18,7 @@ The first release of Rigdepot: the command line `rgd`, and the team server `rgd-
 
 ### Known limitations
 
-- **Not verified on a Windows machine.** `rgd` is cross-compiled for Windows on amd64 and arm64, but neither the program nor `install.ps1` has been run on Windows. Linux was verified in containers only, not on a Linux machine. CI has not run on GitHub Actions yet; this release was checked by running `go run ./tools/dev check` on macOS and `check-linux` in a Linux container.
+- **Not verified on a Windows machine.** `rgd` is cross-compiled for Windows on amd64 and arm64, but neither the program nor `install.ps1` has been run on Windows. Linux was verified in containers only, not on a Linux machine. Before publishing, the release workflow ran the full `go run ./tools/dev check` on GitHub Actions (Linux); it was also run on macOS. The browser tests (`tools/dev e2e-web`) were run on macOS only.
 - **Binaries are not signed or notarized.** On macOS, an `rgd` downloaded with a browser is stopped by Gatekeeper on first run; the install script and Homebrew are not affected (the cask removes the quarantine mark from the one file it installs). On Windows, a browser download may show a SmartScreen warning; Scoop and the install script do not. `checksums.txt` is not signed either: verify downloads against it with SHA-256.
 - **SBOMs** are attached only if the release machine had `syft`.
 - The single-entry MCP server (`rgd mcp serve`) is verified in Claude Code and Codex, not yet in OpenCode.
