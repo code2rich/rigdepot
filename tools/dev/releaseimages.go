@@ -81,6 +81,25 @@ func (r *rehearsal) snapshotImages() (map[string]string, error) {
 	return out, nil
 }
 
+// pushedImageListed checks that goreleaser recorded the image it pushed: an artifact named ref,
+// or ref with a digest after it (ghcr.io/…:0.4.0@sha256:…).
+func pushedImageListed(artifactsJSON, ref string) error {
+	data, err := os.ReadFile(artifactsJSON)
+	if err != nil {
+		return err
+	}
+	var arts []struct{ Name, Type string }
+	if err := json.Unmarshal(data, &arts); err != nil {
+		return fmt.Errorf("dist/artifacts.json: %w", err)
+	}
+	for _, a := range arts {
+		if a.Name == ref || strings.HasPrefix(a.Name, ref+"@") {
+			return nil
+		}
+	}
+	return fmt.Errorf("dist/artifacts.json does not name the pushed image %s", ref)
+}
+
 func (r *rehearsal) imageExport(arch string) string {
 	return filepath.Join(r.root, "dist", fmt.Sprintf("%s_%s_linux_%s.docker.tar.gz", r.serverPackage(), r.meta.Version, arch))
 }

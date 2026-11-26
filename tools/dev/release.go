@@ -116,6 +116,11 @@ type rehearsal struct {
 	docker bool              // Docker with buildx is there: goreleaser builds the image
 	skip   []string          // goreleaser --skip flags, for what this machine cannot build
 	images map[string]string // architecture -> the image goreleaser loaded
+	// pushedImage is set by a real release: the image goreleaser pushed (ghcr.io/…:0.4.0). The
+	// image is then one multi-architecture manifest in the registry, not one image per
+	// architecture in Docker, so verifyDist only checks that dist/artifacts.json names it; the
+	// release's image exports step pulls and runs each architecture.
+	pushedImage string
 }
 
 // releaseMeta is what goreleaser writes into dist/metadata.json.
@@ -283,7 +288,12 @@ func (r *rehearsal) verifyDist() (string, error) {
 	}
 	problems = append(problems, r.checkPackagesListed()...)
 	// The images goreleaser loaded, read now: a second build in place replaces dist/.
-	if r.docker {
+	switch {
+	case r.pushedImage != "":
+		if err := pushedImageListed(filepath.Join(dist, "artifacts.json"), r.pushedImage); err != nil {
+			problems = append(problems, err.Error())
+		}
+	case r.docker:
 		images, err := r.snapshotImages()
 		if err != nil {
 			problems = append(problems, err.Error())

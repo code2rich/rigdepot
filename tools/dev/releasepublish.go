@@ -581,6 +581,9 @@ func (r *release) goreleaserRelease() (string, error) {
 
 // artifacts checks dist/ the way release-snapshot does, for the version of the tag.
 func (r *release) artifacts() (string, error) {
+	if !r.dryRun {
+		r.pushedImage = r.image + ":" + r.version
+	}
 	detail, err := r.verifyDist()
 	if err != nil {
 		return "", err
