@@ -18,7 +18,7 @@ Rigdepot 的第一个版本：命令行 `rgd`，以及团队服务端 `rgd-serve
 
 ### 已知限制
 
-- **没有在 Windows 机器上验证过。** `rgd` 交叉编译了 Windows 的 amd64 和 arm64 版本，但程序和 `install.ps1` 都没在 Windows 上跑过。Linux 只在容器里验证过，没在 Linux 真机上验证。发布之前，发版工作流在 GitHub Actions 的 Linux 上跑了完整的 `go run ./tools/dev check`，macOS 上也跑过；浏览器测试（`tools/dev e2e-web`）只在 macOS 上跑过。
+- **Windows 是预览。** `rgd` 有 Windows 的 amd64 和 arm64 版本，但测试在 Windows 上还没全部通过：GitHub Actions 的 Windows 机器上有一些测试失败，多数在路径的显示方式和测试本身的假设上（比如 `%USERPROFILE%\.rigdepot\backup/` 混用了分隔符）。`install.ps1` 没在 Windows 上跑过。在 Windows 上会有不顺手的地方，计划在 0.1.1 修复。Linux 在容器里和 GitHub Actions 上验证过，没在 Linux 真机上验证。发布之前，发版工作流在 GitHub Actions 的 Linux 上跑了完整的 `go run ./tools/dev check`，macOS 上也跑过；浏览器测试（`tools/dev e2e-web`）只在 macOS 上跑过。
 - **可执行文件没有签名，也没有公证。** 在 macOS 上用浏览器下载的 `rgd` 第一次运行会被 Gatekeeper 拦下；安装脚本和 Homebrew 不受影响（cask 会去掉它装的那一个文件的隔离标记）。在 Windows 上用浏览器下载可能出现 SmartScreen 警告；Scoop 和安装脚本不会。`checksums.txt` 也没有签名：下载后用 SHA-256 对照它核对。
 - 发版的机器上装了 `syft` 才附带 **SBOM**。
 - 单一入口的 MCP（`rgd mcp serve`）在 Claude Code 和 Codex 上验证过，OpenCode 上还没有。
