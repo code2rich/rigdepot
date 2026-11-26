@@ -61,8 +61,15 @@ jobs:
         with:
           node-version: 22
 
+      # corepack picks the pnpm version from the nearest package.json with a
+      # packageManager field. tools/dev runs pnpm from the repository root,
+      # which has none, so corepack would fetch the latest pnpm and refuse the
+      # lockfile: activate the version web/package.json names instead.
       - name: Enable pnpm
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare "$(node -p "require('./web/package.json').packageManager")" --activate
+          pnpm --version
         env:
           COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
 
