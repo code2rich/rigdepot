@@ -56,22 +56,19 @@ jobs:
             tools/release.sum
 
       # The web console is embedded in rgd-server; pnpm comes in the version
-      # web/package.json names, through corepack.
+      # web/package.json names (next step).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
 
-      # corepack picks the pnpm version from the nearest package.json with a
-      # packageManager field. tools/dev runs pnpm from the repository root,
-      # which has none, so corepack would fetch the latest pnpm and refuse the
-      # lockfile: activate the version web/package.json names instead.
-      - name: Enable pnpm
+      # pnpm at the version web/package.json names, installed globally with
+      # npm, not through corepack: corepack keeps its chosen version under
+      # HOME, and tools/dev check runs with a temporary HOME, where corepack
+      # would fetch the latest pnpm and refuse the lockfile.
+      - name: Install pnpm
         run: |
-          corepack enable
-          corepack prepare "$(node -p "require('./web/package.json').packageManager")" --activate
+          npm install -g "$(node -p "require('./web/package.json').packageManager")"
           pnpm --version
-        env:
-          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
 
       # The image is built for two architectures: QEMU for the one this runner
       # is not, and a buildx builder with the docker-container driver, which
@@ -94,12 +91,9 @@ jobs:
         run: |
           go run ./tools/dev deps
           go run ./tools/dev web-deps
-        env:
-          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
 
       - name: Release
         run: go run ./tools/dev release --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PACKAGES_GITHUB_TOKEN: ${{ secrets.PACKAGES_GITHUB_TOKEN }}
-          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
